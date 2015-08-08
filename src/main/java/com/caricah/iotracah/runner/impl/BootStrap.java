@@ -20,8 +20,11 @@
 
 package com.caricah.iotracah.runner.impl;
 
+import com.caricah.iotracah.configurator.ConfigHandler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.runner.ResourceService;
 import com.caricah.iotracah.runner.Runner;
+import com.caricah.iotracah.system.BaseSystemHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,13 +34,15 @@ import java.util.concurrent.CountDownLatch;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class BootStrap implements Runner {
+public class BootStrap extends ResourceService implements Runner {
 
 
     private static final Logger log = LoggerFactory.getLogger(BootStrap.class);
 
     //This latch will be used to wait on the system
     private static CountDownLatch _latch = new CountDownLatch(1);
+
+
 
 
     private void infiniteWait(){
@@ -90,6 +95,16 @@ public class BootStrap implements Runner {
     @Override
     public void init() throws UnRetriableException {
 
+        log.debug( " init : initializing system configurations");
+
+        for(ConfigHandler configHandler: getConfigurationSetLoader()){
+
+            log.debug( " init : found the configuration handler {} ", configHandler);
+
+            configHandler.populateConfigs(getConfiguration());
+
+        }
+
     }
 
     /**
@@ -103,6 +118,17 @@ public class BootStrap implements Runner {
      */
     @Override
     public void start() throws UnRetriableException {
+
+        log.info(" start : Initiating operations of the whole system.");
+
+        for (BaseSystemHandler baseSystemHandler: getSystemBaseSetLoader()){
+
+            log.info(" start : found system handler {} ", baseSystemHandler);
+            baseSystemHandler.initialize( getConfiguration());
+
+        }
+
+        infiniteWait();
 
     }
 
@@ -119,7 +145,15 @@ public class BootStrap implements Runner {
     @Override
     public void terminate() {
 
+        log.info(" terminate : Terminating operations system wide.");
 
+
+        for (BaseSystemHandler baseSystemHandler: getSystemBaseSetLoader()){
+
+            log.info(" terminate : Initiating clean exit for system handler {} ", baseSystemHandler);
+            baseSystemHandler.terminate();
+
+        }
 
         stopInfiniteWait();
     }

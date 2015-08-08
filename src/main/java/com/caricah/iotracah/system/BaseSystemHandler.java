@@ -20,9 +20,14 @@
 
 package com.caricah.iotracah.system;
 
+import org.apache.commons.configuration.Configuration;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class BaseSystemHandler {
+public interface BaseSystemHandler {
+    void initialize(Configuration configuration);
+
+    void terminate();
 }

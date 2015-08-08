@@ -20,9 +20,13 @@
 
 package com.caricah.iotracah.configurator;
 
+import org.apache.commons.configuration.Configuration;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
 public interface ConfigHandler {
+
+    Configuration populateConfigs(Configuration configuration);
 }

@@ -20,13 +20,38 @@
 
 package com.caricah.iotracah.runner;
 
+import com.caricah.iotracah.configurator.ConfigHandler;
+import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.commons.configuration.Configuration;
+
+import java.util.ServiceLoader;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class ResourceService {
+public abstract class ResourceService {
 
 
+    private Configuration configuration;
+
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(Configuration configuration) {
+        this.configuration = configuration;
+    }
+
+    public ServiceLoader<ConfigHandler> getConfigurationSetLoader(){
+
+        return ServiceLoader.load(ConfigHandler.class);
+    }
+
+   public ServiceLoader<BaseSystemHandler> getSystemBaseSetLoader(){
+
+        return ServiceLoader.load(BaseSystemHandler.class);
+    }
 
 
 
