@@ -1,12 +1,10 @@
-rootProject.name = 'mqtracah'
+rootProject.name = 'iotracah'
 include 'plugins:core'
 findProject(':plugins:core')?.name = 'core'
 include 'plugins:server:mqtt'
 findProject(':plugins:server:mqtt')?.name = 'mqtt'
 include 'plugins:server:http'
 findProject(':plugins:server:http')?.name = 'http'
-include 'plugins:server:mqtt'
-findProject(':plugins:server:mqtt')?.name = 'mqtt'
 include 'plugins:backend:ignite'
 findProject(':plugins:backend:ignite')?.name = 'ignite'
 

@@ -5,4 +5,9 @@ package com.caricah.iotracah.runner;
  * @version 1.0 8/8/15
  */
 public class IOTracah {
+
+
+    public static void main(String[] args) {
+
+    }
 }
