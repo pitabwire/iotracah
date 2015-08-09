@@ -25,6 +25,7 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.runner.ResourceService;
 import com.caricah.iotracah.runner.Runner;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.system.handler.LogHandler;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.SystemConfiguration;
@@ -43,14 +44,15 @@ public class DefaultRunner extends ResourceService implements Runner {
     private static final Logger log = LoggerFactory.getLogger(DefaultRunner.class);
 
     //This latch will be used to wait on the system
-    private static CountDownLatch _latch = new CountDownLatch(1);
+    private final CountDownLatch _latch = new CountDownLatch(1);
 
+    public CountDownLatch get_latch() {
+        return _latch;
+    }
 
+    public void infiniteWait(){
 
-
-    private void infiniteWait(){
-
-        log.debug(" infiniteWait : application entering an infinite wait state.");
+        log.trace(" infiniteWait : application entering an infinite wait state.");
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run() {
@@ -59,19 +61,19 @@ public class DefaultRunner extends ResourceService implements Runner {
         });
 
         try {
-            _latch.await();
+            get_latch().await();
         } catch (InterruptedException e) {
             log.warn(" infiniteWait : ", e);
         }
 
     }
 
-    private void stopInfiniteWait(){
+    public void stopInfiniteWait(){
 
-        log.debug(" stopInfiniteWait : application leaving the infinite wait state.");
+        log.trace(" stopInfiniteWait : application leaving the infinite wait state.");
 
-        if(_latch != null) {
-            _latch.countDown();
+        if(get_latch() != null) {
+            get_latch().countDown();
         }
     }
 
@@ -98,7 +100,7 @@ public class DefaultRunner extends ResourceService implements Runner {
     @Override
     public void init() throws UnRetriableException {
 
-        log.debug( " init : initializing system configurations");
+        log.trace(" init : initializing system configurations");
 
         //First load the system settings as the defaults.
         CompositeConfiguration configuration = new CompositeConfiguration();
@@ -113,6 +115,14 @@ public class DefaultRunner extends ResourceService implements Runner {
 
                 Configuration newConfigs = configHandler.populateConfiguration(getConfiguration());
                 setConfiguration(newConfigs);
+        }
+
+
+        for(LogHandler logHandler: getLogSetLoader()){
+
+            log.debug(" init : Configuring logging using handler {} ", logHandler);
+
+            logHandler.configure(getConfiguration());
 
         }
 
@@ -160,7 +170,7 @@ public class DefaultRunner extends ResourceService implements Runner {
         log.info(" terminate : Terminating operations system wide.");
 
 
-        for (BaseSystemHandler baseSystemHandler: getSystemBaseSetLoader()){
+        for (BaseSystemHandler baseSystemHandler: getReversedSystemBaseSetLoader()){
 
             log.info(" terminate : Initiating clean exit for system handler {} ", baseSystemHandler);
             baseSystemHandler.terminate();

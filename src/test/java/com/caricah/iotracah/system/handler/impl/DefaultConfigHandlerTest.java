@@ -21,44 +21,42 @@
 package com.caricah.iotracah.system.handler.impl;
 
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import junit.framework.TestCase;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.SystemConfiguration;
-import org.hamcrest.core.Is;
+
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+
+
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+
 
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class DefaultConfigHandlerTest extends TestCase {
+public class DefaultConfigHandlerTest extends BaseTestClass {
 
     private String testDirectory = "";
-    private String testFileForExcecutionDir = "test.iotracah.conf";
-    private String testFileForResourcesPackage = "test1.iotracah.conf";
-    private String testFileWithWrongContents = "test2.iotracah.conf";
-    private String testFileThatIsNonExistant = "test3.iotracah.conf";
+    private String testFileForExcecutionDir = "test.iotracah.properties";
+    private String testFileForResourcesPackage = "test1.iotracah.properties";
+    private String testFileWithWrongContents = "test2.iotracah.properties";
+    private String testFileThatIsNonExistant = "test3.iotracah.properties";
     private CompositeConfiguration systemConfig;
 
-    @Rule
-    public ExpectedException exception = ExpectedException.none();
 
-    @Before
-    public void setUp() throws Exception {
+    @Override
+    public void internalSetUp() throws Exception {
 
         systemConfig = new CompositeConfiguration();
         systemConfig.addConfiguration(new SystemConfiguration());
@@ -78,8 +76,8 @@ public class DefaultConfigHandlerTest extends TestCase {
 
     }
 
-    @After
-    public void tearDown() throws Exception {
+    @Override
+    public void internalTearDown() throws Exception {
 
 
         Files.delete(Paths.get(testFileForExcecutionDir));

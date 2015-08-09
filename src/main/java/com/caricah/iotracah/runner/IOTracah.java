@@ -38,7 +38,14 @@ import org.apache.log4j.PatternLayout;
  */
 public class IOTracah extends DefaultRunner {
 
+    private static Runner defaultRunner;
 
+    public static Runner defaultRunner(){
+        if(null == defaultRunner)
+            defaultRunner = new IOTracah();
+
+        return defaultRunner;
+    }
     public static void main(String[] args) throws UnRetriableException{
 
         ConsoleAppender console = new ConsoleAppender(); //create appender
@@ -50,8 +57,7 @@ public class IOTracah extends DefaultRunner {
         //add appender to any Logger (here is root)
         Logger.getRootLogger().addAppender(console);
 
-
-        Runner runner = new IOTracah();
+        Runner runner = defaultRunner();
         runner.init();
         runner.start();
 

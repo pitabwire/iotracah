@@ -43,7 +43,6 @@ public class DefaultConfigHandler implements ConfigHandler {
 
 
     private static final Logger log = LoggerFactory.getLogger(DefaultConfigHandler.class);
-    public static final String CONFIGURATION_VALUE_DEFAULT_FILE_NAME = "iotracah.conf";
 
     private final String configurationDirectory;
     private final String configurationFileName;
@@ -51,7 +50,7 @@ public class DefaultConfigHandler implements ConfigHandler {
         this( "" );
     }
     public DefaultConfigHandler(String configurationDirectory){
-        this(configurationDirectory,CONFIGURATION_VALUE_DEFAULT_FILE_NAME);
+        this(configurationDirectory,SYSTEM_CONFIG_CONFIGURATION_FILE_NAME_DEFAULT_VALUE);
     }
 
     public DefaultConfigHandler(String configurationDirectory, String configurationFileName){

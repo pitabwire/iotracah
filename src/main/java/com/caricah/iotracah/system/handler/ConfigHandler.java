@@ -35,6 +35,9 @@ import org.apache.commons.configuration.Configuration;
  */
 public interface ConfigHandler {
 
+
+    public static final String SYSTEM_CONFIG_CONFIGURATION_FILE_NAME_DEFAULT_VALUE = "iotracah.properties";
+
     /**
      *
      * All system configurations providers are loaded via spi

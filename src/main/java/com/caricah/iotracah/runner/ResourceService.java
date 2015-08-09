@@ -22,9 +22,10 @@ package com.caricah.iotracah.runner;
 
 import com.caricah.iotracah.system.handler.ConfigHandler;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.system.handler.LogHandler;
 import org.apache.commons.configuration.Configuration;
 
-import java.util.ServiceLoader;
+import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -48,11 +49,30 @@ public abstract class ResourceService {
         return ServiceLoader.load(ConfigHandler.class);
     }
 
-   public ServiceLoader<BaseSystemHandler> getSystemBaseSetLoader(){
+    public ServiceLoader<LogHandler> getLogSetLoader(){
 
-        return ServiceLoader.load(BaseSystemHandler.class);
+        return ServiceLoader.load(LogHandler.class);
     }
 
+   public List<BaseSystemHandler> getSystemBaseSetLoader(){
+
+        List<BaseSystemHandler> listBaseSystemHandler = new ArrayList<>();
+        for (BaseSystemHandler baseSystemHandler: ServiceLoader.load(BaseSystemHandler.class))
+            listBaseSystemHandler.add(baseSystemHandler);
+
+       Collections.sort(listBaseSystemHandler);
+
+       return listBaseSystemHandler;
+   }
 
 
-}
+    public List<BaseSystemHandler> getReversedSystemBaseSetLoader() {
+
+        List<BaseSystemHandler> listBaseSystemHandler = getSystemBaseSetLoader();
+
+        Collections.reverse(listBaseSystemHandler);
+
+        return listBaseSystemHandler;
+    }
+
+    }

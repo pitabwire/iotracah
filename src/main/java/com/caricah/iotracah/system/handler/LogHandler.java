@@ -24,11 +24,30 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
 /**
+ *
+ * The log handler allows the system to configure the logging system.
+ *
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/9/15
  */
 public interface LogHandler {
 
+    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE = "system.config.logging.log.config.file";
+    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE = "log4j.properties";
 
-    public void configure(Configuration configuration) throws UnRetriableException;
+    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY = "system.config.logging.log.config.directory";
+    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
+
+
+
+    /**
+     * <code>configure</code> Allows the system to supply configurations
+     * from other modules and use these settings to configure the logging system.
+     * It is upto the implementation to ensure the settings it expects are supplied
+     * in the configuration by populating the necessary config settings.
+     *
+     * @param configuration
+     * @throws UnRetriableException
+     */
+    void configure(Configuration configuration) throws UnRetriableException;
 }

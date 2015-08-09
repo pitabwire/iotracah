@@ -18,16 +18,34 @@
  *
  */
 
-package com.caricah.iotracah.system;
+package com.caricah.iotracah.runner;
 
-import org.apache.commons.configuration.Configuration;
+import com.caricah.iotracah.runner.impl.DefaultRunner;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.BDDMockito;
+import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.concurrent.CountDownLatch;
+
+import static org.junit.Assert.*;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/8/15
+ * @version 1.0 8/9/15
  */
-public interface BaseSystemHandler extends Comparable<BaseSystemHandler>{
-    void initialize(Configuration configuration);
 
-    void terminate();
+public class IOTracahTest {
+
+    @Test
+    public void testMain() throws Exception {
+
+        IOTracah runner = Mockito.spy(new IOTracah());
+
+        //TODO: test this method when time is available.
+
+
+    }
 }
