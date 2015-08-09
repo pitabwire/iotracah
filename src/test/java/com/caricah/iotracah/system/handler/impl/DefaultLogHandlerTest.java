@@ -27,7 +27,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.verification.Times;
 
-import static org.junit.Assert.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
