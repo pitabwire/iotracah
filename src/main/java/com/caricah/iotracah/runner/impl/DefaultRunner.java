@@ -20,11 +20,14 @@
 
 package com.caricah.iotracah.runner.impl;
 
-import com.caricah.iotracah.configurator.ConfigHandler;
+import com.caricah.iotracah.system.handler.ConfigHandler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.runner.ResourceService;
 import com.caricah.iotracah.runner.Runner;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,10 +37,10 @@ import java.util.concurrent.CountDownLatch;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class BootStrap extends ResourceService implements Runner {
+public class DefaultRunner extends ResourceService implements Runner {
 
 
-    private static final Logger log = LoggerFactory.getLogger(BootStrap.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultRunner.class);
 
     //This latch will be used to wait on the system
     private static CountDownLatch _latch = new CountDownLatch(1);
@@ -97,11 +100,19 @@ public class BootStrap extends ResourceService implements Runner {
 
         log.debug( " init : initializing system configurations");
 
+        //First load the system settings as the defaults.
+        CompositeConfiguration configuration = new CompositeConfiguration();
+        configuration.addConfiguration(new SystemConfiguration());
+
+        setConfiguration(configuration);
+
+
         for(ConfigHandler configHandler: getConfigurationSetLoader()){
 
-            log.debug( " init : found the configuration handler {} ", configHandler);
+            log.debug(" init : found the configuration handler {} ", configHandler);
 
-            configHandler.populateConfigs(getConfiguration());
+                Configuration newConfigs = configHandler.populateConfiguration(getConfiguration());
+                setConfiguration(newConfigs);
 
         }
 
@@ -124,7 +135,8 @@ public class BootStrap extends ResourceService implements Runner {
         for (BaseSystemHandler baseSystemHandler: getSystemBaseSetLoader()){
 
             log.info(" start : found system handler {} ", baseSystemHandler);
-            baseSystemHandler.initialize( getConfiguration());
+
+            baseSystemHandler.initialize(getConfiguration());
 
         }
 

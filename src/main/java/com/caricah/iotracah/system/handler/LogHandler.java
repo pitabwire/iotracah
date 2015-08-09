@@ -18,41 +18,17 @@
  *
  */
 
-package com.caricah.iotracah.runner;
+package com.caricah.iotracah.system.handler;
 
-import com.caricah.iotracah.system.handler.ConfigHandler;
-import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
-
-import java.util.ServiceLoader;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/8/15
+ * @version 1.0 8/9/15
  */
-public abstract class ResourceService {
+public interface LogHandler {
 
 
-    private Configuration configuration;
-
-    public Configuration getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(Configuration configuration) {
-        this.configuration = configuration;
-    }
-
-    public ServiceLoader<ConfigHandler> getConfigurationSetLoader(){
-
-        return ServiceLoader.load(ConfigHandler.class);
-    }
-
-   public ServiceLoader<BaseSystemHandler> getSystemBaseSetLoader(){
-
-        return ServiceLoader.load(BaseSystemHandler.class);
-    }
-
-
-
+    public void configure(Configuration configuration) throws UnRetriableException;
 }

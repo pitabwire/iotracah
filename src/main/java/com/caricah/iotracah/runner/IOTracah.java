@@ -21,7 +21,11 @@
 package com.caricah.iotracah.runner;
 
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.runner.impl.BootStrap;
+import com.caricah.iotracah.runner.impl.DefaultRunner;
+import org.apache.log4j.ConsoleAppender;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.apache.log4j.PatternLayout;
 
 /**
  *
@@ -32,10 +36,20 @@ import com.caricah.iotracah.runner.impl.BootStrap;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public class IOTracah extends BootStrap {
+public class IOTracah extends DefaultRunner {
 
 
     public static void main(String[] args) throws UnRetriableException{
+
+        ConsoleAppender console = new ConsoleAppender(); //create appender
+        //configure the appender
+        String PATTERN = "%d %p [ %c] %m%n";
+        console.setLayout(new PatternLayout(PATTERN));
+        console.setThreshold(Level.ALL);
+        console.activateOptions();
+        //add appender to any Logger (here is root)
+        Logger.getRootLogger().addAppender(console);
+
 
         Runner runner = new IOTracah();
         runner.init();

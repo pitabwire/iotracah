@@ -18,15 +18,19 @@
  *
  */
 
-package com.caricah.iotracah.configurator;
+package com.caricah.iotracah.system.handler.impl;
 
+import com.caricah.iotracah.system.handler.ConfigHandler;
+import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/8/15
+ * @version 1.0 8/9/15
  */
-public interface ConfigHandler {
-
-    Configuration populateConfigs(Configuration configuration);
+public class DefaultLogHandler implements ConfigHandler {
+    @Override
+    public Configuration populateConfiguration(Configuration configuration) throws UnRetriableException {
+        return null;
+    }
 }
