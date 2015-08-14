@@ -32,6 +32,7 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -142,16 +143,18 @@ public class DefaultRunner extends ResourceService implements Runner {
 
         log.info(" start : Initiating operations of the whole system.");
 
-        for (BaseSystemHandler baseSystemHandler: getSystemBaseSetLoader()){
+        List<BaseSystemHandler> baseSystemHandlerList = getSystemBaseSetLoader();
+
+        for (BaseSystemHandler baseSystemHandler: baseSystemHandlerList){
 
             log.info(" start : found system handler {} ", baseSystemHandler);
-
-            baseSystemHandler.initialize(getConfiguration());
+            baseSystemHandler.configure(getConfiguration());
 
         }
 
-        infiniteWait();
+        getSystemInitializer().systemInitialize(baseSystemHandlerList);
 
+        infiniteWait();
     }
 
 

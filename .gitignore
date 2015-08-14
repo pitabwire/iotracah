@@ -12,6 +12,9 @@ hs_err_pid*
 ## Directory-based project format:
 .idea/
 
+# Remove unwanted gradle files.
+.gradle/
+
 ## Plugin-specific files:
 # IntelliJ
 /out/

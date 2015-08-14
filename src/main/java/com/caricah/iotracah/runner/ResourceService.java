@@ -20,6 +20,8 @@
 
 package com.caricah.iotracah.runner;
 
+import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.system.SystemInitializer;
 import com.caricah.iotracah.system.handler.ConfigHandler;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import com.caricah.iotracah.system.handler.LogHandler;
@@ -73,6 +75,17 @@ public abstract class ResourceService {
         Collections.reverse(listBaseSystemHandler);
 
         return listBaseSystemHandler;
+    }
+
+
+    public SystemInitializer getSystemInitializer() throws UnRetriableException{
+
+        Iterator<SystemInitializer> systemInitializerIterator = ServiceLoader.load(SystemInitializer.class).iterator();
+
+        if(systemInitializerIterator.hasNext())
+            return systemInitializerIterator.next();
+        else
+            throw new UnRetriableException("A plugin supplying the system initializer: com.caricah.iotracah.system.SystemInitializer is missing");
     }
 
     }

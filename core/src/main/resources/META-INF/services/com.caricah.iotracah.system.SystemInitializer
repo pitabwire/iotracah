@@ -18,5 +18,4 @@
 #
 #
 
-
-com.caricah.iotracah.system.handler.impl.DefaultLogHandler
+com.caricah.iotracah.core.DefaultSystemInitializer

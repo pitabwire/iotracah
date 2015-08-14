@@ -18,6 +18,13 @@
  *
  */
 
-rootProject.name = 'iotracah'
-include 'core'
+package com.caricah.iotracah.core.messaging;
 
+import java.io.Serializable;
+
+/**
+ * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
+ * @version 1.0 8/13/15
+ */
+public class Event extends IOTMessage {
+}
