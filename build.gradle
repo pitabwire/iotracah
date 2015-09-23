@@ -33,8 +33,10 @@ jar {
 }
 
 dependencies {
-    runtime  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
 
+    runtime  group: 'com.caricah.iotracah', name: 'mqttserver', version: version, changing: true
+    runtime  group: 'com.caricah.iotracah', name: 'ignitecache', version: version, changing: true
+    runtime  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
 }
 
 

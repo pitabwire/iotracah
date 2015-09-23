@@ -21,7 +21,6 @@
 package com.caricah.iotracah.core.init;
 
 import com.caricah.iotracah.core.modules.Datastore;
-import com.caricah.iotracah.core.modules.Eventer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.apache.commons.configuration.Configuration;
@@ -39,23 +38,47 @@ import java.util.List;
 public abstract class DatastoresInitializer extends WorkersInitializer {
 
 
-    public static final String CORE_CONFIG_LOGGING_DATASTORE_ENGINE_IS_ENABLED = "core.config.logging.datastore.engine.is.enabled";
-    public static final boolean CORE_CONFIG_LOGGING_DATASTORE_ENGINE_IS_ENABLED_DEFAULT_VALUE = true;
+    public static final String CORE_CONFIG_ENGINE_DATASTORE_IS_ENABLED = "core.config.engine.datastore.is.enabled";
+    public static final boolean CORE_CONFIG_ENGINE_DATASTORE_IS_ENABLED_DEFAULT_VALUE = true;
+
+    public static final String CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME = "core.config.engine.datastore.class.name";
+    public static final String CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME_DEFAULT_VALUE = "com.caricah.iotracah.datastore.ignitecache.IgniteDatastore";
+
 
     private boolean datastoreEngineEnabled;
 
-    public boolean isServerEngineEnabled() {
+    private String datastoreClassName;
+
+    public boolean isDatastoreEngineEnabled() {
         return datastoreEngineEnabled;
     }
 
-    public void setServerEngineEnabled(boolean datastoreEngineEnabled) {
+    public void setDatastoreEngineEnabled(boolean datastoreEngineEnabled) {
         this.datastoreEngineEnabled = datastoreEngineEnabled;
+    }
+
+    public String getDatastoreClassName() {
+        return datastoreClassName;
+    }
+
+    public void setDatastoreClassName(String datastoreClassName) {
+        this.datastoreClassName = datastoreClassName;
     }
 
     private List<Datastore> datastoreList = new ArrayList<>();
 
     public List<Datastore> getDatastoreList() {
         return datastoreList;
+    }
+
+    private Datastore activeDatastore ;
+
+    public Datastore getActiveDatastore() {
+        return activeDatastore;
+    }
+
+    public void setActiveDatastore(Datastore activeDatastore) {
+        this.activeDatastore = activeDatastore;
     }
 
     /**
@@ -67,49 +90,59 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
      */
     public void startDataStores() throws UnRetriableException {
 
+        log.debug(" startDataStores : Starting the system datastores");
+
+        if(isDatastoreEngineEnabled() && getDatastoreList().isEmpty()) {
+            log.warn("List of datastore plugins is empty");
+            throw new UnRetriableException(" System expects atleast one datastore plugin to be configured.");
+        }
+
         for (Datastore datastore : getDatastoreList()) {
 
             if(validateDatastoreCanBeLoaded(datastore)) {
                 //Actually start our datastore guy.
                 //
                 datastore.initiate();
+
+                setActiveDatastore(datastore);
                 break;
             }
         }
     }
 
     /**
-     * Simple method that does validatations to determine if the datastore plugin
+     * Simple method that does validatations to determine
+     * if the datastore plugin matches whatever is in the config files then it
      * can be loaded.
      * @param datastore
      * @return
      */
     private boolean validateDatastoreCanBeLoaded(Datastore datastore) {
-        //TODO: perform validataion from config files to select database plugin to use.
-        if(null != datastore)
-        return true;
-        else
-            return false;
+        if(null != datastore ) {
+
+            return datastore.getClass().getName().equals(getDatastoreClassName());
+        }
+        return false;
     }
 
 
-    public void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
-
-
+    protected void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
 
         if(baseSystemHandler instanceof Datastore) {
 
             log.debug(" classifyBaseHandler : found the datastore {}", baseSystemHandler);
 
-            if (isServerEngineEnabled()){
+            if (isDatastoreEngineEnabled()){
 
-                log.info(" classifyBaseHandler : storing the datastore : {} for use as active plugin", baseSystemHandler);
                 datastoreList.add((Datastore) baseSystemHandler);
+                log.info(" classifyBaseHandler : storing the datastore : {} for use as active plugin", baseSystemHandler);
+
             }else {
+
                 log.info(" classifyBaseHandler : datastore {} is disabled ", baseSystemHandler);
+
             }
-        }else
-        {
+        }else {
             super.classifyBaseHandler(baseSystemHandler);
         }
     }
@@ -130,9 +163,20 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
     public void configure(Configuration configuration) throws UnRetriableException {
 
 
-        boolean configDatastoreEnabled = configuration.getBoolean(CORE_CONFIG_LOGGING_DATASTORE_ENGINE_IS_ENABLED, CORE_CONFIG_LOGGING_DATASTORE_ENGINE_IS_ENABLED_DEFAULT_VALUE);
+        boolean configDatastoreEnabled = configuration.getBoolean(CORE_CONFIG_ENGINE_DATASTORE_IS_ENABLED, CORE_CONFIG_ENGINE_DATASTORE_IS_ENABLED_DEFAULT_VALUE);
 
-        setServerEngineEnabled(configDatastoreEnabled);
+        log.debug(" configure : The datastore function is configured to be enabled [{}]", configDatastoreEnabled );
+
+        setDatastoreEngineEnabled(configDatastoreEnabled);
+
+
+        String configDatastoreClassName = configuration.getString(CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME, CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME_DEFAULT_VALUE);
+
+        log.debug(" configure : The datastore class to be loaded by the system is {}", configDatastoreClassName);
+
+        setDatastoreClassName(configDatastoreClassName);
+
+        super.configure(configuration);
 
     }
 

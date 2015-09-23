@@ -1,0 +1,14 @@
+version '1.0-SNAPSHOT'
+
+dependencies {
+
+    compile group: 'io.netty', name: 'netty-common', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-buffer', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-transport', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-transport-sctp', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-codec', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-codec-mqtt', version: '5.0.0.Alpha2'
+    compile group: 'io.netty', name: 'netty-handler', version: '5.0.0.Alpha2'
+
+    compile  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
+}

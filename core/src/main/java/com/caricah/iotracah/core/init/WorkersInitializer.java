@@ -20,8 +20,6 @@
 
 package com.caricah.iotracah.core.init;
 
-import com.caricah.iotracah.core.modules.Eventer;
-import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
@@ -40,16 +38,16 @@ import java.util.List;
 public abstract class WorkersInitializer extends ServersInitializer {
 
 
-    public static final String CORE_CONFIG_LOGGING_WORKER_ENGINE_IS_ENABLED = "core.config.logging.worker.engine.is.enabled";
-    public static final boolean CORE_CONFIG_LOGGING_WORKER_ENGINE_IS_ENABLED_DEFAULT_VALUE = true;
+    public static final String CORE_CONFIG_ENGINE_WORKER_IS_ENABLED = "core.config.engine.worker.is.enabled";
+    public static final boolean CORE_CONFIG_ENGINE_WORKER_IS_ENABLED_DEFAULT_VALUE = true;
 
     private boolean workerEngineEnabled;
 
-    public boolean isServerEngineEnabled() {
+    public boolean isWorkerEngineEnabled() {
         return workerEngineEnabled;
     }
 
-    public void setServerEngineEnabled(boolean workerEngineEnabled) {
+    public void setWorkerEngineEnabled(boolean workerEngineEnabled) {
         this.workerEngineEnabled = workerEngineEnabled;
     }
 
@@ -76,31 +74,36 @@ public abstract class WorkersInitializer extends ServersInitializer {
      */
     public void startWorkers() throws UnRetriableException {
 
+        if(isWorkerEngineEnabled() && getWorkerList().isEmpty()) {
+            log.warn("List of worker plugins is empty");
+            throw new UnRetriableException(" System expects atleast one worker plugin to be configured.");
+        }
+
+        log.debug(" startWorkers : Starting the system workers");
+
         for (Worker worker : getWorkerList()) {
             //Link worker observable to servers.
             subscribeObserverToObservables(worker, getServerList());
+
+            //Assign router
+            worker.setServerRouter(getServerRouter());
 
             //Actually start our worker guy.
             worker.initiate();
         }
 
 
-        //This has to happen at this point because the workers can not be gotten
-        //Atleast directly from the servers initializer.
-        for(Server server: getServerList()){
-                //Link server observable to workers.
-                subscribeObserverToObservables(server, getWorkerList());
-        }
+
 
     }
 
-    public void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
+    protected void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
 
         if(baseSystemHandler instanceof Worker){
 
             log.debug(" classifyBaseHandler : found the worker {}", baseSystemHandler);
 
-            if(isServerEngineEnabled()){
+            if(isWorkerEngineEnabled()){
                 log.info(" classifyBaseHandler : storing the worker : {} for use as active plugin", baseSystemHandler);
             workerList.add((Worker) baseSystemHandler);
             } else {
@@ -128,9 +131,13 @@ public abstract class WorkersInitializer extends ServersInitializer {
     public void configure(Configuration configuration) throws UnRetriableException {
 
 
-        boolean configWorkerEnabled = configuration.getBoolean(CORE_CONFIG_LOGGING_WORKER_ENGINE_IS_ENABLED, CORE_CONFIG_LOGGING_WORKER_ENGINE_IS_ENABLED_DEFAULT_VALUE);
+        boolean configWorkerEnabled = configuration.getBoolean(CORE_CONFIG_ENGINE_WORKER_IS_ENABLED, CORE_CONFIG_ENGINE_WORKER_IS_ENABLED_DEFAULT_VALUE);
 
-        setServerEngineEnabled(configWorkerEnabled);
+        log.debug(" configure : The worker function is configured to be enabled [{}]", configWorkerEnabled );
+
+        setWorkerEngineEnabled(configWorkerEnabled);
+
+        super.configure(configuration);
 
     }
 

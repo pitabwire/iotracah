@@ -1,0 +1,189 @@
+/*
+ *
+ * Copyright (c) 2015 Caricah <info@caricah.com>.
+ *
+ * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under
+ *  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ *  OF ANY  KIND, either express or implied.  See the License for the specific language
+ *  governing permissions and limitations under the License.
+ *
+ *
+ *
+ *
+ */
+
+package com.caricah.iotracah.core.worker.state.models;
+
+
+import com.caricah.iotracah.core.handlers.PublishOutHandler;
+import com.caricah.iotracah.core.worker.state.IdKeyComposer;
+import com.caricah.iotracah.core.worker.state.messages.*;
+import com.caricah.iotracah.core.modules.Datastore;
+import com.caricah.iotracah.core.modules.Worker;
+import com.caricah.iotracah.core.worker.state.Messenger;
+import com.caricah.iotracah.exceptions.RetriableException;
+import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.apache.ignite.cache.query.annotations.QuerySqlField;
+import rx.Observable;
+
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
+ */
+public class Client implements IdKeyComposer, Serializable {
+
+    @QuerySqlField(index = true)
+    private String clientIdentifier;
+
+    @QuerySqlField()
+    private Serializable sessionId;
+
+    @QuerySqlField()
+    private String connectedCluster;
+
+    @QuerySqlField()
+    private UUID connectedNode;
+
+    @QuerySqlField()
+    private Serializable connectionId;
+
+    @QuerySqlField(index = true)
+    private String partition;
+
+    @QuerySqlField(index = true)
+    private boolean active;
+
+    private boolean cleanSession;
+
+    private Set<String> partitionQosTopicFilters;
+
+    public String getClientIdentifier() {
+        return clientIdentifier;
+    }
+
+    public void setClientIdentifier(String clientIdentifier) {
+        this.clientIdentifier = clientIdentifier;
+    }
+
+    public Serializable getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(Serializable sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public UUID getConnectedNode() {
+        return connectedNode;
+    }
+
+    public void setConnectedNode(UUID connectedNode) {
+        this.connectedNode = connectedNode;
+    }
+
+    public String getConnectedCluster() {
+        return connectedCluster;
+    }
+
+    public void setConnectedCluster(String connectedCluster) {
+        this.connectedCluster = connectedCluster;
+    }
+
+    public Serializable getConnectionId() {
+        return connectionId;
+    }
+
+    public void setConnectionId(Serializable connectionId) {
+        this.connectionId = connectionId;
+    }
+
+    public String getPartition() {
+        return partition;
+    }
+
+    public void setPartition(String partition) {
+        this.partition = partition;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public boolean isCleanSession() {
+        return cleanSession;
+    }
+
+    public void setCleanSession(boolean cleanSession) {
+        this.cleanSession = cleanSession;
+    }
+
+    /**
+
+     */
+    public void internalPublishMessage(Messenger messenger, PublishMessage publishMessage) throws RetriableException {
+
+        messenger.publish(publishMessage);
+    }
+
+    private void pushPublishedMessage(Worker worker, PublishMessage message) throws UnRetriableException, RetriableException {
+
+        //This message should be released to the client
+        PublishOutHandler handler = new PublishOutHandler(message);
+
+        handler.setWorker(worker);
+        handler.handle();
+
+    }
+
+    public Set<String> getPartiotionQosTopicFilters() {
+        if (null == partitionQosTopicFilters) {
+            setPartitionQosTopicFilters(new HashSet<>());
+        }
+
+        return partitionQosTopicFilters;
+    }
+
+    public void setPartitionQosTopicFilters(Set<String> partitionQosTopicFilters) {
+        this.partitionQosTopicFilters = partitionQosTopicFilters;
+    }
+
+    public Observable<WillMessage> getWill(Datastore datastore) {
+        return datastore.getWill(getPartition(), getClientIdentifier());
+    }
+
+
+
+
+
+    @Override
+    public Serializable generateIdKey() {
+        return null;
+    }
+
+    public PublishMessage copyTransmissionData(PublishMessage clonePublishMessage) {
+
+        clonePublishMessage.setPartition(getPartition());
+        clonePublishMessage.setClientIdentifier(getClientIdentifier());
+        clonePublishMessage.setSessionId(getSessionId());
+        clonePublishMessage.setConnectionId(getConnectionId());
+        clonePublishMessage.setNodeId(getConnectedNode());
+        clonePublishMessage.setCluster(getConnectedCluster());
+
+
+        return null;
+    }
+}

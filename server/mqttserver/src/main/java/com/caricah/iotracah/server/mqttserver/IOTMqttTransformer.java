@@ -18,28 +18,16 @@
  *
  */
 
-package com.caricah.iotracah.core;
+package com.caricah.iotracah.server.mqttserver;
+
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import io.netty.handler.codec.mqtt.MqttMessage;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/12/15
+ * @version 1.0 9/23/15
  */
-public class NumberGenerator extends Thread {
-    private final RxTest rx;
+public interface IOTMqttTransformer {
 
-    public NumberGenerator(RxTest rx) {
-            this.rx = rx;
-        }
-
-        public void run() {
-            for (int i = 0; i < 10; i++) {
-                rx.genEvent("Time is "+System.currentTimeMillis());
-                try {
-                    sleep((int) (Math.random() * 2000));
-                } catch (InterruptedException e) {
-                }
-            }
-            System.out.println("Test Finished for: " + getName());
-        }
-
+    MqttMessage toServerMessage(IOTMessage internalMessage);
 }

@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.runner.impl;
 
+import com.caricah.iotracah.system.SystemInitializer;
 import com.caricah.iotracah.system.handler.ConfigHandler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.runner.ResourceService;
@@ -152,7 +153,9 @@ public class DefaultRunner extends ResourceService implements Runner {
 
         }
 
-        getSystemInitializer().systemInitialize(baseSystemHandlerList);
+        SystemInitializer systemInitializer = getSystemInitializer();
+        systemInitializer.configure(getConfiguration());
+        systemInitializer.systemInitialize(baseSystemHandlerList);
 
         infiniteWait();
     }

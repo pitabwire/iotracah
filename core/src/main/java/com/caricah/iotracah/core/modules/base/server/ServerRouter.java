@@ -18,13 +18,22 @@
  *
  */
 
-package com.caricah.iotracah.core.messaging;
+package com.caricah.iotracah.core.modules.base.server;
 
-import java.io.Serializable;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import rx.Observable;
+
+import java.util.UUID;
 
 /**
+ *
+ * Simple interface that is expected to provide framework of how
+ * the appropriate messages are routed back out to the servers from the workers.
+ *
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/12/15
+ * @version 1.0 9/3/15
  */
-public class IOTMessage implements Serializable {
+public interface ServerRouter extends Observable.OnSubscribe<IOTMessage> {
+
+    void route(String cluster, UUID nodeId, IOTMessage message);
 }

@@ -20,9 +20,19 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.core.messaging.IOTMessage;
+import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import rx.Observable;
+import rx.Subscriber;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  *
@@ -34,6 +44,51 @@ import rx.Observable;
  */
 public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
 
+
+    List<Eventer> eventerList = new ArrayList<>();
+
+    public abstract Observable<Client> getClient(String partition, String clientIdentifier);
+
+
+    public abstract void saveClient(Client client);
+
+
+    public abstract void removeClient(Client client);
+
+    public abstract Observable<WillMessage> getWill(String partition, String clientIdentifier);
+
+    public abstract void saveWill(WillMessage will);
+
+    public abstract void removeWill(WillMessage will);
+
+    public abstract Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter, Subscription newSubscription);
+    public Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter){
+        return getSubscription(partition, partitionQosTopicFilter, null);
+    }
+
+    public abstract void saveSubscription(Subscription subscription);
+
+    public abstract void removeSubscription(Subscription subscription);
+
+
+    public abstract Observable<PublishMessage> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage);
+
+    public abstract Observable<PublishMessage> getActiveMessages(Client client);
+
+    public abstract Observable<PublishMessage> getMessage(String partition, String clientIdentifier, long messageId, boolean isInbound) ;
+
+    public abstract Observable<Long> saveMessage(PublishMessage publishMessage);
+
+    public abstract void removeMessage(PublishMessage publishMessage);
+
+    @Override
+    public void call(Subscriber<? super IOTMessage> subscriber) {
+
+        if(subscriber instanceof Eventer){
+            eventerList.add((Eventer) subscriber);
+        }
+
+    }
 
     @Override
     public int compareTo(BaseSystemHandler baseSystemHandler) {
@@ -49,4 +104,7 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
         else
             return 1;
     }
+
+
+
 }

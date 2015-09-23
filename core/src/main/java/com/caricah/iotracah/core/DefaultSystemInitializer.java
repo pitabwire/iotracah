@@ -23,6 +23,7 @@ package com.caricah.iotracah.core;
 import com.caricah.iotracah.core.init.EventersInitializer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.commons.configuration.Configuration;
 import rx.Observable;
 import rx.Subscriber;
 import rx.schedulers.Schedulers;
@@ -39,9 +40,9 @@ import java.util.List;
  */
 public class DefaultSystemInitializer extends EventersInitializer {
 
-
     @Override
     public void systemInitialize(List<BaseSystemHandler> baseSystemHandlerList) throws UnRetriableException {
+
         super.systemInitialize(baseSystemHandlerList);
 
         //Perform flagging off for system plugins.

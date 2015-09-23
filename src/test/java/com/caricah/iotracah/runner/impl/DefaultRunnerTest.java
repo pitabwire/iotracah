@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.runner.impl;
 
+import com.caricah.iotracah.system.SystemInitializer;
 import com.caricah.iotracah.system.handler.impl.BaseTestClass;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -57,8 +58,7 @@ public class DefaultRunnerTest extends BaseTestClass {
        DefaultRunner defaultRunner = Mockito.spy(new DefaultRunner());
        Mockito.when(defaultRunner.get_latch()).thenReturn(countDownLatch);
 
-        defaultRunner.stopInfiniteWait();
-
+       defaultRunner.stopInfiniteWait();
 
        Mockito.verify(countDownLatch, new Times(1)).countDown();
 
@@ -80,11 +80,13 @@ public class DefaultRunnerTest extends BaseTestClass {
 
         CountDownLatch countDownLatch = Mockito.mock(CountDownLatch.class);
 
-
         DefaultRunner defaultRunner = Mockito.spy(new DefaultRunner());
         Mockito.when(defaultRunner.get_latch()).thenReturn(countDownLatch);
 
         Mockito.doNothing().when(defaultRunner).infiniteWait();
+
+        SystemInitializer systemInitializer = Mockito.mock(SystemInitializer.class);
+        Mockito.when(defaultRunner.getSystemInitializer()).thenReturn(systemInitializer);
 
         defaultRunner.start();
 

@@ -20,16 +20,12 @@
 
 package com.caricah.iotracah.core.init;
 
-import com.caricah.iotracah.core.messaging.IOTMessage;
-import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Eventer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.apache.commons.configuration.Configuration;
-import rx.Observable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -42,8 +38,8 @@ public abstract class EventersInitializer  extends DatastoresInitializer{
 
 
 
-    public static final String CORE_CONFIG_LOGGING_EVENT_ENGINE_IS_ENABLED = "core.config.logging.event.engine.is.enabled";
-    public static final boolean CORE_CONFIG_LOGGING_EVENT_ENGINE_IS_ENABLED_DEFAULT_VALUE = true;
+    public static final String CORE_CONFIG_ENGINE_EVENT_IS_ENABLED = "core.config.engine.event.is.enabled";
+    public static final boolean CORE_CONFIG_ENGINE_EVENT_IS_ENABLED_DEFAULT_VALUE = true;
 
     private boolean eventEngineEnabled;
 
@@ -70,6 +66,8 @@ public abstract class EventersInitializer  extends DatastoresInitializer{
      */
     protected void startEventers() throws UnRetriableException {
 
+        log.debug(" startEventers : Starting all the system eventers");
+
         for (Eventer eventer : getEventerList()) {
             //Link datastore observable to eventers.
             subscribeObserverToObservables(eventer, getDatastoreList());
@@ -85,7 +83,7 @@ public abstract class EventersInitializer  extends DatastoresInitializer{
 
 
 
-    public void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
+    protected void classifyBaseHandler(BaseSystemHandler baseSystemHandler){
 
         if(baseSystemHandler instanceof Eventer) {
 
@@ -116,9 +114,12 @@ public abstract class EventersInitializer  extends DatastoresInitializer{
     public void configure(Configuration configuration) throws UnRetriableException {
 
 
-        boolean configEventsEnabled = configuration.getBoolean(CORE_CONFIG_LOGGING_EVENT_ENGINE_IS_ENABLED, CORE_CONFIG_LOGGING_EVENT_ENGINE_IS_ENABLED_DEFAULT_VALUE);
+        boolean configEventsEnabled = configuration.getBoolean(CORE_CONFIG_ENGINE_EVENT_IS_ENABLED, CORE_CONFIG_ENGINE_EVENT_IS_ENABLED_DEFAULT_VALUE);
 
+        log.debug(" configure : Eventer function is configured to be enabled [{}]", configEventsEnabled );
         setEventEngineEnabled(configEventsEnabled);
+
+        super.configure(configuration);
 
     }
 

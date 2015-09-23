@@ -18,13 +18,17 @@
  *
  */
 
-package com.caricah.iotracah.core.messaging;
+package com.caricah.iotracah.server.mqttserver;
 
-import java.io.Serializable;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import io.netty.handler.codec.mqtt.MqttMessage;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 8/13/15
+ * @version 1.0 9/23/15
  */
-public class Event extends IOTMessage {
+public interface MqttIOTTransformer {
+
+    IOTMessage toIOTMessage(MqttMessage serverMessage);
+
 }
