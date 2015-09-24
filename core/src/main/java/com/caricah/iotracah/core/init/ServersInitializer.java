@@ -36,6 +36,7 @@ import org.apache.ignite.IgniteMessaging;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.logger.slf4j.GridSlf4jLogger;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.slf4j.Logger;
@@ -294,6 +295,10 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 // Override default discovery SPI.
                 cfg.setDiscoverySpi(spi);
+
+                GridSlf4jLogger gridLog = new GridSlf4jLogger(LoggerFactory.getLogger("org.apache.ignite")); // Provide correct SLF4J logger here.
+
+                cfg.setGridLogger(gridLog);
 
                 Ignition.start(cfg);
 

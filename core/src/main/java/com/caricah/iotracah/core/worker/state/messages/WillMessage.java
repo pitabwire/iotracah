@@ -22,6 +22,7 @@ package com.caricah.iotracah.core.worker.state.messages;
 
 import com.caricah.iotracah.core.worker.state.IdKeyComposer;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.exceptions.UnRetriableException;
 
 import java.io.Serializable;
 
@@ -63,7 +64,13 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
     }
 
     @Override
-    public Serializable generateIdKey() {
-        return null;
+    public Serializable generateIdKey() throws UnRetriableException{
+
+        if(null == getClientIdentifier()){
+            throw new UnRetriableException(" Client Id has to be non null");
+        }
+
+        return String.format("%s-%s", getPartition(), getClientIdentifier());
+
     }
 }

@@ -151,7 +151,6 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
     public Observable<T> getByQuery(Class<T> t, String query, Object[] params) {
 
         return Observable.create(observer -> {
-            //getComputeGrid().run(() -> {
 
 
                 try {
@@ -172,30 +171,27 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                     observer.onError(e);
                 }
 
-            //});
         });
 
     }
 
 
     public void save(T  item) {
-        getComputeGrid().run(() -> {
             try {
                 getDatastoreCache().put(item.generateIdKey(), item);
             } catch (UnRetriableException e) {
 
             }
-        });
+
     }
 
     public void remove(IdKeyComposer item) {
 
-        getComputeGrid().run(() -> {
             try {
                 getDatastoreCache().remove(item.generateIdKey());
             } catch (UnRetriableException e) {
 
             }
-        });
+
     }
 }

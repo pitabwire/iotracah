@@ -25,6 +25,7 @@ dependencies {
 
     compile group: 'org.apache.ignite', name: 'ignite-core', version: '1.0.0'
     compile group: 'org.apache.ignite', name: 'ignite-indexing', version: '1.0.0'
+    compile group: 'org.apache.ignite', name: 'ignite-slf4j', version: '1.0.0'
 
     compile group: 'io.reactivex', name: 'rxjava', version: '1.0.9'
     compile group: 'io.reactivex', name: 'rxjava-async-util', version: '0.21.0'

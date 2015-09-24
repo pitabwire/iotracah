@@ -170,8 +170,13 @@ public class Client implements IdKeyComposer, Serializable {
 
 
     @Override
-    public Serializable generateIdKey() {
-        return null;
+    public Serializable generateIdKey() throws UnRetriableException{
+
+        if(null == getClientIdentifier()){
+            throw new UnRetriableException(" Client Id has to be non null");
+        }
+
+        return String.format("%s-%s", getPartition(), getClientIdentifier());
     }
 
     public PublishMessage copyTransmissionData(PublishMessage clonePublishMessage) {

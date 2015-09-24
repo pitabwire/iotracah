@@ -221,7 +221,6 @@ public class ConnectionHandler extends RequestHandler {
                     new Subscriber<Client>() {
                         @Override
                         public void onCompleted() {
-                            getWorker().logInfo(" onCompleted : yeebo done openning a session.");
                         }
 
                         @Override
@@ -293,6 +292,8 @@ public class ConnectionHandler extends RequestHandler {
                             } else {
                                 //We need to clear the existing will message.
                                 will = WillMessage.from(false, 0, "", "");
+                                will.setPartition(message.getPartition());
+                                will.setClientIdentifier(message.getClientIdentifier());
                                 will.copyBase(message);
                                 getDatastore().removeWill(will);
                             }

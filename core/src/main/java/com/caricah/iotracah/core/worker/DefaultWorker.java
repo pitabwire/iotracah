@@ -92,6 +92,7 @@ public class DefaultWorker extends Worker {
     public void onNext(IOTMessage iotMessage) {
 
 
+        logInfo(" onNext : received {}", iotMessage);
         RequestHandler requestHandler = getHandlerForMessage(iotMessage);
         try {
 
@@ -158,7 +159,7 @@ public class DefaultWorker extends Worker {
         }
 
         requestHandler.setWorker(this);
-       
+
 
 
         return requestHandler;
