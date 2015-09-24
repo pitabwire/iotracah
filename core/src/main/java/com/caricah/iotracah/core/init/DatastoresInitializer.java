@@ -44,8 +44,12 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
     public static final String CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME = "core.config.engine.datastore.class.name";
     public static final String CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME_DEFAULT_VALUE = "com.caricah.iotracah.datastore.ignitecache.IgniteDatastore";
 
+    public static final String CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME = "core.config.datastore.partition.based.on.username";
+    public static final boolean CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME_DEFAULT_VALUE = false;
+
 
     private boolean datastoreEngineEnabled;
+    private boolean datastorePartitionBasedOnUsername;
 
     private String datastoreClassName;
 
@@ -55,6 +59,14 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
     public void setDatastoreEngineEnabled(boolean datastoreEngineEnabled) {
         this.datastoreEngineEnabled = datastoreEngineEnabled;
+    }
+
+    public boolean isDatastorePartitionBasedOnUsername() {
+        return datastorePartitionBasedOnUsername;
+    }
+
+    public void setDatastorePartitionBasedOnUsername(boolean datastorePartitionBasedOnUsername) {
+        this.datastorePartitionBasedOnUsername = datastorePartitionBasedOnUsername;
     }
 
     public String getDatastoreClassName() {
@@ -100,8 +112,11 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
         for (Datastore datastore : getDatastoreList()) {
 
             if(validateDatastoreCanBeLoaded(datastore)) {
+
+                //Set partitioning scheme.
+                datastore.setPartitionBasedOnUsername(isDatastorePartitionBasedOnUsername());
+
                 //Actually start our datastore guy.
-                //
                 datastore.initiate();
 
                 setActiveDatastore(datastore);
@@ -173,6 +188,14 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
         log.debug(" configure : The datastore function is configured to be enabled [{}]", configDatastoreEnabled );
 
         setDatastoreEngineEnabled(configDatastoreEnabled);
+
+
+        boolean configDatastorePartitionBasedOnUsername = configuration.getBoolean(CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME, CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME_DEFAULT_VALUE);
+
+        log.debug(" configure : Datastore partitions based on username : {}", configDatastorePartitionBasedOnUsername );
+
+        setDatastorePartitionBasedOnUsername(configDatastorePartitionBasedOnUsername);
+
 
 
         String configDatastoreClassName = configuration.getString(CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME, CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME_DEFAULT_VALUE);

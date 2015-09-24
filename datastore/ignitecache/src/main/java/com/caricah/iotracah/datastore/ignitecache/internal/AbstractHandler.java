@@ -36,7 +36,6 @@ import rx.Observable;
 
 import javax.cache.Cache.Entry;
 import java.io.Serializable;
-import java.util.concurrent.ExecutorService;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -48,7 +47,6 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
     private String excecutorName;
     private IgniteCache<Serializable, T> datastoreCache;
     private IgniteCompute computeGrid;
-
 
     public String getCacheName() {
         return cacheName;
@@ -134,7 +132,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                 // do work on separate thread
 
                 T value = getDatastoreCache().get(key);
-                if(null == value){
+                if (null == value) {
                     value = defaultValue;
                 }
 
@@ -153,7 +151,8 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
     public Observable<T> getByQuery(Class<T> t, String query, Object[] params) {
 
         return Observable.create(observer -> {
-            getComputeGrid().run(() -> {
+            //getComputeGrid().run(() -> {
+
 
                 try {
 
@@ -173,14 +172,14 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                     observer.onError(e);
                 }
 
-            });
+            //});
         });
 
     }
 
 
     public void save(T  item) {
-        getComputeGrid().run(()-> {
+        getComputeGrid().run(() -> {
             try {
                 getDatastoreCache().put(item.generateIdKey(), item);
             } catch (UnRetriableException e) {
@@ -191,11 +190,11 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
     public void remove(IdKeyComposer item) {
 
-        getComputeGrid().run(()->{
+        getComputeGrid().run(() -> {
             try {
                 getDatastoreCache().remove(item.generateIdKey());
-            }catch (UnRetriableException e){
-                
+            } catch (UnRetriableException e) {
+
             }
         });
     }

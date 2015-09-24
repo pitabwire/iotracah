@@ -27,6 +27,8 @@ import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.system.BaseSystemHandler;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/10/15
@@ -88,11 +90,13 @@ public abstract class Worker extends IOTBaseHandler {
      * Internal method to handle all activities related to ensuring the worker routes
      * responses or new messages to the server for connected devices to receive their messages.
      *
-     * @param IOTMessage
+     * @param iotMessage
      */
-    public final void pushToServer(IOTMessage IOTMessage){
+    public final void pushToServer(IOTMessage iotMessage){
 
-        getServerRouter().route(IOTMessage.getCluster(), IOTMessage.getNodeId(), IOTMessage);
+        logDebug(" pushToServer : sending to client {}", iotMessage);
+
+        getServerRouter().route(iotMessage.getCluster(), iotMessage.getNodeId(), iotMessage);
 
     }
 

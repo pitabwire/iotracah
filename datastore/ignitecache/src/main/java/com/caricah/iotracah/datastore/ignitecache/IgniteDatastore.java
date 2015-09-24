@@ -34,9 +34,13 @@ import com.caricah.iotracah.datastore.ignitecache.session.SessionManager;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.Ignition;
 import rx.Observable;
 
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.Set;
 
 /**
@@ -48,6 +52,8 @@ public class IgniteDatastore extends Datastore{
     private String excecutorDefaultName;
 
     private String datastoreExcecutorName;
+
+    private IgniteAtomicSequence clientIdSequence;
 
     private final ClientHandler clientHandler = new ClientHandler();
 
@@ -74,6 +80,14 @@ public class IgniteDatastore extends Datastore{
 
     public void setDatastoreExcecutorName(String datastoreExcecutorName) {
         this.datastoreExcecutorName = datastoreExcecutorName;
+    }
+
+    public IgniteAtomicSequence getClientIdSequence() {
+        return clientIdSequence;
+    }
+
+    public void setClientIdSequence(IgniteAtomicSequence clientIdSequence) {
+        this.clientIdSequence = clientIdSequence;
     }
 
     /**
@@ -120,11 +134,17 @@ public class IgniteDatastore extends Datastore{
 
         Ignite ignite = Ignition.ignite(getExcecutorDefaultName());
 
+        long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+        String nameOfSequenceForClientId = "iotracah-sequence-client-id";
+        IgniteAtomicSequence seq = ignite.atomicSequence(nameOfSequenceForClientId, currentTime, true);
+        setClientIdSequence(seq);
+
         sessionManager.initiate(ignite);
         clientHandler.initiate(Client.class, ignite);
         subscriptionHandler.initiate(Subscription.class, ignite);
         messageHandler.initiate(PublishMessage.class, ignite);
         willHandler.initiate(WillMessage.class, ignite);
+
 
 
     }
@@ -204,23 +224,24 @@ public class IgniteDatastore extends Datastore{
                         subscriptionObservable.subscribe(
                                 subscription -> {
 
-                                    for(String clientIdentifier: subscription.getSubscriptions()){
+                                    for (String clientIdentifier : subscription.getSubscriptions()) {
 
-                                       Observable<Client> clientObservable = getClient(publishMessage.getPartition(), clientIdentifier);
+                                        Observable<Client> clientObservable = getClient(publishMessage.getPartition(), clientIdentifier);
 
-                                        clientObservable.subscribe( client -> {
+                                        clientObservable.subscribe(client -> {
 
-                                           PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                                           clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+                                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
 
 
-                                            if(clonePublishMessage.getQos() == 1 || clonePublishMessage.getQos() == 2 ){
+                                            if (clonePublishMessage.getQos() == 1 || clonePublishMessage.getQos() == 2) {
                                                 //Save the message as we proceed.
                                                 saveMessage(clonePublishMessage);
                                             }
 
-                                        // callback with value
-                                        observer.onNext(clonePublishMessage);});
+                                            // callback with value
+                                            observer.onNext(clonePublishMessage);
+                                        });
                                     }
                                 }
                         );
@@ -261,9 +282,9 @@ public class IgniteDatastore extends Datastore{
         messageHandler.save(publishMessage);
 
         return Observable.create(observer -> {
-                        // callback with value
-                        observer.onNext(publishMessage.getMessageId());
-                    observer.onCompleted();
+            // callback with value
+            observer.onNext(publishMessage.getMessageId());
+            observer.onCompleted();
 
 
         });
@@ -274,4 +295,12 @@ public class IgniteDatastore extends Datastore{
     public void removeMessage(PublishMessage publishMessage) {
         messageHandler.remove(publishMessage);
     }
+
+    @Override
+    public String nextClientId() {
+        long nextSequence = getClientIdSequence().incrementAndGet();
+        return String.format("iotracah-cl-id-%d", nextSequence);
+    }
+
+
 }

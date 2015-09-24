@@ -44,8 +44,17 @@ import java.util.Set;
  */
 public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
 
+    private boolean partitionBasedOnUsername;
 
     List<Eventer> eventerList = new ArrayList<>();
+
+    public boolean isPartitionBasedOnUsername() {
+        return partitionBasedOnUsername;
+    }
+
+    public void setPartitionBasedOnUsername(boolean partitionBasedOnUsername) {
+        this.partitionBasedOnUsername = partitionBasedOnUsername;
+    }
 
     public abstract Observable<Client> getClient(String partition, String clientIdentifier);
 
@@ -81,6 +90,8 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
 
     public abstract void removeMessage(PublishMessage publishMessage);
 
+    public abstract String nextClientId();
+
     @Override
     public void call(Subscriber<? super IOTMessage> subscriber) {
 
@@ -106,5 +117,4 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
     }
 
 
-
-}
+ }
