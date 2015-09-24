@@ -27,6 +27,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class PublishReceivedMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "PUBREC";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -40,6 +42,7 @@ public final class PublishReceivedMessage extends IOTMessage {
 
     private PublishReceivedMessage(long messageId, boolean dup, int qos, boolean retain) {
 
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
         this.qos = qos;

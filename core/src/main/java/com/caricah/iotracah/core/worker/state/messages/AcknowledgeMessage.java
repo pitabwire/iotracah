@@ -27,6 +27,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class AcknowledgeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "PUBACK";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -42,6 +44,7 @@ public final class AcknowledgeMessage extends IOTMessage {
     private AcknowledgeMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
 
         setMessageId(messageId);
+        setMessageType(MESSAGE_TYPE);
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;

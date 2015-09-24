@@ -33,6 +33,7 @@ import java.util.Locale;
  */
 public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
+    public static final String MESSAGE_TYPE = "PUBLISH";
 
     @QuerySqlField()
     private int qos;
@@ -103,6 +104,7 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
     public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, Serializable payload, boolean inBound) {
 
         PublishMessage publishMessage = new PublishMessage();
+        publishMessage.setMessageType(MESSAGE_TYPE);
         publishMessage.setQos(qos);
         publishMessage.setRetain(retain);
         publishMessage.setDup(dup);

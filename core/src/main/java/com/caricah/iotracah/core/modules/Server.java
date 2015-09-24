@@ -36,8 +36,6 @@ import java.util.Map;
  */
 public abstract class Server<T> extends IOTBaseHandler {
 
-    Map<Protocal, Worker> workerMap = new HashMap<>();
-
 
     /**
      * Implementation is expected to transform a server specific message
@@ -95,7 +93,7 @@ public abstract class Server<T> extends IOTBaseHandler {
         ioTMessage.setCluster(getCluster());
         ioTMessage.setProtocal(getProtocal());
 
-        workerMap.get(ioTMessage.getProtocal()).onNext(ioTMessage);
+        getSubscriberList().forEach(subscriber -> subscriber.onNext(ioTMessage));
 
     }
 
@@ -105,20 +103,6 @@ public abstract class Server<T> extends IOTBaseHandler {
 
 
     }
-    @Override
-    public void call(Subscriber<? super IOTMessage> subscriber) {
-
-        if(subscriber instanceof Worker){
-
-            Worker worker = (Worker) subscriber;
-            workerMap.put(worker.getProtocal(), worker);
-        }
-
-        super.call(subscriber);
-
-    }
-
-
 
 
     @Override

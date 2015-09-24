@@ -33,6 +33,8 @@ import java.util.Map;
  */
 public final class UnSubscribeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "UNSUBSCRIBE";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -49,6 +51,7 @@ public final class UnSubscribeMessage extends IOTMessage {
 
     private UnSubscribeMessage(long messageId, boolean dup, int qos, boolean retain, List<String> topicFilterList) {
 
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
         this.qos = qos;

@@ -30,6 +30,8 @@ import java.io.Serializable;
  */
 public final class WillMessage extends IOTMessage implements IdKeyComposer{
 
+    public static final String MESSAGE_TYPE = "WILL";
+
     private final boolean retain;
     private final int qos;
     private final String topic;
@@ -48,6 +50,8 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
     }
 
     private WillMessage(boolean retain, int qos, String topic, String payload) {
+
+        setMessageType(MESSAGE_TYPE);
         this.retain = retain;
         this.qos = qos;
         this.topic = topic;

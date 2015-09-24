@@ -29,6 +29,8 @@ import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
  */
 public final class ConnectAcknowledgeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "CONNACK";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -40,6 +42,8 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
     }
 
     private ConnectAcknowledgeMessage(boolean dup, int qos, boolean retain, MqttConnectReturnCode returnCode) {
+
+        setMessageType(MESSAGE_TYPE);
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;

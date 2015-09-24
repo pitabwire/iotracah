@@ -24,12 +24,12 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.modules.Eventer;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -38,8 +38,9 @@ import java.util.UUID;
 public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements Observable.OnSubscribe<IOTMessage>, BaseSystemHandler {
 
 
+    private static final Logger log = LoggerFactory.getLogger(IOTBaseHandler.class);
 
-    Map<Protocal, Eventer> eventerMap = new HashMap<>();
+    private List<Subscriber> subscriberList = new ArrayList<>();
 
     private UUID nodeId;
     private String cluster;
@@ -62,21 +63,34 @@ public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements O
         this.cluster = cluster;
     }
 
+    public List<Subscriber> getSubscriberList() {
+        return subscriberList;
+    }
+
+    public void setSubscriberList(List<Subscriber> subscriberList) {
+        this.subscriberList = subscriberList;
+    }
+
     public void statGauge(String gaugeName, double value){}
     public void statCounterIncrement(String counterName){}
     public void statCounterDecrement(String counterName){}
-    public void logDebug(String message, Object ... params){}
-    public void logInfo(String message, Object ... params){}
-    public void logError(String message, Throwable e){}
+    public void logDebug(String message, Object ... params){
+        log.debug(message, params);
+    }
+    public void logInfo(String message, Object ... params){
+        log.info(message, params);
+
+    }
+    public void logError(String message, Throwable e){
+        log.error(message, e);
+    }
 
     @Override
     public void call(Subscriber<? super IOTMessage> subscriber) {
 
-        if(subscriber instanceof Eventer){
-            Eventer eventer = (Eventer) subscriber;
-            eventerMap.put(eventer.getProtocal(), eventer);
-        }
+        logInfo(" call : there was a subscription by {} to {} for updates", subscriber, this);
 
+        subscriberList.add(subscriber);
     }
 
 

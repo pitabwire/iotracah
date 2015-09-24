@@ -33,6 +33,8 @@ import java.util.Map;
  */
 public final class SubscribeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "SUBSCRIBE";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -49,6 +51,7 @@ public final class SubscribeMessage extends IOTMessage {
 
     private SubscribeMessage(long messageId, boolean dup, int qos, boolean retain) {
 
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
         this.qos = qos;

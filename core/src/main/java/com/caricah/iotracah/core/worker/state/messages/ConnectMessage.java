@@ -28,6 +28,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class ConnectMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "CONNECT";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -62,6 +64,7 @@ public final class ConnectMessage extends IOTMessage {
     private ConnectMessage(boolean dup, int qos, boolean retain, String protocolName, int protocalLevel,
                            boolean cleanSession, String clientIdentifier, String userName, String password,
                            int keepAliveTime, String sourceHost) {
+        setMessageType(MESSAGE_TYPE);
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;

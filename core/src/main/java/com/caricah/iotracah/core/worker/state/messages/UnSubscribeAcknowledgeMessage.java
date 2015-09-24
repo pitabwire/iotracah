@@ -27,6 +27,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "UNSUBACK";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -41,6 +43,7 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
 
     private UnSubscribeAcknowledgeMessage(long messageId, boolean dup, int qos, boolean retain) {
 
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
 
         this.dup = dup;

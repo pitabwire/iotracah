@@ -20,13 +20,13 @@
 
 package com.caricah.iotracah.core.init;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Eventer;
 import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.modules.base.server.DefaultServerRouter;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import com.caricah.iotracah.system.SystemInitializer;
@@ -41,8 +41,8 @@ import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.Scheduler;
 import rx.Subscriber;
+import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.util.ArrayList;
@@ -95,6 +95,8 @@ public abstract class ServersInitializer implements SystemInitializer {
     private String excecutorEventerName;
 
     private String[] discoveryAddresses;
+
+    private List<Subscription> rxSubscriptionList = new ArrayList<>();
 
     public boolean isServerEngineEnabled() {
         return serverEngineEnabled;
@@ -165,6 +167,11 @@ public abstract class ServersInitializer implements SystemInitializer {
     public List<Server> getServerList() {
         return serverList;
     }
+
+    public List<Subscription> getRxSubscriptionList() {
+        return rxSubscriptionList;
+    }
+
 
     public void startServers() throws UnRetriableException {
 
@@ -283,6 +290,7 @@ public abstract class ServersInitializer implements SystemInitializer {
                 spi.setIpFinder(ipFinder);
 
                 IgniteConfiguration cfg = new IgniteConfiguration();
+                cfg.setGridName(getExcecutorDefaultName());
 
                 // Override default discovery SPI.
                 cfg.setDiscoverySpi(spi);
@@ -303,16 +311,19 @@ public abstract class ServersInitializer implements SystemInitializer {
     /**
      * <code>subscribeObserverToObservables</code> takes in a list of observables and uses
      * it appropriately to push or link data down to the appropriate subscribers.
-     *
-     * @param subscriber
+     *  @param subscriber
      * @param observableOnSubscribers
      */
     protected void subscribeObserverToObservables(Subscriber<IOTMessage> subscriber, List observableOnSubscribers) {
+
+
         for( Object observableOnSubscriberObject: observableOnSubscribers){
 
             Observable.OnSubscribe<IOTMessage> observableOnSubscriber = (Observable.OnSubscribe<IOTMessage>) observableOnSubscriberObject;
 
-            subscribeObserverToAnObservable(subscriber, observableOnSubscriber);
+            Subscription subscription = subscribeObserverToAnObservable(subscriber, observableOnSubscriber);
+
+            getRxSubscriptionList().add(subscription);
         }
     }
         /**
@@ -323,25 +334,29 @@ public abstract class ServersInitializer implements SystemInitializer {
          *
          * @param subscriber
          */
-    protected void subscribeObserverToAnObservable(Subscriber<IOTMessage> subscriber, Observable.OnSubscribe<IOTMessage> observableOnSubscriber ) {
+    protected Subscription subscribeObserverToAnObservable(Subscriber<IOTMessage> subscriber, Observable.OnSubscribe<IOTMessage> observableOnSubscriber) {
+
+            log.info(" subscribeObserverToAnObservable : {} subscribing to {} for updates.", subscriber, observableOnSubscriber);
 
             Observable<IOTMessage> observable = Observable.create(observableOnSubscriber);
 
             //The schedular obtained allows for processing of data to be sent to the
             //correct excecutor groups.
 
-            Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
-            observable
+            //Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
+            return observable
                     .onBackpressureBuffer()
-                    .subscribeOn(scheduler)
+                    .subscribeOn(Schedulers.io())
                     .subscribe(subscriber);
 
     }
 
 
-
-
     private Executor getExcecutor(Object observableOnSubscriber) {
+
+        //Note: since ignite expects a runnable that is serializable we will deffer
+        // Work on distributing the load to a cluster separated by functions.
+        // And simply use the io scheduler.
 
         ClusterGroup executionGrp;
 
@@ -378,7 +393,7 @@ public abstract class ServersInitializer implements SystemInitializer {
 
 
     public final Ignite getIgnite() {
-        return Ignition.ignite();
+        return Ignition.ignite(getExcecutorDefaultName());
     }
 
 

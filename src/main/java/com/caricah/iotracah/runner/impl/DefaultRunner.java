@@ -27,6 +27,7 @@ import com.caricah.iotracah.runner.ResourceService;
 import com.caricah.iotracah.runner.Runner;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import com.caricah.iotracah.system.handler.LogHandler;
+import com.caricah.iotracah.system.handler.impl.DefaultSecurityHandler;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.SystemConfiguration;
@@ -127,6 +128,12 @@ public class DefaultRunner extends ResourceService implements Runner {
             logHandler.configure(getConfiguration());
 
         }
+
+
+        //Perform initialization of the security system too.
+        DefaultSecurityHandler securityHandler = new DefaultSecurityHandler();
+        String securityFile = securityHandler.getSecurityIniPath();
+        securityHandler.configure(securityFile);
 
     }
 

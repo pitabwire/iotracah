@@ -29,6 +29,8 @@ import java.util.List;
  */
 public final class SubscribeAcknowledgeMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "SUBACK";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -44,6 +46,7 @@ public final class SubscribeAcknowledgeMessage extends IOTMessage {
 
     private SubscribeAcknowledgeMessage(long messageId, boolean dup, int qos, boolean retain, List<Integer> grantedQos) {
 
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
         this.qos = qos;

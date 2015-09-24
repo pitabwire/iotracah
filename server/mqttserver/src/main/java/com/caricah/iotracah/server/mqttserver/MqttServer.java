@@ -118,9 +118,8 @@ public class MqttServer extends Server<MqttMessage> {
      */
     @Override
     protected IOTMessage toIOTMessage(MqttMessage serverMessage) {
-
-        return mqttIOTTransformer.toIOTMessage(serverMessage) ;
-    }
+       return mqttIOTTransformer.toIOTMessage(serverMessage);
+   }
 
     /**
      * Implementation transforms the internal message to a server specific message

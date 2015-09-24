@@ -28,6 +28,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class DestroyMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "PUBCOMP";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -42,6 +44,7 @@ public final class DestroyMessage extends IOTMessage {
     }
 
     private DestroyMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+        setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
         this.qos = qos;

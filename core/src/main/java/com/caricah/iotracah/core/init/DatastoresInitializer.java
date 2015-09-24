@@ -108,6 +108,11 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
                 break;
             }
         }
+
+
+
+        //Assign our workers the active datastore.
+        getWorkerList().forEach(worker -> worker.setDatastore(getActiveDatastore()));
     }
 
     /**

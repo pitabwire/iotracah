@@ -64,9 +64,7 @@ public class DefaultWorker extends Worker {
         setSessionResetManager(sessionResetManager);
 
 
-
         //
-
 
 
     }
@@ -97,9 +95,9 @@ public class DefaultWorker extends Worker {
         RequestHandler requestHandler = getHandlerForMessage(iotMessage);
         try {
 
-            if(null != requestHandler) {
+            if (null != requestHandler) {
                 requestHandler.handle();
-            }else {
+            } else {
 
                 throw new ShutdownException("Unknown messages being propergated");
             }
@@ -109,9 +107,6 @@ public class DefaultWorker extends Worker {
             if (null != response) {
                 pushToServer(response);
             }
-
-
-
 
 
         } catch (Exception e) {
@@ -124,29 +119,48 @@ public class DefaultWorker extends Worker {
 
         RequestHandler requestHandler = null;
 
-        if(iotMessage instanceof ConnectMessage){
-            requestHandler = new ConnectionHandler((ConnectMessage)iotMessage);
-        }else if(iotMessage instanceof SubscribeMessage){
-            requestHandler = new SubscribeHandler((SubscribeMessage) iotMessage);
-        }else if(iotMessage instanceof UnSubscribeMessage){
-            requestHandler = new UnSubscribeHandler((UnSubscribeMessage) iotMessage);
-        }else if(iotMessage instanceof Ping){
-            requestHandler = new PingRequestHandler((Ping) iotMessage);
-        }else if(iotMessage instanceof PublishMessage) {
-            requestHandler = new PublishInHandler((PublishMessage) iotMessage);
+        switch (iotMessage.getMessageType()) {
+            case ConnectMessage.MESSAGE_TYPE:
+                requestHandler = new ConnectionHandler((ConnectMessage) iotMessage);
 
-        }else  if(iotMessage instanceof PublishReceivedMessage) {
-            requestHandler = new PublishReceivedHandler((PublishReceivedMessage)iotMessage);
+                break;
+            case SubscribeMessage.MESSAGE_TYPE:
+                requestHandler = new SubscribeHandler((SubscribeMessage) iotMessage);
+                break;
+            case UnSubscribeMessage.MESSAGE_TYPE:
+                requestHandler = new UnSubscribeHandler((UnSubscribeMessage) iotMessage);
+                break;
+            case Ping.MESSAGE_TYPE:
+                requestHandler = new PingRequestHandler((Ping) iotMessage);
+                break;
+            case PublishMessage.MESSAGE_TYPE:
+                requestHandler = new PublishInHandler((PublishMessage) iotMessage);
 
-        }else if(iotMessage instanceof ReleaseMessage){
-            requestHandler = new PublishReleaseHandler((ReleaseMessage) iotMessage);
-        }else if(iotMessage instanceof DestroyMessage){
-            requestHandler = new PublishCompleteHandler((DestroyMessage) iotMessage);
-        }else if(iotMessage instanceof DisconnectMessage){
-            requestHandler = new DisconnectHandler((DisconnectMessage) iotMessage);
-        } else if(iotMessage instanceof AcknowledgeMessage){
+                break;
+            case PublishReceivedMessage.MESSAGE_TYPE:
+                requestHandler = new PublishReceivedHandler((PublishReceivedMessage) iotMessage);
+
+                break;
+            case ReleaseMessage.MESSAGE_TYPE:
+                requestHandler = new PublishReleaseHandler((ReleaseMessage) iotMessage);
+                break;
+            case DestroyMessage.MESSAGE_TYPE:
+                requestHandler = new PublishCompleteHandler((DestroyMessage) iotMessage);
+                break;
+            case DisconnectMessage.MESSAGE_TYPE:
+                requestHandler = new DisconnectHandler((DisconnectMessage) iotMessage);
+                break;
+            case AcknowledgeMessage.MESSAGE_TYPE:
                 requestHandler = new PublishAcknowledgeHandler((AcknowledgeMessage) iotMessage);
+                break;
+            default:
+                return null;
         }
+
+        requestHandler.setWorker(this);
+       
+
+
         return requestHandler;
     }
 

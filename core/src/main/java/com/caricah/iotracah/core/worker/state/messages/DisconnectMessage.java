@@ -28,6 +28,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class DisconnectMessage extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "DISCONNECT";
 
     private final boolean cleanDisconnect;
 
@@ -36,6 +37,8 @@ public final class DisconnectMessage extends IOTMessage {
     private final boolean retain;
 
     public DisconnectMessage(boolean cleanDisconnect, boolean dup, int qos, boolean retain) {
+
+        setMessageType(MESSAGE_TYPE);
         this.cleanDisconnect = cleanDisconnect;
         this.dup = dup;
         this.qos = qos;

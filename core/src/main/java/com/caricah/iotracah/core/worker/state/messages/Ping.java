@@ -29,12 +29,15 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
  */
 public final class Ping extends IOTMessage {
 
+    public static final String MESSAGE_TYPE = "PING";
+
     private final boolean dup;
     private final int qos;
     private final boolean retain;
 
     private Ping( boolean dup, int qos,  boolean retain) {
 
+        setMessageType(MESSAGE_TYPE);
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;

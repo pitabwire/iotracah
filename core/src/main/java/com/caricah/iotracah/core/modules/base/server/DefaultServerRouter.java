@@ -27,9 +27,7 @@ import org.apache.ignite.IgniteMessaging;
 import org.apache.ignite.lang.IgniteBiPredicate;
 import rx.Subscriber;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -37,7 +35,7 @@ import java.util.UUID;
  */
 public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID, IOTMessage> {
 
-    private Map<Protocal, Server> serverMap = new HashMap<>();
+    private List<Subscriber> subscriberList = new ArrayList<>();
 
     private  final IgniteMessaging messaging;
 
@@ -52,11 +50,7 @@ public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID
     @Override
     public void call(Subscriber<? super IOTMessage> subscriber) {
 
-        if(subscriber instanceof Server){
-
-            Server server = (Server) subscriber;
-            serverMap.put(server.getProtocal(), server);
-        }
+        subscriberList.add(subscriber);
     }
 
     @Override
@@ -79,7 +73,7 @@ public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID
     @Override
     public boolean apply(UUID uuid, IOTMessage IOTMessage) {
 
-        serverMap.get(IOTMessage.getProtocal()).onNext(IOTMessage);
+        subscriberList.forEach(subscriber -> subscriber.onNext(IOTMessage));
         return true;
     }
 }

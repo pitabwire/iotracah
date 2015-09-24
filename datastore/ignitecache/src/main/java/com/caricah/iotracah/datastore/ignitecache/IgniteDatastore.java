@@ -45,7 +45,9 @@ import java.util.Set;
  */
 public class IgniteDatastore extends Datastore{
 
+    private String excecutorDefaultName;
 
+    private String datastoreExcecutorName;
 
     private final ClientHandler clientHandler = new ClientHandler();
 
@@ -58,6 +60,21 @@ public class IgniteDatastore extends Datastore{
     private final SessionManager sessionManager = new SessionManager();
 
 
+    public String getExcecutorDefaultName() {
+        return excecutorDefaultName;
+    }
+
+    public void setExcecutorDefaultName(String excecutorDefaultName) {
+        this.excecutorDefaultName = excecutorDefaultName;
+    }
+
+    public String getDatastoreExcecutorName() {
+        return datastoreExcecutorName;
+    }
+
+    public void setDatastoreExcecutorName(String datastoreExcecutorName) {
+        this.datastoreExcecutorName = datastoreExcecutorName;
+    }
 
     /**
      * <code>configure</code> allows the base system to configure itself by getting
@@ -72,19 +89,21 @@ public class IgniteDatastore extends Datastore{
 
 
         String excecutorDefaultName = configuration.getString(ServersInitializer.CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME, ServersInitializer.CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME_DEFAULT_VALUE);
-        String datastoreExcecutorName = configuration.getString(ServersInitializer.CORE_CONFIG_ENGINE_EXCECUTOR_DATASTORE_NAME, excecutorDefaultName);
+        setExcecutorDefaultName(excecutorDefaultName);
 
+        String datastoreExcecutorName = configuration.getString(ServersInitializer.CORE_CONFIG_ENGINE_EXCECUTOR_DATASTORE_NAME, getExcecutorDefaultName());
+        setDatastoreExcecutorName(datastoreExcecutorName);
 
-        clientHandler.setExcecutorName(datastoreExcecutorName);
+        clientHandler.setExcecutorName(getDatastoreExcecutorName());
         clientHandler.configure(configuration);
 
-        subscriptionHandler.setExcecutorName(datastoreExcecutorName);
+        subscriptionHandler.setExcecutorName(getDatastoreExcecutorName());
         subscriptionHandler.configure(configuration);
 
-        messageHandler.setExcecutorName(datastoreExcecutorName);
+        messageHandler.setExcecutorName(getDatastoreExcecutorName());
         messageHandler.configure(configuration);
 
-        willHandler.setExcecutorName(datastoreExcecutorName);
+        willHandler.setExcecutorName(getDatastoreExcecutorName());
         willHandler.configure(configuration);
 
         sessionManager.configure(configuration);
@@ -99,7 +118,7 @@ public class IgniteDatastore extends Datastore{
     @Override
     public void initiate() throws UnRetriableException {
 
-        Ignite ignite = Ignition.ignite();
+        Ignite ignite = Ignition.ignite(getExcecutorDefaultName());
 
         sessionManager.initiate(ignite);
         clientHandler.initiate(Client.class, ignite);
@@ -176,7 +195,7 @@ public class IgniteDatastore extends Datastore{
     public Observable<PublishMessage> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage) {
 
         return Observable.create(observer -> {
-            subscriptionHandler.getExecutorService().submit(() -> {
+            subscriptionHandler.getComputeGrid().run(() -> {
 
                 try {
                     for (String topicFilter : topicBreakDown) {

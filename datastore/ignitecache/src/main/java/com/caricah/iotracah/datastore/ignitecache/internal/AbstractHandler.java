@@ -21,11 +21,11 @@
 package com.caricah.iotracah.datastore.ignitecache.internal;
 
 import com.caricah.iotracah.core.worker.state.IdKeyComposer;
-import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.query.QueryCursor;
@@ -47,7 +47,7 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
     private String cacheName;
     private String excecutorName;
     private IgniteCache<Serializable, T> datastoreCache;
-    private ExecutorService executorService;
+    private IgniteCompute computeGrid;
 
 
     public String getCacheName() {
@@ -74,12 +74,12 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
         this.datastoreCache = datastoreCache;
     }
 
-    public ExecutorService getExecutorService() {
-        return executorService;
+    public IgniteCompute getComputeGrid() {
+        return computeGrid;
     }
 
-    public void setExecutorService(ExecutorService executorService) {
-        this.executorService = executorService;
+    public void setComputeGrid(IgniteCompute computeGrid) {
+        this.computeGrid = computeGrid;
     }
 
 
@@ -100,36 +100,39 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
 
         ClusterGroup clusterGroup = ignite.cluster().forAttribute("ROLE", getExcecutorName());
 
-        ExecutorService initExecutorService = ignite.executorService(clusterGroup);
-        setExecutorService(initExecutorService);
+        IgniteCompute compute = ignite.compute(clusterGroup).withAsync();
+        setComputeGrid(compute);
 
     }
 
     public Observable<T> getByKey(Serializable key) {
 
-        return Observable.create(observer -> getExecutorService().submit(() -> {
+        return Observable.create(observer -> {
+            getComputeGrid().run(() -> {
 
-            try {
-                // do work on separate thread
-                T value = getDatastoreCache().get(key);
-                // callback with value
-                observer.onNext(value);
-                observer.onCompleted();
-            } catch (Exception e) {
-                observer.onError(e);
-            }
+                try {
+                    // do work on separate thread
+                    T value = getDatastoreCache().get(key);
+                    // callback with value
+                    observer.onNext(value);
+                    observer.onCompleted();
+                } catch (Exception e) {
+                    observer.onError(e);
+                }
 
-        }));
+            });
+        });
 
     }
 
 
 public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
-        return Observable.create(observer -> getExecutorService().submit(() -> {
+        return Observable.create(observer -> getComputeGrid().run(() -> {
 
             try {
                 // do work on separate thread
+
                 T value = getDatastoreCache().get(key);
                 if(null == value){
                     value = defaultValue;
@@ -150,7 +153,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
     public Observable<T> getByQuery(Class<T> t, String query, Object[] params) {
 
         return Observable.create(observer -> {
-            getExecutorService().submit(() -> {
+            getComputeGrid().run(() -> {
 
                 try {
 
@@ -177,7 +180,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
 
     public void save(T  item) {
-        getExecutorService().submit(()-> {
+        getComputeGrid().run(()-> {
             try {
                 getDatastoreCache().put(item.generateIdKey(), item);
             } catch (UnRetriableException e) {
@@ -188,7 +191,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
     public void remove(IdKeyComposer item) {
 
-        getExecutorService().submit(()->{
+        getComputeGrid().run(()->{
             try {
                 getDatastoreCache().remove(item.generateIdKey());
             }catch (UnRetriableException e){
