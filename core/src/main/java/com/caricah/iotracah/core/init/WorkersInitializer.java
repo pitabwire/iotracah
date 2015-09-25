@@ -21,6 +21,7 @@
 package com.caricah.iotracah.core.init;
 
 import com.caricah.iotracah.core.modules.Worker;
+import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.apache.commons.configuration.Configuration;
@@ -43,6 +44,8 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
     private boolean workerEngineEnabled;
 
+    private List<Worker> workerList = new ArrayList<>();
+
     public boolean isWorkerEngineEnabled() {
         return workerEngineEnabled;
     }
@@ -51,11 +54,11 @@ public abstract class WorkersInitializer extends ServersInitializer {
         this.workerEngineEnabled = workerEngineEnabled;
     }
 
-    private List<Worker> workerList = new ArrayList<>();
-
     public List<Worker> getWorkerList() {
         return workerList;
     }
+
+
 
 
     /**
@@ -87,6 +90,12 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
             //Assign router
             worker.setServerRouter(getServerRouter());
+
+            //Assign messenger.
+            Messenger messenger = new Messenger();
+            messenger.setWorker(worker);
+            messenger.setDatastore(worker.getDatastore());
+            worker.setMessenger(messenger);
 
             //Actually start our worker guy.
             worker.initiate();
@@ -133,13 +142,14 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
         boolean configWorkerEnabled = configuration.getBoolean(CORE_CONFIG_ENGINE_WORKER_IS_ENABLED, CORE_CONFIG_ENGINE_WORKER_IS_ENABLED_DEFAULT_VALUE);
 
-        log.debug(" configure : The worker function is configured to be enabled [{}]", configWorkerEnabled );
+        log.debug(" configure : The worker function is configured to be enabled [{}]", configWorkerEnabled);
 
         setWorkerEngineEnabled(configWorkerEnabled);
 
         super.configure(configuration);
 
     }
+
 
 
 }

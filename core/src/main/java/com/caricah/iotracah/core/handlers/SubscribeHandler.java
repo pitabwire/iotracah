@@ -31,6 +31,7 @@ import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.shiro.authz.AuthorizationException;
 import rx.Observable;
+import rx.Subscriber;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +63,7 @@ public class SubscribeHandler extends RequestHandler {
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
+        log.debug(" handle : begining to handle a subscription {}.", message);
 
         try {
 
@@ -81,20 +83,50 @@ public class SubscribeHandler extends RequestHandler {
 
             Observable<Client> clientObservable = getClient(message.getPartition(), message.getClientIdentifier());
 
-            clientObservable.subscribe(client -> {
+            clientObservable.subscribe(new Subscriber<Client>() {
+                @Override
+                public void onCompleted() {
+
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    log.error(" handle onError : problems ", e);
+                }
+
+                @Override
+                public void onNext(Client client) {
 
 
-                Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientIdentifier(), message.getTopicFilterList());
+                    log.debug(" handle : obtained client {}.", client);
 
-                subscribeObservable.toBlocking().forEach(entry -> {
-                    grantedQos.add(entry.getValue());
-                });
 
-                SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(),message.isDup(), message.getQos(), false, grantedQos);
-                subAckMessage.copyBase(message);
-                pushToServer(subAckMessage);
+                    Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientIdentifier(), message.getTopicFilterList());
 
-                });
+                    subscribeObservable.subscribe(
+                            new Subscriber<Map.Entry<String, Integer>>() {
+                                @Override
+                                public void onCompleted() {
+
+                                    SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), false, grantedQos);
+                                    subAckMessage.copyBase(message);
+                                    pushToServer(subAckMessage);
+
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    log.error(" handle onError : problems", e);
+                                }
+
+                                @Override
+                                public void onNext(Map.Entry<String, Integer> entry) {
+
+                                    grantedQos.add(entry.getValue());
+                                }
+                            });
+                }
+            });
 
         } catch (AuthorizationException e) {
             getWorker().logError(" handle : System experienced the error ", e);

@@ -79,7 +79,6 @@ public class Messenger {
     public Observable<Map.Entry<String, Integer>> subscribe(String partition, String clientIdentifier, List<Map.Entry<String, Integer>> topicFilterQosList) {
 
         return Observable.create(observer -> {
-            getExecutorService().submit(() -> {
 
                 for (Map.Entry<String, Integer> topicFilterQos : topicFilterQosList) {
 
@@ -96,7 +95,10 @@ public class Messenger {
 
                     Subscription newSubscription = new Subscription();
                     newSubscription.setTopicFilter(topicFilterQos.getKey());
-                    newSubscription.setQos(topicFilterQos.getValue());
+
+                    int qos = null == topicFilterQos.getValue()? 2: topicFilterQos.getValue();
+
+                    newSubscription.setQos(qos);
                     newSubscription.setPartition(partition);
 
                     String partionQosTopicFilter = newSubscription.getPartitionQosTopicFilter();
@@ -137,9 +139,8 @@ public class Messenger {
                 }
 
 
-                observer.onCompleted();
+            observer.onCompleted();
 
-            });
         });
 
     }

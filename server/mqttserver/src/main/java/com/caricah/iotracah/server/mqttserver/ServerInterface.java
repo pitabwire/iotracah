@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.server.mqttserver;
 
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import org.apache.commons.configuration.Configuration;
@@ -37,6 +38,7 @@ public interface ServerInterface {
 
     void terminate();
 
-    void pushToClient(Serializable connectionId, Serializable sessionId, String clientIdentifier, MqttMessage mqttMessage);
+    void pushToClient(Serializable connectionId, MqttMessage mqttMessage);
 
+    void postProcess(IOTMessage ioTMessage);
 }

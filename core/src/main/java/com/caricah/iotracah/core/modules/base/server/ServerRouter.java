@@ -35,5 +35,7 @@ import java.util.UUID;
  */
 public interface ServerRouter extends Observable.OnSubscribe<IOTMessage> {
 
+    void initiate();
+
     void route(String cluster, UUID nodeId, IOTMessage message);
 }

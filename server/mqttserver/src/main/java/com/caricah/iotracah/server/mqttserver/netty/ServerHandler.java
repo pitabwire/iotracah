@@ -54,6 +54,9 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         Channel channel = ctx.channel();
         ChannelGroup channelGroup = getServerImpl().getChannelGroup();
+
+        ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).set(channel.id());
+
         channelGroup.add(channel);
         super.channelActive(ctx);
     }
@@ -63,6 +66,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         super.channelInactive(ctx);
 
+        String partition = ctx.channel().attr(ServerImpl.REQUEST_PARTITION).get();
         String clientId = ctx.channel().attr(ServerImpl.REQUEST_CLIENT_ID).get();
 
         if (null != clientId) {
@@ -70,7 +74,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
             Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
             Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
-            getInternalServer().dirtyDisconnect(connectionId, sessionId, clientId);
+            getInternalServer().dirtyDisconnect(connectionId, sessionId,partition, clientId);
 
         }
     }
@@ -88,11 +92,12 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
 
         getInternalServer().logDebug(" messageReceived : received the message {}", msg);
 
+        String partition = ctx.channel().attr(ServerImpl.REQUEST_PARTITION).get();
         String clientId = ctx.channel().attr(ServerImpl.REQUEST_CLIENT_ID).get();
         Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
         Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
-        getInternalServer().pushToWorker(connectionId, sessionId, clientId, msg);
+        getInternalServer().pushToWorker(connectionId, sessionId,partition, clientId, msg);
 
     }
 

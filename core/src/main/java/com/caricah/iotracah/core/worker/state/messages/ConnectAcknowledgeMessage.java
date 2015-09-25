@@ -34,19 +34,21 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
     private final boolean dup;
     private final int qos;
     private final boolean retain;
-    private MqttConnectReturnCode returnCode;
+    private final int keepAliveTime;
+    private final MqttConnectReturnCode returnCode;
 
 
-    public static ConnectAcknowledgeMessage from(boolean dup, int qos, boolean retain, MqttConnectReturnCode returnCode) {
-        return new ConnectAcknowledgeMessage(dup, qos, retain, returnCode);
+    public static ConnectAcknowledgeMessage from(boolean dup, int qos, boolean retain, int keepAliveTime, MqttConnectReturnCode returnCode) {
+        return new ConnectAcknowledgeMessage(dup, qos, retain, keepAliveTime, returnCode);
     }
 
-    private ConnectAcknowledgeMessage(boolean dup, int qos, boolean retain, MqttConnectReturnCode returnCode) {
+    private ConnectAcknowledgeMessage(boolean dup, int qos, boolean retain, int keepAliveTime, MqttConnectReturnCode returnCode) {
 
         setMessageType(MESSAGE_TYPE);
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;
+        this.keepAliveTime = keepAliveTime;
         this.returnCode = returnCode;
         }
 
@@ -64,13 +66,14 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
         return retain;
     }
 
+    public int getKeepAliveTime() {
+        return keepAliveTime;
+    }
+
     public MqttConnectReturnCode getReturnCode() {
         return returnCode;
     }
 
-    public void setReturnCode(MqttConnectReturnCode returnCode) {
-        this.returnCode = returnCode;
-    }
 
     @Override
     public String toString() {

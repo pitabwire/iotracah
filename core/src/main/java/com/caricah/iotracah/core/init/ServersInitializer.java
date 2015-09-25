@@ -49,6 +49,7 @@ import rx.schedulers.Schedulers;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 
 /**
@@ -210,7 +211,13 @@ public abstract class ServersInitializer implements SystemInitializer {
             if (isServerEngineEnabled()) {
 
                 log.info(" classifyBaseHandler : storing the server : {} for use as active plugin", baseSystemHandler);
-                serverList.add((Server) baseSystemHandler);
+
+                //Set the cluster and node identifications.
+                Server server = (Server) baseSystemHandler;
+                server.setCluster(getExcecutorDefaultName());
+                server.setNodeId(getNodeId());
+
+                serverList.add(server);
             } else {
                 log.info(" classifyBaseHandler : server {} is disabled ", baseSystemHandler);
             }
@@ -304,7 +311,15 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 //Also instantiate the server router.
                 IgniteMessaging igniteMessaging = getIgnite().message();
-                this.serverRouter = new DefaultServerRouter(igniteMessaging);
+
+                String cluster = getExcecutorDefaultName();
+
+                UUID nodeId = getNodeId();
+
+                DefaultServerRouter defaultServerRouter = new DefaultServerRouter(cluster, nodeId, igniteMessaging);
+                defaultServerRouter.initiate();
+                this.serverRouter = defaultServerRouter;
+
             }
 
 
@@ -407,5 +422,9 @@ public abstract class ServersInitializer implements SystemInitializer {
     public ServerRouter getServerRouter() {
 
         return serverRouter;
+    }
+
+    public UUID getNodeId() {
+        return getIgnite().cluster().localNode().id();
     }
 }

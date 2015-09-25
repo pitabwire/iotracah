@@ -140,6 +140,7 @@ public class IOTMessage implements Serializable {
         setProtocal(iotMessage.getProtocal());
         setPartition(iotMessage.getPartition());
         setClientIdentifier(iotMessage.getClientIdentifier());
+        setConnectionId(iotMessage.getConnectionId());
         setNodeId(iotMessage.getNodeId());
         setCluster(iotMessage.getCluster());
 

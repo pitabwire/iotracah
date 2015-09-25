@@ -21,13 +21,15 @@
 package com.caricah.iotracah.core.modules.base.server;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.core.modules.Server;
 import org.apache.ignite.IgniteMessaging;
 import org.apache.ignite.lang.IgniteBiPredicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Subscriber;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -35,12 +37,28 @@ import java.util.*;
  */
 public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID, IOTMessage> {
 
+    private static final Logger log = LoggerFactory.getLogger(DefaultServerRouter.class);
+
     private List<Subscriber> subscriberList = new ArrayList<>();
 
     private  final IgniteMessaging messaging;
 
-    public DefaultServerRouter(IgniteMessaging messaging){
+    private final String cluster;
+
+    private final UUID nodeId;
+
+    public DefaultServerRouter(String cluster, UUID nodeId, IgniteMessaging messaging){
+        this.cluster = cluster;
+        this.nodeId = nodeId;
         this.messaging = messaging;
+    }
+
+    public String getCluster() {
+        return cluster;
+    }
+
+    public UUID getNodeId() {
+        return nodeId;
     }
 
     public IgniteMessaging getMessaging() {
@@ -48,13 +66,25 @@ public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID
     }
 
     @Override
-    public void call(Subscriber<? super IOTMessage> subscriber) {
+    public void initiate() {
 
+        log.debug(" initiate : Initiating the server router.");
+        //Listen for messages published to this node
+        String topic = getNodeTopic(getCluster(), getNodeId());
+        getMessaging().remoteListen(topic, this);
+    }
+
+    @Override
+    public void call(Subscriber<? super IOTMessage> subscriber) {
         subscriberList.add(subscriber);
     }
 
     @Override
     public void route(String cluster, UUID nodeId, IOTMessage message) {
+
+
+
+        log.debug(" route : routing the message to {} in cluster {}", nodeId, cluster );
         getMessaging().send(getNodeTopic(cluster, nodeId), message );
     }
 
@@ -73,6 +103,7 @@ public class DefaultServerRouter implements ServerRouter, IgniteBiPredicate<UUID
     @Override
     public boolean apply(UUID uuid, IOTMessage IOTMessage) {
 
+        log.debug(" apply : message routed successfully to appropriate server.");
         subscriberList.forEach(subscriber -> subscriber.onNext(IOTMessage));
         return true;
     }

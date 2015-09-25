@@ -106,7 +106,7 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer {
                 MqttConnAckVariableHeader connAckVH = connAckMessage.variableHeader();
 
 
-                return ConnectAcknowledgeMessage.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(),connAckVH.connectReturnCode());
+                return ConnectAcknowledgeMessage.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), 20, connAckVH.connectReturnCode());
 
             case SUBSCRIBE:
 

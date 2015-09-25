@@ -21,20 +21,26 @@
 package com.caricah.iotracah.server.mqttserver.netty;
 
 import com.caricah.iotracah.core.modules.Server;
+import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
+import com.caricah.iotracah.core.worker.state.messages.ConnectMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.mqttserver.MqttServer;
 import com.caricah.iotracah.server.mqttserver.ServerInterface;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelId;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.configuration.Configuration;
@@ -62,6 +68,7 @@ public class ServerImpl implements ServerInterface {
     public static final String CONFIGURATION_SERVER_MQTT_CONNECTION_TIMEOUT = "system.internal.server.mqtt.connection.timeout";
     public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_CONNECTION_TIMEOUT = 10;
 
+    public static final AttributeKey<String> REQUEST_PARTITION = AttributeKey.valueOf("requestPartitionKey");
     public static final AttributeKey<String> REQUEST_CLIENT_ID = AttributeKey.valueOf("requestClientIdKey");
     public static final AttributeKey<Serializable> REQUEST_SESSION_ID = AttributeKey.valueOf("requestSessionIdKey");
     public static final AttributeKey<Serializable> REQUEST_CONNECTION_ID = AttributeKey.valueOf("requestConnectionIdKey");
@@ -248,8 +255,46 @@ public class ServerImpl implements ServerInterface {
     }
 
 
-    public void pushToClient(Serializable connectionId, Serializable sessionId, String clientId, MqttMessage message){
+    public void pushToClient(Serializable connectionId, MqttMessage message){
 
+
+        getInternalServer().logInfo(" Server pushToClient : we got to now sending out {}", message);
+
+        Channel channel = getChannel((ChannelId) connectionId);
+
+        if(null != channel && channel.isWritable()) {
+            channel.writeAndFlush(message);
+
+        }
+
+    }
+
+
+    @Override
+    public void postProcess(IOTMessage ioTMessage) {
+
+        if(ioTMessage.getMessageType() == ConnectAcknowledgeMessage.MESSAGE_TYPE){
+
+            int  keepAliveTime = ((ConnectAcknowledgeMessage) ioTMessage).getKeepAliveTime();
+            Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
+
+            Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
+            if(null != channel) {
+
+                channel.attr(ServerImpl.REQUEST_PARTITION).set(ioTMessage.getPartition());
+                channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(ioTMessage.getClientIdentifier());
+                channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
+                channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
+                channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
+            }
+
+
+        }
+
+    }
+
+    private Channel getChannel(ChannelId channelId) {
+        return getChannelGroup().find(channelId);
 
     }
 }

@@ -232,14 +232,14 @@ public class ConnectionHandler extends RequestHandler {
 
                             if (e instanceof AuthenticationException) {
 
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
+                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
 
                             } else if (e instanceof AuthorizationException) {
 
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
+                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
 
                             } else {
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
                             }
 
                             connectAcknowledgeMessage.copyBase(message);
@@ -268,7 +268,7 @@ public class ConnectionHandler extends RequestHandler {
                             getWorker().logInfo(" onNext : Successfully initiated a session.");
 
                             //Respond to server with a connection successfull.
-                            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+                            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
                             connectAcknowledgeMessage.copyBase(message);
                             pushToServer(connectAcknowledgeMessage);
 
@@ -316,18 +316,18 @@ public class ConnectionHandler extends RequestHandler {
             ConnectAcknowledgeMessage connectAcknowledgeMessage;
 
             if (e instanceof MqttIdentifierRejectedException) {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
 
             } else if (e instanceof MqttUnacceptableProtocolVersionException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else if (e instanceof UnknownProtocalException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
             }
 
             connectAcknowledgeMessage.copyBase(message);
@@ -335,7 +335,7 @@ public class ConnectionHandler extends RequestHandler {
 
         } catch (Exception systemError) {
 
-            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
             connectAcknowledgeMessage.copyBase(message);
             getWorker().logError(" handle : System experienced the error ", systemError);
             throw new ShutdownException(connectAcknowledgeMessage);

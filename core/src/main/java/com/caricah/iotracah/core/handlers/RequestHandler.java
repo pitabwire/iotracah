@@ -29,6 +29,8 @@ import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import java.util.StringJoiner;
@@ -37,6 +39,8 @@ import java.util.StringJoiner;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
 public abstract class RequestHandler {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private Worker worker;
 
