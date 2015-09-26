@@ -30,5 +30,5 @@ dependencies {
     compile group: 'io.reactivex', name: 'rxjava', version: '1.0.9'
     compile group: 'io.reactivex', name: 'rxjava-async-util', version: '0.21.0'
 
-    compile  project('iotracah')
+    compile  group: 'com.caricah.iotracah', name: 'iotracah', version: version, changing: true
 }
