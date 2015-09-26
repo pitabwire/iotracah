@@ -36,9 +36,6 @@ dependencies {
 
     compile group: 'org.apache.shiro', name: 'shiro-core', version: '1.2.3'
 
-    runtime  project('server:mqttserver')
-    runtime  project('datastore:ignitecache')
-    runtime  project(':core')
 }
 
 
