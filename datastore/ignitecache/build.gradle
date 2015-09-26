@@ -1,5 +1,5 @@
 version '1.0-SNAPSHOT'
 
 dependencies {
-    compile  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
+    compile  project(':core')
 }
