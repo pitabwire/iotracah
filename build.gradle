@@ -41,6 +41,12 @@ dependencies {
     runtime  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
 }
 
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+}
 
 allprojects {
 
