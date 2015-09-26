@@ -9,5 +9,4 @@ before_install:
  - chmod +x gradlew
 
 install:
-  - ./gradlew install
-  - ./gradlew assemble --stacktrace
+  - ./gradlew install assemble --stacktrace
