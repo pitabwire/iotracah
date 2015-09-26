@@ -37,11 +37,14 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.Ignition;
 import rx.Observable;
+import rx.Subscriber;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -202,6 +205,11 @@ public class IgniteDatastore extends Datastore{
     }
 
     @Override
+    public Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter) {
+        return subscriptionHandler.getByKey(partitionQosTopicFilter);
+    }
+
+    @Override
     public void saveSubscription(Subscription subscription) {
         subscriptionHandler.save(subscription);
     }
@@ -212,48 +220,52 @@ public class IgniteDatastore extends Datastore{
     }
 
     @Override
-    public Observable<PublishMessage> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage) {
+    public Observable<String> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage) {
 
         return Observable.create(observer -> {
-            subscriptionHandler.getComputeGrid().run(() -> {
+
+                    log.debug(" distributePublish : obtaining subscribers for topic {}", topicBreakDown);
 
                 try {
+
+                    CountDownLatch countDownLatch = new CountDownLatch(topicBreakDown.size());
+
                     for (String topicFilter : topicBreakDown) {
 
                         Observable<Subscription> subscriptionObservable = getSubscription(publishMessage.getPartition(), topicFilter);
                         subscriptionObservable.subscribe(
-                                subscription -> {
 
-                                    for (String clientIdentifier : subscription.getSubscriptions()) {
+                                new Subscriber<Subscription>() {
+                                    @Override
+                                    public void onCompleted() {
+                                        countDownLatch.countDown();
+                                    }
 
-                                        Observable<Client> clientObservable = getClient(publishMessage.getPartition(), clientIdentifier);
+                                    @Override
+                                    public void onError(Throwable e) {
+                                        countDownLatch.countDown();
+                                    }
 
-                                        clientObservable.subscribe(client -> {
+                                    @Override
+                                    public void onNext(Subscription subscription) {
 
-                                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+                                        log.debug( " distributePublish onNext : obtained a subscription {} for message {}", subscription, publishMessage);
+                                        subscription.getSubscriptions().forEach(observer::onNext);
 
-
-                                            if (clonePublishMessage.getQos() == 1 || clonePublishMessage.getQos() == 2) {
-                                                //Save the message as we proceed.
-                                                saveMessage(clonePublishMessage);
-                                            }
-
-                                            // callback with value
-                                            observer.onNext(clonePublishMessage);
-                                        });
                                     }
                                 }
                         );
 
 
                     }
-
+                    //Wait for all subscribers to be dealt with.
+                    countDownLatch.await();
                     observer.onCompleted();
+
                 } catch (Exception e) {
                     observer.onError(e);
                 }
-            });
+
         });
 
     }

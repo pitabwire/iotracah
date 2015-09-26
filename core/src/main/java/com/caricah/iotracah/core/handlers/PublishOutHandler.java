@@ -40,6 +40,7 @@ public class PublishOutHandler extends RequestHandler {
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
+        log.debug(" handle : outbound message {} being processed", publishMessage);
 
         //We need to generate a publish message to start this conversation.
         pushToServer(publishMessage);

@@ -129,7 +129,7 @@ public class SubscribeHandler extends RequestHandler {
             });
 
         } catch (AuthorizationException e) {
-            getWorker().logError(" handle : System experienced the error ", e);
+            log.error(" handle : System experienced the error ", e);
             throw new ShutdownException(e);
         }
 

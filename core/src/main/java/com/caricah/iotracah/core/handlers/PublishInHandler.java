@@ -56,7 +56,7 @@ public class PublishInHandler extends RequestHandler {
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        getWorker().logDebug(" handle : client attempting to publish a message.");
+        log.debug(" handle : client attempting to publish a message.");
 
 
         try {
@@ -83,7 +83,7 @@ public class PublishInHandler extends RequestHandler {
                     topic.contains(Constant.SINGLE_LEVEL_WILDCARD) ||
                     topic.contains(Constant.SYS_PREFIX)
                     ){
-                getWorker().logInfo(" handle : Invalid topic " + message.getTopic());
+                log.info(" handle : Invalid topic " + message.getTopic());
                 throw new ShutdownException(" Invalid topic name");
             }
 
@@ -97,6 +97,8 @@ public class PublishInHandler extends RequestHandler {
             clientObservable.subscribe(client -> {
 
                 try {
+
+
 
                     /**
                      * Message processing is based on 4.3 Quality of Service levels and protocol flows
@@ -158,8 +160,8 @@ public class PublishInHandler extends RequestHandler {
 
         } catch (AuthorizationException e) {
 
-            getWorker().logDebug(" handle : System experienced the error ", e);
-            throw new ShutdownException();
+            log.debug(" handle : System experienced the error ", e);
+            throw new ShutdownException(e);
 
         }
 
@@ -179,8 +181,8 @@ public class PublishInHandler extends RequestHandler {
 
                 //We need to push out a PUBREC
 
-
                 PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId, message.isDup(), message.getQos(), message.isRetain());
+               publishReceivedMessage.copyBase(message);
                 pushToServer(publishReceivedMessage);
 
             });

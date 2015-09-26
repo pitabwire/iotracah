@@ -26,6 +26,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 
@@ -34,6 +36,8 @@ import java.io.Serializable;
  * @version 1.0 5/27/15
  */
 public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
+
+    private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
     private final ServerImpl serverImpl;
 
@@ -90,7 +94,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
 
-        getInternalServer().logDebug(" messageReceived : received the message {}", msg);
+        log.debug(" messageReceived : received the message {}", msg);
 
         String partition = ctx.channel().attr(ServerImpl.REQUEST_PARTITION).get();
         String clientId = ctx.channel().attr(ServerImpl.REQUEST_CLIENT_ID).get();

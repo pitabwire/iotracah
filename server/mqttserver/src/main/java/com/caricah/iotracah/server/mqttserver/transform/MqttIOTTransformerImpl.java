@@ -52,6 +52,8 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer {
                 publishMessage.payload().getBytes(0, payloadBytes);
 
 
+
+
                 return PublishMessage.from(pubVH.messageId(), fxH.isDup(), fxH.qosLevel().value(),
                         fxH.isRetain(), pubVH.topicName(), payloadBytes,  true);
 
@@ -78,7 +80,7 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer {
 
                 msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
 
-                return DestroyMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), true);
+                return CompleteMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), true);
             case PINGREQ: case PINGRESP:
                 return Ping.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
 

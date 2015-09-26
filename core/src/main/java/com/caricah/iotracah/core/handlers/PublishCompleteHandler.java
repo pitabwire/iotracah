@@ -21,7 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.core.worker.state.messages.DestroyMessage;
+import com.caricah.iotracah.core.worker.state.messages.CompleteMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
@@ -32,9 +32,9 @@ import rx.Observable;
  */
 public class PublishCompleteHandler extends RequestHandler {
 
-    private DestroyMessage message;
+    private CompleteMessage message;
 
-    public PublishCompleteHandler(DestroyMessage message) {
+    public PublishCompleteHandler(CompleteMessage message) {
         this.message = message;
     }
 

@@ -57,7 +57,6 @@ public class DisconnectHandler extends RequestHandler {
 
         clientObservable.subscribe(client -> {
 
-            try {
 
                 if (message.isCleanDisconnect()) {
                     cleanDisconnect(client);
@@ -65,10 +64,6 @@ public class DisconnectHandler extends RequestHandler {
                     dirtyDisconnect(client);
                 }
 
-            } catch (UnRetriableException | RetriableException e) {
-                getWorker().logError(" handle : disconnection handler experienced issues", e);
-
-            }
 
 
         });
@@ -76,7 +71,7 @@ public class DisconnectHandler extends RequestHandler {
     }
 
 
-    public void cleanDisconnect(Client client) throws RetriableException, UnRetriableException {
+    public void cleanDisconnect(Client client)  {
 
         // Unsubscribe all
         Set<String> partiotionQosTopicFilters = client.getPartiotionQosTopicFilters();
@@ -85,16 +80,21 @@ public class DisconnectHandler extends RequestHandler {
             getMessenger().unSubscribe(client.getPartition(), client.getClientIdentifier(), partitionQosTopicFilter);
         }
 
-        getDatastore().removeClient(client);
+        //Notify the server to remove this client from further sending in requests.
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(true, false, 0, false);
+        disconnectMessage = client.copyTransmissionData(disconnectMessage);
+        pushToServer(disconnectMessage);
 
         // and delete it from our db
-        throw new ShutdownException();
+        getDatastore().removeClient(client);
+
+
     }
 
 
-    public void dirtyDisconnect(Client client) throws RetriableException {
+    public void dirtyDisconnect(Client client) {
 
-        getWorker().logDebug(" dirtyDisconnect : client : " + client.getClientIdentifier() + " may have lost connectivity.");
+        log.debug(" dirtyDisconnect : client : " + client.getClientIdentifier() + " may have lost connectivity.");
 
         //Mark the client as inactive
         //Publish will before handling other
@@ -121,7 +121,7 @@ public class DisconnectHandler extends RequestHandler {
                         try {
                             client.internalPublishMessage(getMessenger(), willPublishMessage);
                         } catch (RetriableException e) {
-                            getWorker().logError(" dirtyDisconnect : experienced issues publishing will.", e);
+                            log.error(" dirtyDisconnect : experienced issues publishing will.", e);
                         }
                     }
 
@@ -130,11 +130,9 @@ public class DisconnectHandler extends RequestHandler {
 
 
         if (client.isCleanSession()) {
-            try {
-                cleanDisconnect(client);
-            } catch (UnRetriableException e) {
-                getWorker().logError(" dirtyDisconnect : Clean session closing experienced errors.", e);
-            }
+
+            cleanDisconnect(client);
+
         }
     }
 

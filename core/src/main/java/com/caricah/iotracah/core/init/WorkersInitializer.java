@@ -100,10 +100,6 @@ public abstract class WorkersInitializer extends ServersInitializer {
             //Actually start our worker guy.
             worker.initiate();
         }
-
-
-
-
     }
 
     protected void classifyBaseHandler(BaseSystemHandler baseSystemHandler){

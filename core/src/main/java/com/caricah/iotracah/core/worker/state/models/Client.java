@@ -27,6 +27,7 @@ import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.Messenger;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
@@ -179,16 +180,16 @@ public class Client implements IdKeyComposer, Serializable {
         return String.format("%s-%s", getPartition(), getClientIdentifier());
     }
 
-    public PublishMessage copyTransmissionData(PublishMessage clonePublishMessage) {
+    public <T extends IOTMessage> T copyTransmissionData(T iotMessage) {
 
-        clonePublishMessage.setPartition(getPartition());
-        clonePublishMessage.setClientIdentifier(getClientIdentifier());
-        clonePublishMessage.setSessionId(getSessionId());
-        clonePublishMessage.setConnectionId(getConnectionId());
-        clonePublishMessage.setNodeId(getConnectedNode());
-        clonePublishMessage.setCluster(getConnectedCluster());
+        iotMessage.setPartition(getPartition());
+        iotMessage.setClientIdentifier(getClientIdentifier());
+        iotMessage.setSessionId(getSessionId());
+        iotMessage.setConnectionId(getConnectionId());
+        iotMessage.setNodeId(getConnectedNode());
+        iotMessage.setCluster(getConnectedCluster());
 
 
-        return null;
+        return iotMessage;
     }
 }

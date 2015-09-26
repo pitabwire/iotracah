@@ -30,7 +30,10 @@ import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Subscriber;
 
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +48,8 @@ import java.util.concurrent.ExecutorService;
  * @version 1.0 6/30/15
  */
 public class Messenger {
+
+    private static final Logger log = LoggerFactory.getLogger(Messenger.class);
 
     private Datastore datastore;
 
@@ -96,7 +101,7 @@ public class Messenger {
                     Subscription newSubscription = new Subscription();
                     newSubscription.setTopicFilter(topicFilterQos.getKey());
 
-                    int qos = null == topicFilterQos.getValue()? 2: topicFilterQos.getValue();
+                    int qos = null == topicFilterQos.getValue()? 0: topicFilterQos.getValue();
 
                     newSubscription.setQos(qos);
                     newSubscription.setPartition(partition);
@@ -149,13 +154,15 @@ public class Messenger {
      * getTopicBreakDown is a utility method expected to return
      * the topic and all its associated lower level wildcards that match it.
      *
+     * @param partition
+     * @param qos
      * @param topic
      * @return
      */
-    private Set<String> getTopicBreakDown(String topic) {
+    private Set<String> getTopicBreakDown(String partition, int qos, String topic) {
 
         Set<String> topicBreakDownSet = new HashSet<>();
-        topicBreakDownSet.add(topic);
+        addTopicBreakDownBasedOnQos(partition, qos,topic, topicBreakDownSet);
 
         String[] topicLevels = topic.split(Constant.PATH_SEPARATOR);
         String activeMultiLevelTopicFilter = "";
@@ -164,7 +171,7 @@ public class Messenger {
 
             if (topicLevels.length > i + 1) {
                 activeMultiLevelTopicFilter += topicLevels[i] + Constant.PATH_SEPARATOR;
-                topicBreakDownSet.add(activeMultiLevelTopicFilter + Constant.MULTI_LEVEL_WILDCARD);
+                addTopicBreakDownBasedOnQos(partition, qos, activeMultiLevelTopicFilter + Constant.MULTI_LEVEL_WILDCARD, topicBreakDownSet);
             }
 
             String activeSingleLevelTopicFilter = "";
@@ -181,14 +188,31 @@ public class Messenger {
                 }
             }
 
-            topicBreakDownSet.add(activeSingleLevelTopicFilter);
+            addTopicBreakDownBasedOnQos(partition, qos, activeSingleLevelTopicFilter, topicBreakDownSet);
 
         }
         return topicBreakDownSet;
     }
 
+    private void addTopicBreakDownBasedOnQos(String partition, int qos, String topicPart, Set<String> topicBreakDownSet){
 
-    public void unSubscribe(String partition, String clientIdentifier, String partitionQosTopicFilter) throws RetriableException {
+       String qos2topic = Subscription.getPartitionQosTopicFilter(partition, 2, topicPart );
+       topicBreakDownSet.add(qos2topic);
+
+
+        if(qos < 2 ) {
+
+            String qos1topic = Subscription.getPartitionQosTopicFilter(partition, 1, topicPart);
+            topicBreakDownSet.add(qos1topic);
+
+            if(qos < 1) {
+                String qos0topic = Subscription.getPartitionQosTopicFilter(partition, 0, topicPart);
+                topicBreakDownSet.add(qos0topic);
+            }
+        }
+    }
+
+    public void unSubscribe(String partition, String clientIdentifier, String partitionQosTopicFilter) {
 
         Observable<Subscription> subscriptionObservable = getDatastore().getSubscription(partition, partitionQosTopicFilter);
 
@@ -216,7 +240,7 @@ public class Messenger {
 
             } catch (Exception e) {
 
-                getWorker().logError(" unSubscribe : issues unsubscribing : " + clientIdentifier + " from : " + partitionQosTopicFilter, e);
+                log.error(" unSubscribe : issues unsubscribing : " + clientIdentifier + " from : " + partitionQosTopicFilter, e);
 
             }
 
@@ -226,24 +250,64 @@ public class Messenger {
 
     public void publish(PublishMessage publishMessage) throws RetriableException {
 
+        log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientIdentifier(), publishMessage.getPartition());
 
-        Set<String> topicBreakDown = getTopicBreakDown(publishMessage.getTopic());
+        Set<String> topicBreakDown = getTopicBreakDown(publishMessage.getPartition(), publishMessage.getQos(), publishMessage.getTopic());
 
-        Observable<PublishMessage> distributePublishMessageObservable = getDatastore().distributePublish(topicBreakDown, publishMessage);
+        //Obtain a list of all the subscribed clients who will receive a message.
+        Observable<String> distributePublishObservable = getDatastore().distributePublish(topicBreakDown, publishMessage);
 
-        distributePublishMessageObservable.subscribe(distributePublishMessage -> {
+        distributePublishObservable.subscribe(
 
-            //This message should be released to the connected client
-            PublishOutHandler handler = new PublishOutHandler(distributePublishMessage);
-            handler.setWorker(getWorker());
 
-            try {
-                handler.handle();
-            } catch (RetriableException | UnRetriableException e) {
-                getWorker().logError(" process : problems releasing stored messages", e);
-            }
+                new Subscriber<String>() {
+                    @Override
+                    public void onCompleted() {
+                        log.info(" publish onCompleted : publish of {} complete", publishMessage );
+                    }
 
-        });
+                    @Override
+                    public void onError(Throwable e) {
+                        log.error(" publish onError : problems publishing a message  ", e);
+                    }
+
+                    @Override
+                    public void onNext(String clientIdentifier) {
+
+
+                        log.debug(" publish onNext : obtained a client {} to send message to", clientIdentifier);
+
+
+                        Observable<Client> clientObservable = getDatastore().getClient(publishMessage.getPartition(), clientIdentifier);
+
+                        clientObservable.subscribe(client -> {
+
+                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+
+
+                            if (clonePublishMessage.getQos() > 0 ) {
+                                //Save the message as we proceed.
+                                getDatastore().saveMessage(clonePublishMessage);
+                            }
+
+                            //Actually push out the message.
+                            //This message should be released to the connected client
+                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage);
+                            handler.setWorker(getWorker());
+
+                            try {
+                                handler.handle();
+                            } catch (RetriableException | UnRetriableException e) {
+                                log.error(" process : problems releasing stored messages", e);
+                            }
+                        });
+
+                    }
+                }
+
+
+                );
 
 
     }

@@ -26,6 +26,8 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -43,6 +45,8 @@ import java.util.Set;
  * @version 1.0 8/10/15
  */
 public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private boolean partitionBasedOnUsername;
 
@@ -71,16 +75,15 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
     public abstract void removeWill(WillMessage will);
 
     public abstract Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter, Subscription newSubscription);
-    public Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter){
-        return getSubscription(partition, partitionQosTopicFilter, null);
-    }
+
+    public abstract Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter);
 
     public abstract void saveSubscription(Subscription subscription);
 
     public abstract void removeSubscription(Subscription subscription);
 
 
-    public abstract Observable<PublishMessage> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage);
+    public abstract Observable<String> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage);
 
     public abstract Observable<PublishMessage> getActiveMessages(Client client);
 

@@ -26,7 +26,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public final class DestroyMessage extends IOTMessage {
+public final class CompleteMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "PUBCOMP";
 
@@ -36,14 +36,14 @@ public final class DestroyMessage extends IOTMessage {
     private final boolean inBound;
 
 
-    public static DestroyMessage from(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    public static CompleteMessage from(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
         if (messageId < 1) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new DestroyMessage(messageId, dup, qos, retain, inBound);
+        return new CompleteMessage(messageId, dup, qos, retain, inBound);
     }
 
-    private DestroyMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    private CompleteMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;

@@ -71,9 +71,6 @@ public class UnSubscribeHandler extends RequestHandler {
 
                     client -> {
 
-                        try {
-
-
                             for (String topic : message.getTopicFilterList()) {
                                 String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(message.getPartition(), -1, topic);
 
@@ -84,14 +81,12 @@ public class UnSubscribeHandler extends RequestHandler {
                             unSubscribeAcknowledgeMessage.copyBase(message);
                             pushToServer(unSubscribeAcknowledgeMessage);
 
-                        } catch (RetriableException e) {
-                            getWorker().logError(" handle : System experienced the error ", e);
-                        }
+
                     }
             );
 
         } catch (AuthorizationException e) {
-            getWorker().logError(" handle : System experienced the error ", e);
+            log.error(" handle : System experienced the error ", e);
             throw new ShutdownException(e);
         }
 

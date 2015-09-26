@@ -27,6 +27,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
+import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
@@ -92,7 +93,7 @@ public class DefaultWorker extends Worker {
     public void onNext(IOTMessage iotMessage) {
 
 
-        logInfo(" onNext : received {}", iotMessage);
+        log.info(" onNext : received {}", iotMessage);
         RequestHandler requestHandler = getHandlerForMessage(iotMessage);
         try {
 
@@ -104,14 +105,24 @@ public class DefaultWorker extends Worker {
             }
         } catch (ShutdownException e) {
 
-            IOTMessage response = ((ShutdownException) e).getResponse();
+            IOTMessage response = e.getResponse();
             if (null != response) {
                 pushToServer(response);
             }
 
+            try {
+                DisconnectMessage disconnectMessage = DisconnectMessage.from(true, false, 0, false);
+                disconnectMessage.copyBase(iotMessage);
+
+                DisconnectHandler disconnectHandler = new DisconnectHandler(disconnectMessage);
+
+                disconnectHandler.handle();
+            } catch (RetriableException | UnRetriableException finalEx) {
+                log.error(" onNext : Problems disconnecting.", finalEx);
+            }
 
         } catch (Exception e) {
-            logError(" onNext : Serious error that requires attention ", e);
+            log.error(" onNext : Serious error that requires attention ", e);
         }
 
     }
@@ -145,8 +156,8 @@ public class DefaultWorker extends Worker {
             case ReleaseMessage.MESSAGE_TYPE:
                 requestHandler = new PublishReleaseHandler((ReleaseMessage) iotMessage);
                 break;
-            case DestroyMessage.MESSAGE_TYPE:
-                requestHandler = new PublishCompleteHandler((DestroyMessage) iotMessage);
+            case CompleteMessage.MESSAGE_TYPE:
+                requestHandler = new PublishCompleteHandler((CompleteMessage) iotMessage);
                 break;
             case DisconnectMessage.MESSAGE_TYPE:
                 requestHandler = new DisconnectHandler((DisconnectMessage) iotMessage);
@@ -159,7 +170,6 @@ public class DefaultWorker extends Worker {
         }
 
         requestHandler.setWorker(this);
-
 
 
         return requestHandler;

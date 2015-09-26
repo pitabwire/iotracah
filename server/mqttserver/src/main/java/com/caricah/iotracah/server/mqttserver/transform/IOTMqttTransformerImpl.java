@@ -77,10 +77,10 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer {
                 return MqttMessageFactory.newMessage(relFixedHeader, msgIdVariableHeader, null);
 
 
-            case DestroyMessage.MESSAGE_TYPE:
+            case CompleteMessage.MESSAGE_TYPE:
 
                 //We need to generate a PUBCOMP message to acknowledge finalization of transmission of qos 2 message.
-                DestroyMessage destroyMessage = (DestroyMessage) internalMessage;
+                CompleteMessage destroyMessage = (CompleteMessage) internalMessage;
                 MqttFixedHeader compFixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, destroyMessage.isDup(), MqttQoS.valueOf(destroyMessage.getQos()), destroyMessage.isRetain(), 0);
                 msgIdVariableHeader = MqttMessageIdVariableHeader.from(destroyMessage.getMessageId().intValue());
                 return MqttMessageFactory.newMessage(compFixedHeader, msgIdVariableHeader, null);
@@ -138,6 +138,9 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer {
                  * internalMessage instanceof WillMessage ){
                  * }
                  **/
+
+
+
                 return null;
         }
 

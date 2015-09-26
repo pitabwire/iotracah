@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.handlers;
 
-import com.caricah.iotracah.core.worker.state.messages.DestroyMessage;
+import com.caricah.iotracah.core.worker.state.messages.CompleteMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
@@ -66,7 +66,7 @@ public class PublishReleaseHandler extends RequestHandler {
                         client.internalPublishMessage(getMessenger(), publishMessage);
 
                         //Initiate a publish complete.
-                        DestroyMessage destroyMessage = DestroyMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.getQos(), publishMessage.isRetain(), false);
+                        CompleteMessage destroyMessage = CompleteMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.getQos(), publishMessage.isRetain(), false);
                         destroyMessage.copyBase(publishMessage);
                         pushToServer(destroyMessage);
 
@@ -75,7 +75,7 @@ public class PublishReleaseHandler extends RequestHandler {
                         getDatastore().removeMessage(publishMessage);
 
                     } catch (RetriableException e) {
-                        getWorker().logError(" releaseInboundMessage : encountered a problem while publishing.", e);
+                        log.error(" releaseInboundMessage : encountered a problem while publishing.", e);
                     }
                 });
             });

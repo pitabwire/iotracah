@@ -94,7 +94,7 @@ public abstract class Worker extends IOTBaseHandler {
      */
     public final void pushToServer(IOTMessage iotMessage){
 
-        logInfo(" pushToServer : sending to client {}", iotMessage);
+        log.info(" pushToServer : sending to client {}", iotMessage);
 
         getServerRouter().route(iotMessage.getCluster(), iotMessage.getNodeId(), iotMessage);
 

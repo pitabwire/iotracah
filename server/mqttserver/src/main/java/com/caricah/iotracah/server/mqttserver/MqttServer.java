@@ -55,7 +55,7 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void configure(Configuration configuration) throws UnRetriableException {
 
-        logInfo(" configure : setting up our configurations.");
+        log.info(" configure : setting up our configurations.");
 
         serverImpl = new ServerImpl(this);
         serverImpl.configure(configuration);
@@ -73,7 +73,7 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void initiate() throws UnRetriableException {
 
-        logInfo(" configure : initiating the netty server.");
+        log.info(" configure : initiating the netty server.");
         serverImpl.initiate();
     }
 
@@ -84,7 +84,7 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void terminate() {
 
-        logInfo(" terminate : stopping any processing. ");
+        log.info(" terminate : stopping any processing. ");
         serverImpl.terminate();
     }
 
@@ -101,15 +101,19 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void onNext(IOTMessage ioTMessage) {
 
-        logDebug(" MqttServer onNext : message outbound {}", ioTMessage);
+        log.debug(" MqttServer onNext : message outbound {}", ioTMessage);
 
         if(null == ioTMessage){
             return;
         }
 
         MqttMessage mqttMessage = toServerMessage(ioTMessage);
-        serverImpl.pushToClient(ioTMessage.getConnectionId(), mqttMessage);
 
+        if(null == mqttMessage){
+            log.debug(" MqttServer onNext : ignoring outbound message {}", ioTMessage);
+        }else {
+            serverImpl.pushToClient(ioTMessage.getConnectionId(), mqttMessage);
+        }
         serverImpl.postProcess(ioTMessage);
     }
 

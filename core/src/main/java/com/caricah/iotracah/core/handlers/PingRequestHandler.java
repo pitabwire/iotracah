@@ -56,7 +56,7 @@ public class PingRequestHandler extends RequestHandler {
                 pushToServer(message);
 
             } catch (Exception e) {
-                getWorker().logError(" handle : ping handler experienced issues", e);
+                log.error(" handle : ping handler experienced issues", e);
 
             }
 

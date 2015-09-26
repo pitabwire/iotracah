@@ -30,6 +30,8 @@ import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -38,6 +40,8 @@ import rx.Subscriber;
  * @version 1.0 7/30/15
  */
 public class SessionResetManager {
+
+    private static final Logger log = LoggerFactory.getLogger(SessionResetManager.class);
 
     private Worker worker;
 
@@ -122,7 +126,7 @@ public class SessionResetManager {
                         try {
                             handler.handle();
                         } catch (RetriableException | UnRetriableException e) {
-                            getWorker().logError(" process : problems releasing stored messages", e);
+                            log.error(" process : problems releasing stored messages", e);
                         }
 
                     }

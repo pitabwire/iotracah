@@ -20,9 +20,8 @@
 
 package com.caricah.iotracah.server.mqttserver.netty;
 
-import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.ConnectMessage;
+import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.mqttserver.MqttServer;
@@ -37,14 +36,14 @@ import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.apache.commons.configuration.Configuration;
-import org.apache.shiro.subject.Subject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 
@@ -53,6 +52,8 @@ import java.io.Serializable;
  * @version 1.0 5/26/15
  */
 public class ServerImpl implements ServerInterface {
+
+    private static final Logger log = LoggerFactory.getLogger(ServerImpl.class);
 
     private final MqttServer internalServer;
 
@@ -153,7 +154,7 @@ public class ServerImpl implements ServerInterface {
      */
     public void initiate() throws UnRetriableException {
 
-        getInternalServer().logInfo(" configure : initiating the netty server.");
+        log.info(" configure : initiating the netty server.");
 
         try {
 
@@ -187,7 +188,7 @@ public class ServerImpl implements ServerInterface {
 
         }catch (InterruptedException e){
 
-            getInternalServer().logError(" configure : Initialization issues ", e);
+            log.error(" configure : Initialization issues ", e);
 
             throw new UnRetriableException(e);
 
@@ -204,7 +205,7 @@ public class ServerImpl implements ServerInterface {
      */
 
     public void configure(Configuration configuration) throws UnRetriableException {
-        getInternalServer().logInfo(" configure : setting up our configurations.");
+        log.info(" configure : setting up our configurations.");
 
         int tcpPort = configuration.getInt(CONFIGURATION_SERVER_MQTT_TCP_PORT, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_TCP_PORT);
         setTcpPort(tcpPort);
@@ -230,7 +231,7 @@ public class ServerImpl implements ServerInterface {
      * @link terminate method is expected to cleanly shut down the server implementation and return immediately.
      */
     public void terminate() {
-        getInternalServer().logInfo(" terminate : stopping any processing. ");
+        log.info(" terminate : stopping any processing. ");
 
         //Stop all connections.
         getChannelGroup().close().awaitUninterruptibly();
@@ -258,7 +259,7 @@ public class ServerImpl implements ServerInterface {
     public void pushToClient(Serializable connectionId, MqttMessage message){
 
 
-        getInternalServer().logInfo(" Server pushToClient : we got to now sending out {}", message);
+        log.info(" Server pushToClient : we got to now sending out {}", message);
 
         Channel channel = getChannel((ChannelId) connectionId);
 
@@ -273,20 +274,41 @@ public class ServerImpl implements ServerInterface {
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
-        if(ioTMessage.getMessageType() == ConnectAcknowledgeMessage.MESSAGE_TYPE){
+        switch (ioTMessage.getMessageType()) {
+            case  ConnectAcknowledgeMessage.MESSAGE_TYPE:
 
-            int  keepAliveTime = ((ConnectAcknowledgeMessage) ioTMessage).getKeepAliveTime();
-            Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
 
-            Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-            if(null != channel) {
+                /**
+                 * Use the connection acknowledgement message to store
+                 */
 
-                channel.attr(ServerImpl.REQUEST_PARTITION).set(ioTMessage.getPartition());
-                channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(ioTMessage.getClientIdentifier());
-                channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
-                channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
-                channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
-            }
+
+                int keepAliveTime = ((ConnectAcknowledgeMessage) ioTMessage).getKeepAliveTime();
+                Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
+
+                Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
+                if (null != channel) {
+
+                    channel.attr(ServerImpl.REQUEST_PARTITION).set(ioTMessage.getPartition());
+                    channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(ioTMessage.getClientIdentifier());
+                    channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
+                    channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
+                    channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
+                }
+
+
+            break;
+            case DisconnectMessage.MESSAGE_TYPE:
+
+                /**
+                 *
+                 */
+                channel = getChannel((ChannelId) ioTMessage.getConnectionId());
+                if (null != channel) {
+                    channel.close();
+                }
+                break;
+
 
 
         }

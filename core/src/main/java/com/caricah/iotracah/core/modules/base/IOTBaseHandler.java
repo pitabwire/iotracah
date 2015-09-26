@@ -38,7 +38,7 @@ import java.util.*;
 public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements Observable.OnSubscribe<IOTMessage>, BaseSystemHandler {
 
 
-    private static final Logger log = LoggerFactory.getLogger(IOTBaseHandler.class);
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private List<Subscriber> subscriberList = new ArrayList<>();
 
@@ -74,21 +74,11 @@ public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements O
     public void statGauge(String gaugeName, double value){}
     public void statCounterIncrement(String counterName){}
     public void statCounterDecrement(String counterName){}
-    public void logDebug(String message, Object ... params){
-        log.debug(message, params);
-    }
-    public void logInfo(String message, Object ... params){
-        log.info(message, params);
-
-    }
-    public void logError(String message, Throwable e){
-        log.error(message, e);
-    }
 
     @Override
     public void call(Subscriber<? super IOTMessage> subscriber) {
 
-        logInfo(" call : there was a subscription by {} to {} for updates", subscriber, this);
+        log.info(" call : there was a subscription by {} to {} for updates", subscriber, this);
 
         subscriberList.add(subscriber);
     }
@@ -102,7 +92,7 @@ public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements O
     @Override
     public void onCompleted() {
 
-        logError(" onCompleted : Critical internal error due to wrong method calls ", new IllegalStateException("Method not supposed to be called by anyone in the lifetime of iotracah"));
+        log.error(" onCompleted : Critical internal error due to wrong method calls ", new IllegalStateException("Method not supposed to be called by anyone in the lifetime of iotracah"));
     }
 
     /**
@@ -115,7 +105,7 @@ public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements O
      */
     @Override
     public void onError(Throwable e) {
-        logError(" onError : Critical internal error due to wrong method calls ", e);
+        log.error(" onError : Critical internal error due to wrong method calls ", e);
     }
 
 

@@ -114,7 +114,7 @@ public class ConnectionHandler extends RequestHandler {
     public void handle() throws RetriableException, UnRetriableException {
 
 
-        getWorker().logDebug(" handle : client initiating a new connection.");
+        log.debug(" handle : client initiating a new connection.");
 
         /**
          * 2.     The Server MUST validate that the CONNECT Packet conforms to section 3.1 and close
@@ -159,7 +159,7 @@ public class ConnectionHandler extends RequestHandler {
 
                 throw new MqttUnacceptableProtocolVersionException();
             } else {
-                getWorker().logDebug(" handle: the required protocal was selected.");
+                log.debug(" handle: the required protocal was selected.");
             }
 
 
@@ -210,7 +210,7 @@ public class ConnectionHandler extends RequestHandler {
 
             }
 
-            getWorker().logDebug(" handle: we are ready now to obtain the core session.");
+            log.debug(" handle: we are ready now to obtain the core session.");
 
             Observable<Client> newClientObservable = openSubject(getWorker(), message.getCluster(), message.getNodeId(),
                     message.getConnectionId(), clientIdentifier, cleanSession, message.getUserName(),
@@ -226,7 +226,7 @@ public class ConnectionHandler extends RequestHandler {
                         @Override
                         public void onError(Throwable e) {
 
-                            getWorker().logError(" onError : Problems ", e);
+                            log.error(" onError : Problems ", e);
 
                             ConnectAcknowledgeMessage connectAcknowledgeMessage;
 
@@ -254,7 +254,7 @@ public class ConnectionHandler extends RequestHandler {
                             message.setClientIdentifier(client.getClientIdentifier());
                             message.setPartition(client.getPartition());
 
-                            getWorker().logDebug(" handle: obtained a client : {}. ", client);
+                            log.debug(" handle: obtained a client : {}. ", client);
 
                             /**
                              * 3.     The Server MAY check that the contents of the CONNECT Packet meet any further restrictions
@@ -265,7 +265,7 @@ public class ConnectionHandler extends RequestHandler {
                              */
 
 
-                            getWorker().logInfo(" onNext : Successfully initiated a session.");
+                            log.info(" onNext : Successfully initiated a session.");
 
                             //Respond to server with a connection successfull.
                             ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
@@ -310,7 +310,7 @@ public class ConnectionHandler extends RequestHandler {
             );
         } catch (MqttUnacceptableProtocolVersionException | MqttIdentifierRejectedException | AuthenticationException | UnknownProtocalException e) {
 
-            getWorker().logDebug(" handle : Client connection issues ", e);
+            log.debug(" handle : Client connection issues ", e);
 
             //Respond to server with a connection successfull.
             ConnectAcknowledgeMessage connectAcknowledgeMessage;
@@ -337,7 +337,7 @@ public class ConnectionHandler extends RequestHandler {
 
             ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
             connectAcknowledgeMessage.copyBase(message);
-            getWorker().logError(" handle : System experienced the error ", systemError);
+            log.error(" handle : System experienced the error ", systemError);
             throw new ShutdownException(connectAcknowledgeMessage);
 
         }
@@ -352,7 +352,7 @@ public class ConnectionHandler extends RequestHandler {
 
             try {
 
-                getWorker().logDebug(" openSubject : create -- initiating subject creation.");
+                log.debug(" openSubject : create -- initiating subject creation.");
 
                 String activeClientId = clientIdentifier;
                 if (null == clientIdentifier) {
@@ -373,7 +373,7 @@ public class ConnectionHandler extends RequestHandler {
                 defaultClient.setSessionId(null);
                 defaultClient.setActive(false);
 
-                getWorker().logDebug(" openSubject : create -- Futher into the database.");
+                log.debug(" openSubject : create -- Futher into the database.");
 
                 Observable<Client> clientObservable = getDatastore().getClient(partition, activeClientId);
                 clientObservable.firstOrDefault(defaultClient).subscribe(new Subscriber<Client>() {
@@ -392,7 +392,7 @@ public class ConnectionHandler extends RequestHandler {
 
                         //We have obtained a client to work with.
 
-                        getWorker().logDebug(" openSubject : create -- We obtained a client.");
+                        log.debug(" openSubject : create -- We obtained a client.");
 
                         try {
 
@@ -416,7 +416,7 @@ public class ConnectionHandler extends RequestHandler {
 
                             activeUser.login(token);
 
-                            getWorker().logInfo(" openSubject : Authenticated client <{}> username {} ", client.getClientIdentifier(), userName);
+                            log.info(" openSubject : Authenticated client <{}> username {} ", client.getClientIdentifier(), userName);
 
                             Session session = activeUser.getSession();
 

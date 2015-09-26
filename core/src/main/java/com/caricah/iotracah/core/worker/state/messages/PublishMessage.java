@@ -103,6 +103,22 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, Serializable payload, boolean inBound) {
 
+        if (messageId < 1  ) {
+
+
+            if(qos == 0 ){
+                //The Packet Identifier field is only present
+                // in PUBLISH Packets where the QoS level is 1 or 2
+                messageId = 0;
+            }else
+            throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
+        }
+
+        if(0 > qos || qos > 2 ){
+            throw new IllegalArgumentException("qos: " + qos + " (expected: 0, 1 or 2 )");
+        }
+
+
         PublishMessage publishMessage = new PublishMessage();
         publishMessage.setMessageType(MESSAGE_TYPE);
         publishMessage.setQos(qos);
@@ -129,7 +145,6 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
     public PublishMessage cloneMessage() {
 
         PublishMessage publishMessage = PublishMessage.from(getMessageId(), false, getQos(), isRetain(),  getTopic(), getPayload(), false);
-        publishMessage.setMessageType(getMessageType());
         publishMessage.setProtocal(getProtocal());
 
         return publishMessage;

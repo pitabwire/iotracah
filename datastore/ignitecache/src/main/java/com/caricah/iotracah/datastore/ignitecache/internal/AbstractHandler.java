@@ -106,19 +106,20 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
     public Observable<T> getByKey(Serializable key) {
 
         return Observable.create(observer -> {
-            getComputeGrid().run(() -> {
 
                 try {
                     // do work on separate thread
                     T value = getDatastoreCache().get(key);
-                    // callback with value
-                    observer.onNext(value);
+
+                    // callback with value only if not null
+                    if(null != value) {
+                       observer.onNext(value);
+                    }
                     observer.onCompleted();
                 } catch (Exception e) {
                     observer.onError(e);
                 }
 
-            });
         });
 
     }
@@ -126,7 +127,7 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
 
 public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
-        return Observable.create(observer -> getComputeGrid().run(() -> {
+        return Observable.create(observer -> {
 
             try {
                 // do work on separate thread
@@ -143,7 +144,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                 observer.onError(e);
             }
 
-        }));
+        });
 
     }
 
