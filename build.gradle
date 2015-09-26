@@ -41,12 +41,6 @@ dependencies {
     runtime  project(':core')
 }
 
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-}
 
 allprojects {
 
