@@ -35,8 +35,10 @@ jar {
 dependencies {
 
     compile group: 'org.apache.shiro', name: 'shiro-core', version: '1.2.3'
-    runtime  project(':core'), project(':datastore:ignitecache'), project(':server:mqttserver')
 
+    runtime  group: 'com.caricah.iotracah', name: 'mqttserver', version: version, changing: true
+    runtime  group: 'com.caricah.iotracah', name: 'ignitecache', version: version, changing: true
+    runtime  group: 'com.caricah.iotracah', name: 'core', version: version, changing: true
 }
 
 
@@ -68,4 +70,3 @@ allprojects {
         testCompile group: 'junit', name: 'junit', version: '4.12'
     }
 }
-
