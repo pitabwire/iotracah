@@ -21,14 +21,10 @@
 package com.caricah.iotracah.core.modules;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.system.BaseSystemHandler;
-import rx.Subscriber;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

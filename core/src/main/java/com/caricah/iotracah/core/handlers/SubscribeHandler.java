@@ -23,7 +23,6 @@ package com.caricah.iotracah.core.handlers;
 
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
-import com.caricah.iotracah.core.worker.exceptions.TopicSubscriptionException;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;

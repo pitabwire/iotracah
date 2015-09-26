@@ -21,7 +21,6 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;

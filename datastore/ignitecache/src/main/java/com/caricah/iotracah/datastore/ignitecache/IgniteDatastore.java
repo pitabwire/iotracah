@@ -40,11 +40,9 @@ import rx.Observable;
 import rx.Subscriber;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

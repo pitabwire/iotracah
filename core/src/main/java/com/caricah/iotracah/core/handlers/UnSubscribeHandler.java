@@ -32,8 +32,6 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.shiro.authz.AuthorizationException;
 import rx.Observable;
 
-import java.util.Map;
-
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */

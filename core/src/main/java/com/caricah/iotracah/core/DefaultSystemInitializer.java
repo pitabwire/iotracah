@@ -23,10 +23,6 @@ package com.caricah.iotracah.core;
 import com.caricah.iotracah.core.init.EventersInitializer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
-import org.apache.commons.configuration.Configuration;
-import rx.Observable;
-import rx.Subscriber;
-import rx.schedulers.Schedulers;
 
 import java.util.List;
 

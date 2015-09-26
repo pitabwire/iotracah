@@ -27,8 +27,6 @@ import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.system.BaseSystemHandler;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/10/15

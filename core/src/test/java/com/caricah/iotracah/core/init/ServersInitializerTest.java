@@ -22,7 +22,6 @@ package com.caricah.iotracah.core.init;
 
 import com.caricah.iotracah.core.DefaultSystemInitializer;
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.system.handler.impl.BaseTestClass;
 import org.apache.commons.configuration.Configuration;
 import org.junit.Test;

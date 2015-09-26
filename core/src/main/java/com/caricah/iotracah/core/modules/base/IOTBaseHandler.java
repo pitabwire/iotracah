@@ -22,7 +22,6 @@ package com.caricah.iotracah.core.modules.base;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.core.modules.Eventer;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

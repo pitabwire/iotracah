@@ -19,6 +19,7 @@
  */
 
 rootProject.name = 'iotracah'
+include 'bootstrap'
 include 'core'
 include 'datastore:ignitecache'
 findProject(':datastore:ignitecache')?.name = 'ignitecache'

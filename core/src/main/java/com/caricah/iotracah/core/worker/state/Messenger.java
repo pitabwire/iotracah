@@ -24,7 +24,6 @@ package com.caricah.iotracah.core.worker.state;
 import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
-import com.caricah.iotracah.core.worker.exceptions.TopicSubscriptionException;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
@@ -162,7 +161,7 @@ public class Messenger {
     private Set<String> getTopicBreakDown(String partition, int qos, String topic) {
 
         Set<String> topicBreakDownSet = new HashSet<>();
-        addTopicBreakDownBasedOnQos(partition, qos,topic, topicBreakDownSet);
+        addTopicBreakDownBasedOnQos(partition, qos, topic, topicBreakDownSet);
 
         String[] topicLevels = topic.split(Constant.PATH_SEPARATOR);
         String activeMultiLevelTopicFilter = "";
