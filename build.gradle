@@ -36,7 +36,7 @@ jar {
 
 
 dependencies {
-    compile group: 'com.caricah.iotracah', name: 'iotracah', version: version
+    compile group: 'com.caricah.iotracah', name: 'bootstrap', version: version
     runtime  project(':bootstrap'), project(':core'), project(':datastore:ignitecache'), project(':server:mqttserver')
 }
 
