@@ -21,8 +21,8 @@
 package com.caricah.iotracah.core.init;
 
 import com.caricah.iotracah.core.DefaultSystemInitializer;
+import com.caricah.iotracah.core.init.base.BaseTestClass;
 import com.caricah.iotracah.core.modules.Eventer;
-import com.caricah.iotracah.system.handler.impl.BaseTestClass;
 import org.apache.commons.configuration.Configuration;
 import org.junit.Test;
 import org.mockito.Mockito;
