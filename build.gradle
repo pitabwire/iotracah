@@ -38,9 +38,13 @@ jar {
 dependencies {
     compile group: 'com.caricah.iotracah', name: 'bootstrap', version: version,  changing: true
     runtime group: 'com.caricah.iotracah', name: 'bootstrap', version: version,  changing: true
+    testRuntime group: 'com.caricah.iotracah', name: 'bootstrap', version: version,  changing: true
     runtime group: 'com.caricah.iotracah', name: 'core', version: version,  changing: true
+    testRuntime group: 'com.caricah.iotracah', name: 'core', version: version,  changing: true
     runtime group: 'com.caricah.iotracah', name: 'ignitecache', version: version,  changing: true
+    testRuntime group: 'com.caricah.iotracah', name: 'ignitecache', version: version,  changing: true
     runtime group: 'com.caricah.iotracah', name: 'mqttserver', version: version,  changing: true
+    testRuntime group: 'com.caricah.iotracah', name: 'mqttserver', version: version,  changing: true
 }
 
 allprojects {
@@ -57,8 +61,9 @@ allprojects {
         mavenCentral()
     }
 
-
-
+    configurations.all {
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
 
     dependencies {
 

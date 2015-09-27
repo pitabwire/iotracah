@@ -86,7 +86,7 @@ public class DefaultRunnerTest extends BaseTestClass {
         Mockito.doNothing().when(defaultRunner).infiniteWait();
 
         SystemInitializer systemInitializer = Mockito.mock(SystemInitializer.class);
-        Mockito.when(defaultRunner.getSystemInitializer()).thenReturn(systemInitializer);
+        Mockito.doReturn(systemInitializer).when(defaultRunner).getSystemInitializer();
 
         defaultRunner.start();
 
