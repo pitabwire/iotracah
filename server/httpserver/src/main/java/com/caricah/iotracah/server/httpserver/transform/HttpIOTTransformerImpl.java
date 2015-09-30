@@ -81,6 +81,7 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
 
                     SubscribeMessage subscribeMessage = SubscribeMessage.from(1, conContent.isDup(), conContent.getQos(), conContent.isRetain() );
                     subscribeMessage.getTopicFilterList().addAll(conContent.getTopicQosList());
+                    subscribeMessage.setReceptionUrl(conContent.getRecipientUrl());
 
                     connectMessage.setPayload(subscribeMessage);
 

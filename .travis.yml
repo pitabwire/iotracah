@@ -13,4 +13,6 @@ install:
   - ./gradlew :core:install --stacktrace
   - ./gradlew :datastore:ignitecache:install --stacktrace
   - ./gradlew :server:install --stacktrace
+  - ./gradlew :server:mqttserver:install --stacktrace
+  - ./gradlew :server:httpserver:install --stacktrace
   - ./gradlew install assemble --stacktrace

@@ -38,6 +38,7 @@ public final class SubscribeMessage extends IOTMessage {
     private final boolean dup;
     private final int qos;
     private final boolean retain;
+    private String receptionUrl;
 
     private final List<Map.Entry<String,Integer>> topicFilterList = new ArrayList<>();
 
@@ -75,5 +76,13 @@ public final class SubscribeMessage extends IOTMessage {
 
     public List<Map.Entry<String,Integer>> getTopicFilterList() {
         return topicFilterList;
+    }
+
+    public String getReceptionUrl() {
+        return receptionUrl;
+    }
+
+    public void setReceptionUrl(String receptionUrl) {
+        this.receptionUrl = receptionUrl;
     }
 }
