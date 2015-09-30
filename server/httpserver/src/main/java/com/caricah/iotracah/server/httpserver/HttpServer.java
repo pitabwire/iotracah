@@ -18,30 +18,30 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver;
+package com.caricah.iotracah.server.httpserver;
 
 import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
-import com.caricah.iotracah.server.mqttserver.netty.MqttServerImpl;
-import com.caricah.iotracah.server.mqttserver.transform.IOTMqttTransformerImpl;
-import com.caricah.iotracah.server.mqttserver.transform.MqttIOTTransformerImpl;
+import com.caricah.iotracah.server.httpserver.netty.HttpServerImpl;
+import com.caricah.iotracah.server.httpserver.transform.HttpIOTTransformerImpl;
+import com.caricah.iotracah.server.httpserver.transform.IOTHttpTransformerImpl;
 import com.caricah.iotracah.server.transform.IOTMqttTransformer;
 import com.caricah.iotracah.server.transform.MqttIOTTransformer;
-import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.handler.codec.http.FullHttpMessage;
 import org.apache.commons.configuration.Configuration;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/16/15
  */
-public class MqttServer extends Server<MqttMessage> {
+public class HttpServer extends Server<FullHttpMessage> {
 
-    private ServerInterface<MqttMessage> serverImpl;
-    private IOTMqttTransformer<MqttMessage> iotMqttTransformer;
-    private MqttIOTTransformer<MqttMessage> mqttIOTTransformer;
+    private ServerInterface<FullHttpMessage> serverImpl;
+    private IOTMqttTransformer<FullHttpMessage> iotHttpTransformer;
+    private MqttIOTTransformer<FullHttpMessage> httpIOTTransformer;
 
     /**
      * <code>configure</code> allows the base system to configure itself by getting
@@ -56,11 +56,11 @@ public class MqttServer extends Server<MqttMessage> {
 
         log.info(" configure : setting up our configurations.");
 
-        serverImpl = new MqttServerImpl(this);
+        serverImpl = new HttpServerImpl(this);
         serverImpl.configure(configuration);
 
-        iotMqttTransformer = new IOTMqttTransformerImpl();
-        mqttIOTTransformer = new MqttIOTTransformerImpl();
+        iotHttpTransformer = new IOTHttpTransformerImpl();
+        httpIOTTransformer = new HttpIOTTransformerImpl();
     }
 
     /**
@@ -100,16 +100,16 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void onNext(IOTMessage ioTMessage) {
 
-        log.debug(" MqttServer onNext : message outbound {}", ioTMessage);
+        log.debug(" HttpServer onNext : message outbound {}", ioTMessage);
 
         if(null == ioTMessage){
             return;
         }
 
-        MqttMessage mqttMessage = toServerMessage(ioTMessage);
+        FullHttpMessage mqttMessage = toServerMessage(ioTMessage);
 
         if(null == mqttMessage){
-            log.debug(" MqttServer onNext : ignoring outbound message {}", ioTMessage);
+            log.debug(" HttpServer onNext : ignoring outbound message {}", ioTMessage);
         }else {
             serverImpl.pushToClient(ioTMessage.getConnectionId(), mqttMessage);
         }
@@ -128,8 +128,8 @@ public class MqttServer extends Server<MqttMessage> {
      * @return
      */
     @Override
-    protected IOTMessage toIOTMessage(MqttMessage serverMessage) {
-       return mqttIOTTransformer.toIOTMessage(serverMessage);
+    protected IOTMessage toIOTMessage(FullHttpMessage serverMessage) {
+       return httpIOTTransformer.toIOTMessage(serverMessage);
    }
 
     /**
@@ -144,12 +144,12 @@ public class MqttServer extends Server<MqttMessage> {
      * @return
      */
     @Override
-    protected MqttMessage toServerMessage(IOTMessage internalMessage) {
-        return iotMqttTransformer.toServerMessage(internalMessage);
+    protected FullHttpMessage toServerMessage(IOTMessage internalMessage) {
+        return iotHttpTransformer.toServerMessage(internalMessage);
     }
 
     @Override
     public Protocal getProtocal() {
-        return Protocal.MQTT;
+        return Protocal.HTTP;
     }
 }

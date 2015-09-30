@@ -18,7 +18,7 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver.netty;
+package com.caricah.iotracah.server.netty;
 
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;

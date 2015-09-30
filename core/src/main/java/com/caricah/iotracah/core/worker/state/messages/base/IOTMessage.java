@@ -33,6 +33,7 @@ public class IOTMessage implements Serializable {
 
     private UUID nodeId;
     private String cluster;
+    private String authKey;
     private Serializable connectionId;
 
     @QuerySqlField(index = true)
@@ -77,6 +78,14 @@ public class IOTMessage implements Serializable {
 
     public void setConnectionId(Serializable connectionId) {
         this.connectionId = connectionId;
+    }
+
+    public String getAuthKey() {
+        return authKey;
+    }
+
+    public void setAuthKey(String authKey) {
+        this.authKey = authKey;
     }
 
     public Serializable getSessionId() {

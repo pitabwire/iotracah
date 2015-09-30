@@ -22,7 +22,7 @@ package com.caricah.iotracah.server.mqttserver.transform;
 
 import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.server.mqttserver.MqttIOTTransformer;
+import com.caricah.iotracah.server.transform.MqttIOTTransformer;
 import io.netty.handler.codec.mqtt.*;
 
 import java.util.AbstractMap;
@@ -31,7 +31,8 @@ import java.util.AbstractMap;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/23/15
  */
-public class MqttIOTTransformerImpl implements MqttIOTTransformer {
+public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
+
     @Override
     public IOTMessage toIOTMessage(MqttMessage serverMessage) {
 
@@ -152,7 +153,7 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer {
                 return UnSubscribeAcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
 
             case DISCONNECT:
-               return DisconnectMessage.from(true, fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
+               return DisconnectMessage.from(true);
 
 
             default:

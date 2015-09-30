@@ -111,7 +111,7 @@ public class DefaultWorker extends Worker {
             }
 
             try {
-                DisconnectMessage disconnectMessage = DisconnectMessage.from(true, false, 0, false);
+                DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
                 disconnectMessage.copyBase(iotMessage);
 
                 DisconnectHandler disconnectHandler = new DisconnectHandler(disconnectMessage);
@@ -175,8 +175,5 @@ public class DefaultWorker extends Worker {
         return requestHandler;
     }
 
-    @Override
-    public Protocal getProtocal() {
-        return Protocal.MQTT;
-    }
+
 }

@@ -18,7 +18,7 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver;
+package com.caricah.iotracah.server;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
@@ -31,7 +31,7 @@ import java.io.Serializable;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/23/15
  */
-public interface ServerInterface {
+public interface ServerInterface<T> {
 
     void configure(Configuration configuration) throws UnRetriableException;
 
@@ -39,7 +39,7 @@ public interface ServerInterface {
 
     void terminate();
 
-    void pushToClient(Serializable connectionId, MqttMessage mqttMessage);
+    void pushToClient(Serializable connectionId, T message);
 
     void postProcess(IOTMessage ioTMessage);
 }

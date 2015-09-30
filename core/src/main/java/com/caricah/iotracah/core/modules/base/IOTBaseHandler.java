@@ -44,10 +44,6 @@ public abstract class IOTBaseHandler extends Subscriber<IOTMessage> implements O
     private UUID nodeId;
     private String cluster;
 
-    public abstract Protocal getProtocal();
-
-
-
     public UUID getNodeId(){
         return nodeId;
     }

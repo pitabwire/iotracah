@@ -18,7 +18,7 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver.netty;
+package com.caricah.iotracah.server.netty;
 
 import io.netty.channel.ChannelHandlerAdapter;
 import io.netty.channel.ChannelHandlerContext;

@@ -18,14 +18,15 @@
  *
  */
 
-rootProject.name = 'iotracah'
-include 'bootstrap'
-include 'core'
-include 'server'
-include 'datastore:ignitecache'
-findProject(':datastore:ignitecache')?.name = 'ignitecache'
-include 'server:mqttserver'
-findProject(':server:mqttserver')?.name = 'mqttserver'
-include 'server:httpserver'
-findProject(':server:httpserver')?.name = 'httpserver'
+package com.caricah.iotracah.server.transform;
 
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+
+/**
+ * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
+ * @version 1.0 9/23/15
+ */
+public interface IOTMqttTransformer<T> {
+
+    T toServerMessage(IOTMessage internalMessage);
+}

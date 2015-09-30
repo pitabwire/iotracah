@@ -80,7 +80,7 @@ public class DisconnectHandler extends RequestHandler {
         }
 
         //Notify the server to remove this client from further sending in requests.
-        DisconnectMessage disconnectMessage = DisconnectMessage.from(true, false, 0, false);
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
         disconnectMessage = client.copyTransmissionData(disconnectMessage);
         pushToServer(disconnectMessage);
 

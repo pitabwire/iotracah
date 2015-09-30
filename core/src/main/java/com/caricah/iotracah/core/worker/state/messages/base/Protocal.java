@@ -26,5 +26,5 @@ package com.caricah.iotracah.core.worker.state.messages.base;
  */
 public enum Protocal {
 
-    MQTT
+    MQTT, HTTP
 }

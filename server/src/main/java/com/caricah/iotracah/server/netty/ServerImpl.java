@@ -18,14 +18,14 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver.netty;
+package com.caricah.iotracah.server.netty;
 
+import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.server.mqttserver.MqttServer;
-import com.caricah.iotracah.server.mqttserver.ServerInterface;
+import com.caricah.iotracah.server.ServerInterface;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -35,13 +35,10 @@ import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.GlobalEventExecutor;
-import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,23 +48,11 @@ import java.io.Serializable;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 5/26/15
  */
-public class ServerImpl implements ServerInterface {
+public abstract class ServerImpl<T> implements ServerInterface<T> {
 
-    private static final Logger log = LoggerFactory.getLogger(ServerImpl.class);
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private final MqttServer internalServer;
-
-    public static final String CONFIGURATION_SERVER_MQTT_TCP_PORT = "system.internal.server.mqtt.tcp.port";
-    public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_TCP_PORT = 1883;
-
-    public static final String CONFIGURATION_SERVER_MQTT_SSL_PORT = "system.internal.server.mqtt.tcp.port";
-    public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_PORT = 8883;
-
-    public static final String CONFIGURATION_SERVER_MQTT_SSL_IS_ENABLED = "system.internal.server.mqtt.ssl.is.enabled";
-    public static final boolean CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_IS_ENABLED = true;
-
-    public static final String CONFIGURATION_SERVER_MQTT_CONNECTION_TIMEOUT = "system.internal.server.mqtt.connection.timeout";
-    public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_CONNECTION_TIMEOUT = 10;
+    private final Server<T> internalServer;
 
     public static final AttributeKey<String> REQUEST_PARTITION = AttributeKey.valueOf("requestPartitionKey");
     public static final AttributeKey<String> REQUEST_CLIENT_ID = AttributeKey.valueOf("requestClientIdKey");
@@ -76,10 +61,10 @@ public class ServerImpl implements ServerInterface {
 
 
 
-    private int tcpPort = CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_TCP_PORT;
-    private int sslPort = CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_PORT;
-    private boolean sslEnabled = CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_IS_ENABLED;
-    private int connectionTimeout = CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_CONNECTION_TIMEOUT;
+    private int tcpPort ;
+    private int sslPort ;
+    private boolean sslEnabled ;
+    private int connectionTimeout;
 
     private SSLHandler sslHandler = null;
 
@@ -137,11 +122,11 @@ public class ServerImpl implements ServerInterface {
     }
 
 
-    public ServerImpl(MqttServer internalServer) {
+    public ServerImpl(Server<T> internalServer) {
         this.internalServer = internalServer;
     }
 
-    public MqttServer getInternalServer() {
+    public Server getInternalServer() {
         return internalServer;
     }
 
@@ -168,7 +153,7 @@ public class ServerImpl implements ServerInterface {
             tcpBootstrap.group(parentGroup, childGroup)
                     .channel(NioServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.INFO))
-                    .childHandler(new ServerInitializer(this, getConnectionTimeout()));
+                    .childHandler(getServerInitializer(this, getConnectionTimeout()));
 
             ChannelFuture tcpChannelFuture = tcpBootstrap.bind(getTcpPort()).sync();
             tcpChannel = tcpChannelFuture.channel();
@@ -180,7 +165,7 @@ public class ServerImpl implements ServerInterface {
                 sslBootstrap.group(parentGroup, childGroup)
                         .channel(NioServerSocketChannel.class)
                         .handler(new LoggingHandler(LogLevel.INFO))
-                        .childHandler(new ServerInitializer(this, getConnectionTimeout(), getSslHandler()));
+                        .childHandler(getServerInitializer(this, getConnectionTimeout(), getSslHandler()));
 
                 ChannelFuture sslChannelFuture = sslBootstrap.bind(getSslPort()).sync();
                 sslChannel = sslChannelFuture.channel();
@@ -197,35 +182,7 @@ public class ServerImpl implements ServerInterface {
 
     }
 
-    /**
-     * @param configuration Object carrying all configurable properties from file.
-     * @throws UnRetriableException
-     * @link configure method supplies the configuration object carrying all the
-     * properties parsed from the external properties file.
-     */
 
-    public void configure(Configuration configuration) throws UnRetriableException {
-        log.info(" configure : setting up our configurations.");
-
-        int tcpPort = configuration.getInt(CONFIGURATION_SERVER_MQTT_TCP_PORT, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_TCP_PORT);
-        setTcpPort(tcpPort);
-
-        int sslPort = configuration.getInt(CONFIGURATION_SERVER_MQTT_SSL_PORT, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_PORT);
-        setSslPort(sslPort);
-
-        boolean sslEnabled = configuration.getBoolean(CONFIGURATION_SERVER_MQTT_SSL_IS_ENABLED, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_IS_ENABLED);
-        setSslEnabled(sslEnabled);
-
-        if(isSslEnabled()){
-
-            setSslHandler(new SSLHandler(configuration));
-
-        }
-
-        int connectionTimeout = configuration.getInt(CONFIGURATION_SERVER_MQTT_CONNECTION_TIMEOUT, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_CONNECTION_TIMEOUT);
-        setConnectionTimeout(connectionTimeout);
-
-    }
 
     /**
      * @link terminate method is expected to cleanly shut down the server implementation and return immediately.
@@ -256,7 +213,9 @@ public class ServerImpl implements ServerInterface {
     }
 
 
-    public void pushToClient(Serializable connectionId, MqttMessage message){
+
+
+    public void pushToClient(Serializable connectionId, T message){
 
 
         log.info(" Server pushToClient : we got to now sending out {}", message);
@@ -265,58 +224,41 @@ public class ServerImpl implements ServerInterface {
 
         if(null != channel && channel.isWritable()) {
             channel.writeAndFlush(message);
-
         }
 
+    }
+
+
+    public void closeClient(ChannelId channelId){
+        Channel channel = getChannel(channelId);
+        if (null != channel) {
+
+            channel.attr(ServerImpl.REQUEST_PARTITION).set(null);
+            channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(null);
+            channel.attr(ServerImpl.REQUEST_CONNECTION_ID).set(null);
+
+            channel.close();
+        }
     }
 
 
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
-        switch (ioTMessage.getMessageType()) {
-            case  ConnectAcknowledgeMessage.MESSAGE_TYPE:
-
-
-                /**
-                 * Use the connection acknowledgement message to store
-                 */
-
-
-                int keepAliveTime = ((ConnectAcknowledgeMessage) ioTMessage).getKeepAliveTime();
-                Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
-
-                Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-                if (null != channel) {
-
-                    channel.attr(ServerImpl.REQUEST_PARTITION).set(ioTMessage.getPartition());
-                    channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(ioTMessage.getClientIdentifier());
-                    channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
-                    channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
-                    channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
-                }
-
-
-            break;
-            case DisconnectMessage.MESSAGE_TYPE:
+        if (ioTMessage.getMessageType().equals(DisconnectMessage.MESSAGE_TYPE)){
 
                 /**
                  *
                  */
-                channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-                if (null != channel) {
-                    channel.close();
-                }
-                break;
-
-
-
+                closeClient((ChannelId) ioTMessage.getConnectionId());
         }
 
     }
 
-    private Channel getChannel(ChannelId channelId) {
+    protected Channel getChannel(ChannelId channelId) {
         return getChannelGroup().find(channelId);
-
     }
+
+    protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout);
+    protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout, SSLHandler sslHandler);
 }

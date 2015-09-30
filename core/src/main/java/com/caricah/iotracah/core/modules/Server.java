@@ -22,6 +22,7 @@ package com.caricah.iotracah.core.modules;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
+import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.system.BaseSystemHandler;
 
 import java.io.Serializable;
@@ -32,6 +33,8 @@ import java.io.Serializable;
  */
 public abstract class Server<T> extends IOTBaseHandler {
 
+
+    public abstract Protocal getProtocal();
 
     /**
      * Implementation is expected to transform a server specific message

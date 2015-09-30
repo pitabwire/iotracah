@@ -18,42 +18,38 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver.netty;
+package com.caricah.iotracah.server.netty;
 
-import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.server.mqttserver.MqttServer;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.mqtt.MqttDecoder;
-import io.netty.handler.codec.mqtt.MqttEncoder;
-import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.ssl.SslHandler;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 5/27/15
  */
-public class ServerInitializer extends ChannelInitializer<SocketChannel> {
+public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChannel> {
 
 
     private final int connectionTimeout;
     private final SSLHandler sslHandler;
-    private final ServerImpl serverImpl;
+    private final ServerImpl<T> serverImpl;
 
-    public ServerInitializer(ServerImpl serverImpl, int connectionTimeout, SSLHandler sslHandler) {
+    public ServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
         this.serverImpl = serverImpl;
         this.sslHandler = sslHandler;
         this.connectionTimeout = connectionTimeout;
     }
 
-    public ServerInitializer(ServerImpl serverImpl, int connectionTimeout) {
+    public ServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout) {
         this.serverImpl = serverImpl;
         this.sslHandler = null;
         this.connectionTimeout = connectionTimeout;
     }
 
-    public ServerImpl getServerImpl() {
+    public ServerImpl<T> getServerImpl() {
         return serverImpl;
     }
 
@@ -85,12 +81,16 @@ public class ServerInitializer extends ChannelInitializer<SocketChannel> {
             pipeline.addLast("ssl", new SslHandler(getSslHandler().getSSLEngine()));
         }
 
-        pipeline.addLast("decoder", new MqttDecoder());
-        pipeline.addLast("encoder", new MqttEncoder());
 
-        ServerHandler serverHandler = new ServerHandler(getServerImpl());
+        customizePipeline(pipeline);
+
+        ServerHandler<T> serverHandler = new ServerHandler<>(getServerImpl());
         // we finally have the chance to add some business logic.
         pipeline.addLast( serverHandler);
 
     }
+
+    protected abstract void customizePipeline(ChannelPipeline pipeline);
+
+
 }

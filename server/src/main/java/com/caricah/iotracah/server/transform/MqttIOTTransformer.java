@@ -18,17 +18,16 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver;
+package com.caricah.iotracah.server.transform;
 
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import io.netty.handler.codec.mqtt.MqttMessage;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/23/15
  */
-public interface MqttIOTTransformer {
+public interface MqttIOTTransformer<T> {
 
-    IOTMessage toIOTMessage(MqttMessage serverMessage);
+    IOTMessage toIOTMessage(T serverMessage);
 
 }

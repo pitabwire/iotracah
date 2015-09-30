@@ -18,14 +18,13 @@
  *
  */
 
-rootProject.name = 'iotracah'
-include 'bootstrap'
-include 'core'
-include 'server'
-include 'datastore:ignitecache'
-findProject(':datastore:ignitecache')?.name = 'ignitecache'
-include 'server:mqttserver'
-findProject(':server:mqttserver')?.name = 'mqttserver'
-include 'server:httpserver'
-findProject(':server:httpserver')?.name = 'httpserver'
+package com.caricah.iotracah.server.httpserver.transform.json;
 
+/**
+ * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
+ * @version 1.0 9/29/15
+ */
+public interface Request {
+
+    String getAction();
+}

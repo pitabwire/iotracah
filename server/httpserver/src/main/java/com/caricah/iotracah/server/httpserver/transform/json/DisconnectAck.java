@@ -18,36 +18,37 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.state.messages;
+package com.caricah.iotracah.server.httpserver.transform.json;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 7/6/15
+ * @version 1.0 9/30/15
  */
-public final class DisconnectMessage extends IOTMessage {
+public class DisconnectAck implements Serializable {
 
-    public static final String MESSAGE_TYPE = "DISCONNECT";
+    private String clientId;
+    private String status;
 
-    private final boolean cleanDisconnect;
-
-    public DisconnectMessage(boolean cleanDisconnect) {
-
-        setMessageType(MESSAGE_TYPE);
-        this.cleanDisconnect = cleanDisconnect;
+    public DisconnectAck(String clientId, String status){
+        this.clientId = clientId;
+        this.status = status;
     }
 
-
-
-    public static DisconnectMessage from( boolean isCleanDisconnect) {
-        return new DisconnectMessage(isCleanDisconnect);
-
-
+    public String getClientId() {
+        return clientId;
     }
 
-    public boolean isCleanDisconnect() {
-        return cleanDisconnect;
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }

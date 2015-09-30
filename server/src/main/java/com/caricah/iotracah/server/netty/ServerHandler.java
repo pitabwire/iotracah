@@ -18,7 +18,7 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver.netty;
+package com.caricah.iotracah.server.netty;
 
 import com.caricah.iotracah.core.modules.Server;
 import io.netty.channel.Channel;
@@ -35,13 +35,13 @@ import java.io.Serializable;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 5/27/15
  */
-public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
+public class ServerHandler<T> extends SimpleChannelInboundHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
 
-    private final ServerImpl serverImpl;
+    private final ServerImpl<T> serverImpl;
 
-    public ServerHandler(ServerImpl serverImpl) {
+    public ServerHandler(ServerImpl<T> serverImpl) {
 
         this.serverImpl = serverImpl;
     }
@@ -50,7 +50,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
         return serverImpl;
     }
 
-    public Server<MqttMessage> getInternalServer() {
+    public Server getInternalServer() {
         return getServerImpl().getInternalServer();
     }
 
@@ -92,7 +92,7 @@ public class ServerHandler extends SimpleChannelInboundHandler<MqttMessage> {
      * @throws Exception is thrown if an error occurred
      */
     @Override
-    protected void messageReceived(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
+    protected void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
 
         log.debug(" messageReceived : received the message {}", msg);
 

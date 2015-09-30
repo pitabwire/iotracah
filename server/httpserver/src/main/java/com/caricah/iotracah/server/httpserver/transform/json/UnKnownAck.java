@@ -18,14 +18,26 @@
  *
  */
 
-rootProject.name = 'iotracah'
-include 'bootstrap'
-include 'core'
-include 'server'
-include 'datastore:ignitecache'
-findProject(':datastore:ignitecache')?.name = 'ignitecache'
-include 'server:mqttserver'
-findProject(':server:mqttserver')?.name = 'mqttserver'
-include 'server:httpserver'
-findProject(':server:httpserver')?.name = 'httpserver'
+package com.caricah.iotracah.server.httpserver.transform.json;
 
+import java.io.Serializable;
+
+/**
+ * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
+ * @version 1.0 9/30/15
+ */
+public class UnKnownAck implements Serializable {
+  String  message ;
+
+    public UnKnownAck(String message){
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+}

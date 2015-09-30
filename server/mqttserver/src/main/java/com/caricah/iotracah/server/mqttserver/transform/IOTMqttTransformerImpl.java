@@ -22,7 +22,7 @@ package com.caricah.iotracah.server.mqttserver.transform;
 
 import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.server.mqttserver.IOTMqttTransformer;
+import com.caricah.iotracah.server.transform.IOTMqttTransformer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.*;
@@ -31,7 +31,7 @@ import io.netty.handler.codec.mqtt.*;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/23/15
  */
-public class IOTMqttTransformerImpl implements IOTMqttTransformer {
+public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
     @Override
     public MqttMessage toServerMessage(IOTMessage internalMessage) {
 

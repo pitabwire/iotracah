@@ -18,16 +18,37 @@
  *
  */
 
-package com.caricah.iotracah.server.mqttserver;
+package com.caricah.iotracah.server.httpserver.transform.json;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import io.netty.handler.codec.mqtt.MqttMessage;
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/23/15
+ * @version 1.0 9/30/15
  */
-public interface IOTMqttTransformer {
+public class PublishAck implements Serializable {
 
-    MqttMessage toServerMessage(IOTMessage internalMessage);
+    private long messageId;
+    private int qos;
+
+    public PublishAck(long messageId, int qos){
+        this.messageId = messageId;
+        this.qos = qos;
+    }
+
+    public long getMessageId() {
+        return messageId;
+    }
+
+    public void setMessageId(long messageId) {
+        this.messageId = messageId;
+    }
+
+    public int getQos() {
+        return qos;
+    }
+
+    public void setQos(int qos) {
+        this.qos = qos;
+    }
 }
