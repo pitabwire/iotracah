@@ -25,6 +25,7 @@ import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
@@ -106,6 +107,14 @@ public class SubscribeHandler extends RequestHandler {
                             new Subscriber<Map.Entry<String, Integer>>() {
                                 @Override
                                 public void onCompleted() {
+
+                                    /**
+                                     * Save subscription payload
+                                     */
+                                    if(Protocal.HTTP.equals(message.getProtocal())){
+                                        client.setProtocalData(message.getReceptionUrl());
+                                        getDatastore().saveClient(client);
+                                    }
 
                                     SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), false, grantedQos);
                                     subAckMessage.copyBase(message);

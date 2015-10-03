@@ -123,12 +123,14 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
 
     public ServerImpl(Server<T> internalServer) {
+
         this.internalServer = internalServer;
     }
 
-    public Server getInternalServer() {
+    public Server<T> getInternalServer() {
         return internalServer;
     }
+
 
     /**
      * The @link configure method is responsible for starting the implementation server processes.
@@ -261,4 +263,5 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
     protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout);
     protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout, SSLHandler sslHandler);
+
 }

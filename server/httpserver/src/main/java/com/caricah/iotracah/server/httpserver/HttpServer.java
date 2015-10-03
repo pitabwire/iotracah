@@ -25,6 +25,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
+import com.caricah.iotracah.server.httpserver.netty.HttpServerHandler;
 import com.caricah.iotracah.server.httpserver.netty.HttpServerImpl;
 import com.caricah.iotracah.server.httpserver.transform.HttpIOTTransformerImpl;
 import com.caricah.iotracah.server.httpserver.transform.IOTHttpTransformerImpl;
@@ -100,11 +101,12 @@ public class HttpServer extends Server<FullHttpMessage> {
     @Override
     public void onNext(IOTMessage ioTMessage) {
 
-        log.debug(" HttpServer onNext : message outbound {}", ioTMessage);
-
-        if(null == ioTMessage){
+        if(null == ioTMessage || !Protocal.HTTP.equals(ioTMessage.getProtocal())){
             return;
         }
+
+        log.debug(" HttpServer onNext : message outbound {}", ioTMessage);
+
 
         FullHttpMessage mqttMessage = toServerMessage(ioTMessage);
 
@@ -146,6 +148,19 @@ public class HttpServer extends Server<FullHttpMessage> {
     @Override
     protected FullHttpMessage toServerMessage(IOTMessage internalMessage) {
         return iotHttpTransformer.toServerMessage(internalMessage);
+    }
+
+    /**
+     * Declaration by the server implementation if its connections are persistant
+     * Or not.
+     * Persistent connections are expected to store some control data within the server
+     * to ensure successive requests are identifiable.
+     *
+     * @return
+     */
+    @Override
+    public boolean isPersistentConnection() {
+        return false;
     }
 
     @Override

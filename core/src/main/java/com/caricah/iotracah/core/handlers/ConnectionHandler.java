@@ -27,6 +27,7 @@ import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.ConnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
@@ -45,7 +46,11 @@ import rx.Observable;
 import rx.Subscriber;
 import rx.schedulers.Schedulers;
 
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
 import java.io.Serializable;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -211,9 +216,11 @@ public class ConnectionHandler extends RequestHandler {
 
             log.debug(" handle: we are ready now to obtain the core session.");
 
-            Observable<Client> newClientObservable = openSubject(getWorker(), message.getCluster(), message.getNodeId(),
-                    message.getConnectionId(), clientIdentifier, cleanSession, message.getUserName(),
-                    message.getPassword(), message.getKeepAliveTime(), message.getSourceHost());
+            Observable<Client> newClientObservable = openSubject(getWorker(),
+                    message.getCluster(), message.getNodeId(), message.getConnectionId(),
+                    clientIdentifier, cleanSession, message.getUserName(), message.getPassword(),
+                    message.getKeepAliveTime(), message.getSourceHost(), message.getProtocal()
+            );
 
             newClientObservable.first().subscribeOn(Schedulers.io()).subscribe(
 
@@ -252,6 +259,7 @@ public class ConnectionHandler extends RequestHandler {
 
                             message.setClientIdentifier(client.getClientIdentifier());
                             message.setPartition(client.getPartition());
+                            message.setAuthKey(client.getGeneratedAuthKey());
 
                             log.debug(" handle: obtained a client : {}. ", client);
 
@@ -269,6 +277,7 @@ public class ConnectionHandler extends RequestHandler {
                             //Respond to server with a connection successfull.
                             ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
                             connectAcknowledgeMessage.copyBase(message);
+
                             pushToServer(connectAcknowledgeMessage);
 
 
@@ -297,6 +306,7 @@ public class ConnectionHandler extends RequestHandler {
                                 getDatastore().removeWill(will);
                             }
 
+
                             //Perform a reset for our session.
                             SessionResetManager resetManager = getWorker().getSessionResetManager();
                             resetManager.process(client);
@@ -311,7 +321,7 @@ public class ConnectionHandler extends RequestHandler {
 
             log.debug(" handle : Client connection issues ", e);
 
-            //Respond to server with a connection successfull.
+            //Respond to server with a connection unsuccessfull.
             ConnectAcknowledgeMessage connectAcknowledgeMessage;
 
             if (e instanceof MqttIdentifierRejectedException) {
@@ -345,7 +355,8 @@ public class ConnectionHandler extends RequestHandler {
 
     private Observable<Client> openSubject(Worker worker, String connectedCluster, UUID connectedNode,
                                            Serializable connectionID, String clientIdentifier, boolean cleanSession,
-                                           String userName, String password, int keepAliveTime, String sourceHost) {
+                                           String userName, String password, int keepAliveTime, String sourceHost,
+                                           Protocal protocal) {
 
         return Observable.create(observable -> {
 
@@ -371,6 +382,7 @@ public class ConnectionHandler extends RequestHandler {
                 defaultClient.setPartition(partition);
                 defaultClient.setSessionId(null);
                 defaultClient.setActive(false);
+                defaultClient.setProtocal(protocal);
 
                 log.debug(" openSubject : create -- Futher into the database.");
 
@@ -387,7 +399,6 @@ public class ConnectionHandler extends RequestHandler {
 
                     @Override
                     public void onNext(Client client) {
-
 
                         //We have obtained a client to work with.
 
@@ -425,9 +436,14 @@ public class ConnectionHandler extends RequestHandler {
                             session.touch();
 
 
+                            client.setProtocal(protocal);
                             client.setActive(true);
                             client.setCleanSession(cleanSession);
                             client.setSessionId(session.getId());
+
+                            if(Protocal.HTTP.equals(client.getProtocal())){
+                                client.setGeneratedAuthKey(generateMAC());
+                            }
 
                             getDatastore().saveClient(client);
 
@@ -446,6 +462,15 @@ public class ConnectionHandler extends RequestHandler {
             }
 
         });
+    }
+
+    private String generateMAC() throws NoSuchAlgorithmException {
+
+        KeyGenerator hmacSHA2 = KeyGenerator.getInstance("HmacSHA256");
+        SecretKey secretKey = hmacSHA2.generateKey();
+        byte[] bytes = secretKey.getEncoded();
+
+        return Base64.getEncoder().encodeToString(bytes);
     }
 
     private String processClientIdForPartition(String activeClientId) {

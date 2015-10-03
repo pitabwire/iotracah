@@ -34,6 +34,22 @@ import java.io.Serializable;
 public abstract class Server<T> extends IOTBaseHandler {
 
 
+    /**
+     * Declaration by the server implementation if its connections are persistant
+     * Or not.
+     * Persistent connections are expected to store some control data within the server
+     * to ensure successive requests are identifiable.
+     *
+     * @return
+     */
+    public abstract boolean isPersistentConnection();
+    /**
+     * Implementation to return the protocal for this particular implementation
+     * Mainly the supported protocals are mqtt and http
+     *
+     * @return
+     */
+
     public abstract Protocal getProtocal();
 
     /**
@@ -82,12 +98,14 @@ public abstract class Server<T> extends IOTBaseHandler {
 
         IOTMessage ioTMessage = toIOTMessage(message);
 
-        //Client specific variables.
         ioTMessage.setConnectionId(connectionId);
-        ioTMessage.setSessionId(sessionId);
-        ioTMessage.setClientIdentifier(clientId);
-        ioTMessage.setPartition(partition);
 
+        if(isPersistentConnection()) {
+            //Client specific variables.
+            ioTMessage.setSessionId(sessionId);
+            ioTMessage.setClientIdentifier(clientId);
+            ioTMessage.setPartition(partition);
+        }
         //Hardware specific variables
         ioTMessage.setNodeId(getNodeId());
         ioTMessage.setCluster(getCluster());

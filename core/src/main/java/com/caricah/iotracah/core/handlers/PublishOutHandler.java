@@ -21,9 +21,19 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.mashape.unirest.http.HttpResponse;
+import com.mashape.unirest.http.JsonNode;
+import com.mashape.unirest.http.Unirest;
+import com.mashape.unirest.http.async.Callback;
+import com.mashape.unirest.http.exceptions.UnirestException;
+import com.mashape.unirest.request.body.MultipartBody;
+import io.netty.handler.codec.mqtt.MqttQoS;
+import org.json.JSONObject;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -32,9 +42,11 @@ public class PublishOutHandler extends RequestHandler {
 
 
     private PublishMessage publishMessage;
+    private String protocalData;
 
-    public PublishOutHandler(PublishMessage publishMessage) {
+    public PublishOutHandler(PublishMessage publishMessage, String protocalData) {
         this.publishMessage = publishMessage;
+        this.protocalData = protocalData;
     }
 
     @Override
@@ -42,7 +54,63 @@ public class PublishOutHandler extends RequestHandler {
 
         log.debug(" handle : outbound message {} being processed", publishMessage);
 
-        //We need to generate a publish message to start this conversation.
-        pushToServer(publishMessage);
+        if(Protocal.HTTP.equals(publishMessage.getProtocal())){
+            //
+            httpPushToUrl(protocalData, publishMessage);
+
+        }else {
+
+            //We need to generate a publish message to start this conversation.
+            pushToServer(publishMessage);
+        }
+    }
+
+    private void httpPushToUrl(String url, PublishMessage publishMessage) {
+
+
+        MultipartBody httpMessage = Unirest.post(url)
+                .header("accept", "application/json")
+                .field("topic", publishMessage.getTopic())
+                .field("message", publishMessage.getPayload());
+
+        if(MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
+
+            httpMessage.asJsonAsync(new Callback<JsonNode>() {
+
+                public void failed(UnirestException e) {
+                    log.info(" httpPushToUrl failed : problems calling service", e);
+                }
+
+                public void completed(HttpResponse<JsonNode> response) {
+                    int code = response.getStatus();
+
+                    JsonNode responseBody = response.getBody();
+                    log.info(" httpPushToUrl completed : external server responded with {}", responseBody);
+                    if(200 == code){
+
+
+                        JSONObject json = responseBody.getObject();
+
+                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(json.getLong("messageId"), false, json.getInt("qos"), false, true);
+                        ackMessage.copyBase(publishMessage);
+
+                        PublishAcknowledgeHandler publishAcknowledgeHandler = new PublishAcknowledgeHandler(ackMessage);
+                        try {
+                            publishAcknowledgeHandler.handle();
+                        } catch (RetriableException | UnRetriableException e) {
+                           log.warn(" httpPushToUrl completed : problem closing connection. ");
+                        }
+                    }
+                    }
+
+                public void cancelled() {
+                    log.info(" httpPushToUrl cancelled : request cancelled.");
+                }
+
+            });
+        }else{
+            httpMessage.asJsonAsync();
+        }
+
     }
 }

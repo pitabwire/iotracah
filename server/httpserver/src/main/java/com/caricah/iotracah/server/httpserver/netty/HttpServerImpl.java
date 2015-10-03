@@ -21,21 +21,14 @@
 package com.caricah.iotracah.server.httpserver.netty;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.server.mqttserver.netty.MqttServerInitializer;
 import com.caricah.iotracah.server.netty.SSLHandler;
+import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
 import com.caricah.iotracah.server.netty.ServerInitializer;
-import com.caricah.iotracah.server.netty.TimeoutHandler;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import io.netty.handler.codec.http.FullHttpMessage;
-import io.netty.handler.codec.http.HttpMessage;
-import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.commons.configuration.Configuration;
 
 /**
@@ -57,7 +50,7 @@ public class HttpServerImpl extends ServerImpl<FullHttpMessage> {
     public static final String CONFIGURATION_SERVER_HTTP_CONNECTION_TIMEOUT = "system.internal.server.http.connection.timeout";
     public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_HTTP_CONNECTION_TIMEOUT = 10;
 
-    public HttpServerImpl(Server internalServer) {
+    public HttpServerImpl(Server<FullHttpMessage> internalServer) {
         super(internalServer);
     }
 
@@ -101,6 +94,7 @@ public class HttpServerImpl extends ServerImpl<FullHttpMessage> {
     protected ServerInitializer<FullHttpMessage> getServerInitializer(ServerImpl<FullHttpMessage> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
         return new HttpServerInitializer(serverImpl, connectionTimeout,sslHandler);
     }
+
 
 
     @Override

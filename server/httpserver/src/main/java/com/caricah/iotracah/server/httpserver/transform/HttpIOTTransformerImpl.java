@@ -20,20 +20,22 @@
 
 package com.caricah.iotracah.server.httpserver.transform;
 
-import com.caricah.iotracah.core.worker.state.messages.ConnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
+import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.server.httpserver.transform.json.Connect;
-import com.caricah.iotracah.server.httpserver.transform.json.Disconnect;
-import com.caricah.iotracah.server.httpserver.transform.json.Publish;
-import com.caricah.iotracah.server.httpserver.transform.json.Request;
 import com.caricah.iotracah.server.transform.MqttIOTTransformer;
-import com.google.gson.Gson;
 import io.netty.handler.codec.http.FullHttpMessage;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.util.CharsetUtil;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.ByteBuffer;
+import java.util.AbstractMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -41,7 +43,7 @@ import io.netty.util.CharsetUtil;
  */
 public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessage> {
 
-    private final Gson gson = new Gson();
+    private static final Logger log = LoggerFactory.getLogger(HttpIOTTransformerImpl.class);
 
     @Override
     public IOTMessage toIOTMessage(FullHttpMessage serverMessage) {
@@ -51,49 +53,83 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
 
             FullHttpRequest request = (FullHttpRequest) serverMessage;
             final String content = request.content().toString(CharsetUtil.UTF_8);
+            final JSONObject json = new JSONObject(content);
+
+            log.debug(" toIOTMessage : received content {} ", content);
 
 
             final String path = request.uri().toUpperCase();
 
             switch (path) {
 
+                case "/CONNECT":
+
+                   
+                    return ConnectMessage.from(
+                            false, 1, false,
+                            "MQTT", 4, false, json.getString("clientId"),
+                            json.getString("username"), json.getString("password"),
+                                    0, "");
 
                 case "/PUBLISH":
 
-                    Publish pubContent = gson.fromJson(content, Publish.class);
+                    ByteBuffer byteBuffer = ByteBuffer.wrap(json.getString("payload").getBytes());
 
-                    PublishMessage publishMessage = PublishMessage.from(pubContent.getMessageId(), pubContent.isDup(), pubContent.getQos(),
-                            pubContent.isRetain(), pubContent.getTopic(), pubContent.getPayload(), true);
+                            PublishMessage publishMessage = PublishMessage.from(json.getLong("messageId"), json.getBoolean("dup"), json.getInt("qos"),
+                                    json.getBoolean("retain"), json.getString("topic"), byteBuffer, true);
 
-                    publishMessage.setClientIdentifier(pubContent.getClientId());
-                    publishMessage.setPartition(pubContent.getPartition());
+                    publishMessage.setClientIdentifier(json.getString("clientId"));
+                    publishMessage.setPartition(json.getString("partition"));
+                    publishMessage.setAuthKey(json.getString("authKey"));
                     return publishMessage;
 
-                case "/CONNECT":
 
-                    Connect conContent = gson.fromJson(content, Connect.class);
 
-                    ConnectMessage connectMessage = ConnectMessage.from(
-                            conContent.isDup(), conContent.getQos(), conContent.isRetain(),
-                            "MQTT", 4, false, conContent.getClientId(),
-                            conContent.getUsername(), conContent.getPassword(),
-                            0, "");
+                case "/SUBSCRIBE":
 
-                    SubscribeMessage subscribeMessage = SubscribeMessage.from(1, conContent.isDup(), conContent.getQos(), conContent.isRetain() );
-                    subscribeMessage.getTopicFilterList().addAll(conContent.getTopicQosList());
-                    subscribeMessage.setReceptionUrl(conContent.getRecipientUrl());
+                   
+                    SubscribeMessage subscribeMessage = SubscribeMessage.from(1, false, 1, false);
 
-                    connectMessage.setPayload(subscribeMessage);
+                    JSONArray jsonTopicQosList = json.getJSONArray("topicQosList");
+                    for(int i=0; i< jsonTopicQosList.length(); i++) {
+                        JSONObject topicQos = jsonTopicQosList.getJSONObject(i);
 
-                    return connectMessage;
+                        String topic = (String) topicQos.keys().next();
+                        int qos = topicQos.getInt(topic);
 
+                        Map.Entry<String, Integer> entry =
+                                new AbstractMap.SimpleEntry<>(topic, qos);
+                        subscribeMessage.getTopicFilterList().add(entry);
+                    }
+                    subscribeMessage.setReceptionUrl(json.getString("recipientUrl"));
+                    subscribeMessage.setClientIdentifier(json.getString("clientId"));
+                    subscribeMessage.setPartition(json.getString("partition"));
+                    subscribeMessage.setAuthKey(json.getString("authKey"));
+
+
+                    return subscribeMessage;
+
+                case "/UNSUBSCRIBE":
+
+                    List<String> topicList = new ArrayList<>();
+                    JSONArray jsonTopicList = json.getJSONArray("topicQosList");
+                    for(int i=0; i< jsonTopicList.length(); i++) {
+                        String topic = jsonTopicList.getString(i);
+
+                        topicList.add(topic);
+                    }
+
+                    UnSubscribeMessage unSubscribeMessage = UnSubscribeMessage.from(1, false, 1, false, topicList);
+                    unSubscribeMessage.setClientIdentifier(json.getString("clientId"));
+                    unSubscribeMessage.setPartition(json.getString("partition"));
+                    unSubscribeMessage.setAuthKey(json.getString("authKey"));
 
                 case "/DISCONNECT":
-                    Disconnect disconContent = gson.fromJson(content, Disconnect.class);
-
+                    
                     DisconnectMessage disconMessage = DisconnectMessage.from(true);
-                    disconMessage.setClientIdentifier(disconContent.getClientId());
-                    disconMessage.setPartition(disconContent.getPartition());
+                    disconMessage.setClientIdentifier(json.getString("clientId"));
+                    disconMessage.setPartition(json.getString("partition"));
+                    disconMessage.setAuthKey(json.getString("authKey"));
 
                     return disconMessage;
 

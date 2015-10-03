@@ -24,7 +24,9 @@ import com.caricah.iotracah.server.netty.SSLHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
 import com.caricah.iotracah.server.netty.ServerInitializer;
 import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.FullHttpMessage;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -33,8 +35,8 @@ import io.netty.handler.codec.http.*;
 public class HttpServerInitializer extends ServerInitializer<FullHttpMessage> {
 
 
-    public HttpServerInitializer(ServerImpl<FullHttpMessage> serverImpl, int connectionTimeout) {
-        super(serverImpl, connectionTimeout);
+    public HttpServerInitializer(ServerImpl<FullHttpMessage> serverImpl,  int connectionTimeout) {
+        super(serverImpl,  connectionTimeout);
     }
 
 
@@ -43,13 +45,14 @@ public class HttpServerInitializer extends ServerInitializer<FullHttpMessage> {
         super(serverImpl, connectionTimeout, sslHandler);
     }
 
-
     @Override
     protected void customizePipeline(ChannelPipeline pipeline) {
 
-
         pipeline.addLast("server", new HttpServerCodec());
         pipeline.addLast("aggregator", new HttpObjectAggregator(1048576));
+
+        // we finally have the chance to add some business logic.
+        pipeline.addLast( new HttpServerHandler((HttpServerImpl) getServerImpl()));
 
     }
 

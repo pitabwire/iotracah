@@ -24,10 +24,7 @@ import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.server.netty.SSLHandler;
-import com.caricah.iotracah.server.netty.ServerImpl;
-import com.caricah.iotracah.server.netty.ServerInitializer;
-import com.caricah.iotracah.server.netty.TimeoutHandler;
+import com.caricah.iotracah.server.netty.*;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import io.netty.handler.codec.mqtt.MqttMessage;
@@ -57,7 +54,7 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
 
 
 
-    public MqttServerImpl(Server internalServer) {
+    public MqttServerImpl(Server<MqttMessage> internalServer) {
         super(internalServer);
     }
 
@@ -102,7 +99,6 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
         return new MqttServerInitializer(serverImpl, connectionTimeout,sslHandler);
     }
 
-
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
@@ -136,4 +132,6 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
 
 
     }
+
+
 }

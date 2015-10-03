@@ -120,7 +120,7 @@ public class SessionResetManager {
                     } else {
 
                         //This message should be released to the client
-                        PublishOutHandler handler = new PublishOutHandler(publishMessage);
+                        PublishOutHandler handler = new PublishOutHandler(publishMessage, client.getProtocalData());
                         handler.setWorker(getWorker());
 
                         try {

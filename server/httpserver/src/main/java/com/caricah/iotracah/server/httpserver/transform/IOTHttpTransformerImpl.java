@@ -22,19 +22,13 @@ package com.caricah.iotracah.server.httpserver.transform;
 
 import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.server.httpserver.transform.json.ConnectAck;
-import com.caricah.iotracah.server.httpserver.transform.json.DisconnectAck;
-import com.caricah.iotracah.server.httpserver.transform.json.PublishAck;
-import com.caricah.iotracah.server.httpserver.transform.json.UnKnownAck;
 import com.caricah.iotracah.server.transform.IOTMqttTransformer;
-import com.google.gson.Gson;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.mqtt.*;
 import io.netty.util.CharsetUtil;
-
-import java.io.Serializable;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -42,30 +36,52 @@ import java.io.Serializable;
  */
 public class IOTHttpTransformerImpl implements IOTMqttTransformer<FullHttpMessage> {
 
-    private final Gson gson = new Gson();
 
     @Override
     public FullHttpMessage toServerMessage(IOTMessage internalMessage) {
 
-        Serializable response;
+        JSONObject json = new JSONObject();
 
         switch (internalMessage.getMessageType()) {
 
             case AcknowledgeMessage.MESSAGE_TYPE:
                 AcknowledgeMessage ackMsg = (AcknowledgeMessage) internalMessage;
 
-                response = new PublishAck(ackMsg.getMessageId(), ackMsg.getQos());
+                json.put("messageId", ackMsg.getMessageId());
+                json.put("qos", ackMsg.getQos());
+                json.put("message", "published");
             break;
             case ConnectAcknowledgeMessage.MESSAGE_TYPE:
                 ConnectAcknowledgeMessage conAck = (ConnectAcknowledgeMessage) internalMessage;
 
-                response = new ConnectAck(conAck.getClientIdentifier(), conAck.getPartition(), conAck.getAuthKey());
+                json.put("clientId", conAck.getClientIdentifier() );
+                json.put("partition", conAck.getPartition() );
+                json.put("authKey", conAck.getAuthKey());
+                json.put("message", conAck.getReturnCode().name() );
+
             break;
+            case SubscribeAcknowledgeMessage.MESSAGE_TYPE:
+                SubscribeAcknowledgeMessage subAck = (SubscribeAcknowledgeMessage) internalMessage;
+
+
+                json.put("message", "subscribed");
+                final JSONArray jsonGrantedQos = new JSONArray();
+                subAck.getGrantedQos().forEach(jsonGrantedQos::put);
+                json.put("grantedQos", jsonGrantedQos);
+                break;
+
+            case UnSubscribeAcknowledgeMessage.MESSAGE_TYPE:
+                UnSubscribeAcknowledgeMessage unSubAck = (UnSubscribeAcknowledgeMessage) internalMessage;
+
+                json.put("message", "unsubscribed" );
+
+                break;
             case DisconnectMessage.MESSAGE_TYPE:
 
                 DisconnectMessage discMsg = (DisconnectMessage) internalMessage;
 
-                response = new DisconnectAck(discMsg.getClientIdentifier(), "Disconnected");
+                json.put("clientId", discMsg.getClientIdentifier() );
+                json.put("message", "disconnected" );
 
                 break;
             default:
@@ -78,12 +94,12 @@ public class IOTHttpTransformerImpl implements IOTMqttTransformer<FullHttpMessag
                  **/
 
 
-                response = new UnKnownAck("UnExpected outcome");
+                json.put("message","UnExpected outcome");
                 break;
         }
 
 
-        ByteBuf buffer = Unpooled.copiedBuffer(gson.toJson(response), CharsetUtil.UTF_8);
+        ByteBuf buffer = Unpooled.copiedBuffer(json.toString(), CharsetUtil.UTF_8);
 
         // Build the response object.
         FullHttpResponse httpResponse = new DefaultFullHttpResponse(

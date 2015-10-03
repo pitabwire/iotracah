@@ -18,37 +18,40 @@
  *
  */
 
-package com.caricah.iotracah.server.httpserver.transform.json;
+package com.caricah.iotracah.core.worker.exceptions;
 
-import java.io.Serializable;
+import com.caricah.iotracah.exceptions.UnRetriableException;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/30/15
+ * @version 1.0 10/2/15
  */
-public class PublishAck implements Serializable {
+public class ClientDoesNotExistException extends UnRetriableException {
 
-    private long messageId;
-    private int qos;
-
-    public PublishAck(long messageId, int qos){
-        this.messageId = messageId;
-        this.qos = qos;
+    /**
+     * Creates a new instance.
+     */
+    public ClientDoesNotExistException() {
     }
 
-    public long getMessageId() {
-        return messageId;
+    /**
+     * Creates a new instance.
+     */
+    public ClientDoesNotExistException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    public void setMessageId(long messageId) {
-        this.messageId = messageId;
+    /**
+     * Creates a new instance.
+     */
+    public ClientDoesNotExistException(String message) {
+        super(message);
     }
 
-    public int getQos() {
-        return qos;
-    }
-
-    public void setQos(int qos) {
-        this.qos = qos;
+    /**
+     * Creates a new instance.
+     */
+    public ClientDoesNotExistException(Throwable cause) {
+        super(cause);
     }
 }

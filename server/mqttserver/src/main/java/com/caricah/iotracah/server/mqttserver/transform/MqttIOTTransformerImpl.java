@@ -25,6 +25,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.server.transform.MqttIOTTransformer;
 import io.netty.handler.codec.mqtt.*;
 
+import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 
 /**
@@ -49,14 +50,10 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
 
                 MqttPublishVariableHeader pubVH = publishMessage.variableHeader();
 
-                byte[] payloadBytes = new byte[publishMessage.payload().capacity()];
-                publishMessage.payload().getBytes(0, payloadBytes);
-
-
-
+                ByteBuffer byteBuffer = publishMessage.payload().nioBuffer();
 
                 return PublishMessage.from(pubVH.messageId(), fxH.isDup(), fxH.qosLevel().value(),
-                        fxH.isRetain(), pubVH.topicName(), payloadBytes,  true);
+                        fxH.isRetain(), pubVH.topicName(), byteBuffer,  true);
 
 
             case PUBACK:

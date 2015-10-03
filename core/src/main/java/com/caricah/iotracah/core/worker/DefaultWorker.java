@@ -29,7 +29,10 @@ import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.mashape.unirest.http.Unirest;
 import org.apache.commons.configuration.Configuration;
+
+import java.io.IOException;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -65,7 +68,9 @@ public class DefaultWorker extends Worker {
         setSessionResetManager(sessionResetManager);
 
 
-        //
+        //Initiate unirest properties.
+        Unirest.setTimeouts(5000, 5000);
+
 
 
     }
@@ -76,7 +81,12 @@ public class DefaultWorker extends Worker {
      */
     @Override
     public void terminate() {
-
+        //Shutdown unirest.
+        try {
+            Unirest.shutdown();
+        } catch (IOException e) {
+            log.warn(" terminate : problem closing unirest", e);
+        }
     }
 
     /**
@@ -115,7 +125,7 @@ public class DefaultWorker extends Worker {
                 disconnectMessage.copyBase(iotMessage);
 
                 DisconnectHandler disconnectHandler = new DisconnectHandler(disconnectMessage);
-
+                disconnectHandler.setWorker(this);
                 disconnectHandler.handle();
             } catch (RetriableException | UnRetriableException finalEx) {
                 log.error(" onNext : Problems disconnecting.", finalEx);

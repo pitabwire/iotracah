@@ -35,14 +35,13 @@ import java.io.Serializable;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 5/27/15
  */
-public class ServerHandler<T> extends SimpleChannelInboundHandler {
+public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
 
-    private static final Logger log = LoggerFactory.getLogger(ServerHandler.class);
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private final ServerImpl<T> serverImpl;
 
     public ServerHandler(ServerImpl<T> serverImpl) {
-
         this.serverImpl = serverImpl;
     }
 
@@ -83,27 +82,7 @@ public class ServerHandler<T> extends SimpleChannelInboundHandler {
         }
     }
 
-    /**
-     * Is called for each message of type {@link MqttMessage}.
-     *
-     * @param ctx the {@link ChannelHandlerContext} which this {@link SimpleChannelInboundHandler}
-     *            belongs to
-     * @param msg the message to handle
-     * @throws Exception is thrown if an error occurred
-     */
-    @Override
-    protected void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
 
-        log.debug(" messageReceived : received the message {}", msg);
-
-        String partition = ctx.channel().attr(ServerImpl.REQUEST_PARTITION).get();
-        String clientId = ctx.channel().attr(ServerImpl.REQUEST_CLIENT_ID).get();
-        Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
-        Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
-
-        getInternalServer().pushToWorker(connectionId, sessionId,partition, clientId, msg);
-
-    }
 
 
 }

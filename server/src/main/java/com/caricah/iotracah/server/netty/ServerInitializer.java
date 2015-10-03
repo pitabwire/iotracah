@@ -35,15 +35,15 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
     private final int connectionTimeout;
     private final SSLHandler sslHandler;
-    private final ServerImpl<T> serverImpl;
+    private final ServerImpl serverImpl;
 
-    public ServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
+    public ServerInitializer(ServerImpl serverImpl,  int connectionTimeout, SSLHandler sslHandler) {
         this.serverImpl = serverImpl;
         this.sslHandler = sslHandler;
         this.connectionTimeout = connectionTimeout;
     }
 
-    public ServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout) {
+    public ServerInitializer(ServerImpl serverImpl, int connectionTimeout) {
         this.serverImpl = serverImpl;
         this.sslHandler = null;
         this.connectionTimeout = connectionTimeout;
@@ -52,6 +52,7 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
     public ServerImpl<T> getServerImpl() {
         return serverImpl;
     }
+
 
     public SSLHandler getSslHandler() {
         return sslHandler;
@@ -84,13 +85,10 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
         customizePipeline(pipeline);
 
-        ServerHandler<T> serverHandler = new ServerHandler<>(getServerImpl());
-        // we finally have the chance to add some business logic.
-        pipeline.addLast( serverHandler);
-
     }
 
     protected abstract void customizePipeline(ChannelPipeline pipeline);
+
 
 
 }

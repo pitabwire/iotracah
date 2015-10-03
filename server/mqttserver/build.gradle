@@ -4,6 +4,6 @@ dependencies {
 
     compile group: 'io.netty', name: 'netty-codec-mqtt', version: '5.0.0.Alpha2'
 
-    compile  group: 'com.caricah.iotracah', name: 'server', version: version, changing: true
-
+    //compile  group: 'com.caricah.iotracah', name: 'server', version: version, changing: true
+    compile project(':server')
 }

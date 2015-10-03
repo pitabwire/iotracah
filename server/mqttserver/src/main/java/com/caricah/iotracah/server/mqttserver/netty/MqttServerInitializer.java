@@ -21,6 +21,7 @@
 package com.caricah.iotracah.server.mqttserver.netty;
 
 import com.caricah.iotracah.server.netty.SSLHandler;
+import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
 import com.caricah.iotracah.server.netty.ServerInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -39,14 +40,18 @@ public class MqttServerInitializer extends ServerInitializer<MqttMessage> {
         super(serverImpl, connectionTimeout);
     }
 
+    public MqttServerInitializer(ServerImpl<MqttMessage> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
+        super(serverImpl, connectionTimeout, sslHandler);
+    }
+
     @Override
     protected void customizePipeline(ChannelPipeline pipeline) {
         pipeline.addLast("decoder", new MqttDecoder());
         pipeline.addLast("encoder", new MqttEncoder());
+
+        // we finally have the chance to add some business logic.
+        pipeline.addLast( new MqttServerHandler((MqttServerImpl) getServerImpl()));
     }
 
-    public MqttServerInitializer(ServerImpl<MqttMessage> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
-        super(serverImpl, connectionTimeout, sslHandler);
-    }
 
 }

@@ -25,7 +25,12 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.util.Arrays;
 import java.util.Locale;
 
 /**
@@ -101,7 +106,7 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
         this.inBound = inBound;
     }
 
-    public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, Serializable payload, boolean inBound) {
+    public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, ByteBuffer payloadBuffer, boolean inBound) {
 
         if (messageId < 1  ) {
 
@@ -126,7 +131,8 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
         publishMessage.setDup(dup);
         publishMessage.setTopic(topic);
         publishMessage.setMessageId(messageId);
-        publishMessage.setPayload(payload);
+
+        publishMessage.setPayload(toBytes(payloadBuffer));
         publishMessage.setInBound(inBound);
 
         return publishMessage;
@@ -144,9 +150,41 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     public PublishMessage cloneMessage() {
 
-        PublishMessage publishMessage = PublishMessage.from(getMessageId(), false, getQos(), isRetain(),  getTopic(), getPayload(), false);
+        ByteBuffer byteBuffer = ByteBuffer.wrap((byte[])getPayload());
+
+        PublishMessage publishMessage = PublishMessage.from(getMessageId(), false, getQos(), isRetain(),  getTopic(), byteBuffer, false);
         publishMessage.setProtocal(getProtocal());
 
         return publishMessage;
+    }
+
+    /**
+     * Get byte array from ByteBuffer.
+     * This function returns a byte array reference that has exactly the same
+     * valid range as the ByteBuffer. Note that you should not write to the
+     * resulting byte array directly. If you want a writable copy, please use
+     * org.apache.hadoop.hbase.util.Bytes.toBytes(ByteBuffer).
+     *
+     * @param bb  the byte buffer
+     * @return a reference to a byte array that contains the same content as the
+     *         given ByteBuffer
+     */
+    public static byte[] toBytes(final ByteBuffer bb) {
+        // we cannot call array() on read only or direct ByteBuffers
+        if (bb.isReadOnly() || bb.isDirect()) {
+            try {
+                ByteArrayOutputStream out = new ByteArrayOutputStream(bb.limit());
+                Channels.newChannel(out).write(bb);
+                return out.toByteArray();
+            } catch (IOException e) {
+                throw new RuntimeException(e); // memory error
+            }
+        } else if (bb.array().length == bb.limit()) {
+            return bb.array();
+        } else {
+            return Arrays.copyOfRange(
+                    bb.array(), bb.arrayOffset(), bb.arrayOffset() + bb.limit()
+            );
+        }
     }
 }

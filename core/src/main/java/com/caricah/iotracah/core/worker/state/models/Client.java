@@ -28,6 +28,7 @@ import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
@@ -67,6 +68,12 @@ public class Client implements IdKeyComposer, Serializable {
     private boolean cleanSession;
 
     private Set<String> partitionQosTopicFilters;
+
+    private String generatedAuthKey;
+
+    private Protocal protocal;
+
+    private String protocalData;
 
     public String getClientIdentifier() {
         return clientIdentifier;
@@ -132,6 +139,30 @@ public class Client implements IdKeyComposer, Serializable {
         this.cleanSession = cleanSession;
     }
 
+    public String getGeneratedAuthKey() {
+        return generatedAuthKey;
+    }
+
+    public void setGeneratedAuthKey(String generatedAuthKey) {
+        this.generatedAuthKey = generatedAuthKey;
+    }
+
+    public Protocal getProtocal() {
+        return protocal;
+    }
+
+    public void setProtocal(Protocal protocal) {
+        this.protocal = protocal;
+    }
+
+    public String getProtocalData() {
+        return protocalData;
+    }
+
+    public void setProtocalData(String protocalData) {
+        this.protocalData = protocalData;
+    }
+
     /**
 
      */
@@ -140,15 +171,6 @@ public class Client implements IdKeyComposer, Serializable {
         messenger.publish(publishMessage);
     }
 
-    private void pushPublishedMessage(Worker worker, PublishMessage message) throws UnRetriableException, RetriableException {
-
-        //This message should be released to the client
-        PublishOutHandler handler = new PublishOutHandler(message);
-
-        handler.setWorker(worker);
-        handler.handle();
-
-    }
 
     public Set<String> getPartiotionQosTopicFilters() {
         if (null == partitionQosTopicFilters) {
@@ -183,6 +205,7 @@ public class Client implements IdKeyComposer, Serializable {
     public <T extends IOTMessage> T copyTransmissionData(T iotMessage) {
 
         iotMessage.setPartition(getPartition());
+        iotMessage.setProtocal(getProtocal());
         iotMessage.setClientIdentifier(getClientIdentifier());
         iotMessage.setSessionId(getSessionId());
         iotMessage.setConnectionId(getConnectionId());

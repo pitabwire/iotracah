@@ -292,7 +292,7 @@ public class Messenger {
 
                             //Actually push out the message.
                             //This message should be released to the connected client
-                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage);
+                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
                             handler.setWorker(getWorker());
 
                             try {

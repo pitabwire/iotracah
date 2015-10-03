@@ -29,6 +29,7 @@ import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
 
+import java.nio.ByteBuffer;
 import java.util.Set;
 
 /**
@@ -108,11 +109,14 @@ public class DisconnectHandler extends RequestHandler {
 
                     if (null != willMessage && null != willMessage.getPayload()) {
 
+                        byte[] willPayloadBytes = ((String)willMessage.getPayload()).getBytes();
+                        ByteBuffer willByteBuffer = ByteBuffer.wrap(willPayloadBytes);
+
                         //TODO: generate sequence for will message id
                         PublishMessage willPublishMessage = PublishMessage.from(
                                 willMessage.getMessageId(), false, willMessage.getQos(),
                                 willMessage.isRetain(), willMessage.getTopic(),
-                                willMessage.getPayload(), true
+                                willByteBuffer, true
                         );
 
                         willPublishMessage.copyBase(willMessage);
