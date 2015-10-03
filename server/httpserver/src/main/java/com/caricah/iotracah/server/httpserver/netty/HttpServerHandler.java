@@ -22,10 +22,15 @@ package com.caricah.iotracah.server.httpserver.netty;
 
 import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.FullHttpMessage;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.util.CharsetUtil;
+import org.json.JSONObject;
 
 import java.io.Serializable;
 
@@ -56,6 +61,35 @@ public class HttpServerHandler extends ServerHandler<FullHttpMessage> {
          Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
 
         getInternalServer().pushToWorker(connectionId, null, null, null, msg);
+
+    }
+
+
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+
+            try {
+                log.info(" exceptionCaught : Unhandled exception: " , cause);
+
+                JSONObject error = new JSONObject();
+                error.put("message", cause.getMessage());
+                error.put("status", "failure");
+
+                ByteBuf buffer = Unpooled.copiedBuffer(error.toString(), CharsetUtil.UTF_8);
+
+                // Build the response object.
+                FullHttpResponse httpResponse = new DefaultFullHttpResponse(
+                        HttpVersion.HTTP_1_1,
+                        HttpResponseStatus.INTERNAL_SERVER_ERROR,
+                        buffer);
+
+                ctx.channel().writeAndFlush(httpResponse).addListener(ChannelFutureListener.CLOSE);
+            } catch (Exception ex) {
+                log.debug(" exceptionCaught : trying to close socket because we got an unhandled exception", ex);
+            }
+
+
 
     }
 }

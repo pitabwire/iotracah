@@ -35,11 +35,16 @@ import com.mashape.unirest.request.body.MultipartBody;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.json.JSONObject;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.Charset;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
 public class PublishOutHandler extends RequestHandler {
 
+    private static final Charset UTF8 = Charset.forName("UTF-8");
 
     private PublishMessage publishMessage;
     private String protocalData;
@@ -54,26 +59,37 @@ public class PublishOutHandler extends RequestHandler {
 
         log.debug(" handle : outbound message {} being processed", publishMessage);
 
-        if(Protocal.HTTP.equals(publishMessage.getProtocal())){
-            //
-            httpPushToUrl(protocalData, publishMessage);
-
-        }else {
+        if (publishMessage.getProtocal().isPersistent()) {
 
             //We need to generate a publish message to start this conversation.
             pushToServer(publishMessage);
+
+        } else {
+            switch (publishMessage.getProtocal()) {
+
+                case HTTP:
+                    httpPushToUrl(protocalData, publishMessage);
+                    break;
+                default:
+                    log.error(" handle : outbound message {} using none implemented protocal");
+            }
         }
     }
 
     private void httpPushToUrl(String url, PublishMessage publishMessage) {
 
 
+       ByteBuffer payloadBuffer = ByteBuffer.wrap((byte[]) publishMessage.getPayload());
+
+        String payload = UTF8.decode(payloadBuffer).toString();
+
+
         MultipartBody httpMessage = Unirest.post(url)
                 .header("accept", "application/json")
                 .field("topic", publishMessage.getTopic())
-                .field("message", publishMessage.getPayload());
+                .field("message", payload);
 
-        if(MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
+        if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
 
             httpMessage.asJsonAsync(new Callback<JsonNode>() {
 
@@ -86,29 +102,26 @@ public class PublishOutHandler extends RequestHandler {
 
                     JsonNode responseBody = response.getBody();
                     log.info(" httpPushToUrl completed : external server responded with {}", responseBody);
-                    if(200 == code){
+                    if (200 == code) {
 
-
-                        JSONObject json = responseBody.getObject();
-
-                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(json.getLong("messageId"), false, json.getInt("qos"), false, true);
+                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId(), false, publishMessage.getQos(), false, true);
                         ackMessage.copyBase(publishMessage);
 
                         PublishAcknowledgeHandler publishAcknowledgeHandler = new PublishAcknowledgeHandler(ackMessage);
                         try {
                             publishAcknowledgeHandler.handle();
                         } catch (RetriableException | UnRetriableException e) {
-                           log.warn(" httpPushToUrl completed : problem closing connection. ");
+                            log.warn(" httpPushToUrl completed : problem closing connection. ");
                         }
                     }
-                    }
+                }
 
                 public void cancelled() {
                     log.info(" httpPushToUrl cancelled : request cancelled.");
                 }
 
             });
-        }else{
+        } else {
             httpMessage.asJsonAsync();
         }
 

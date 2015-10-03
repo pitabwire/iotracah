@@ -26,5 +26,15 @@ package com.caricah.iotracah.core.worker.state.messages.base;
  */
 public enum Protocal {
 
-    MQTT, HTTP
+    MQTT(true), HTTP(false);
+
+    private final boolean persistent;
+
+    Protocal(boolean persistent){
+        this.persistent = persistent;
+    }
+
+    public boolean isPersistent(){
+        return persistent;
+    }
 }

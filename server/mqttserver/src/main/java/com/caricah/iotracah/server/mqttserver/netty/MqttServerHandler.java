@@ -22,9 +22,14 @@ package com.caricah.iotracah.server.mqttserver.netty;
 
 import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.util.CharsetUtil;
+import org.json.JSONObject;
 
 import java.io.Serializable;
 
@@ -58,6 +63,23 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
         Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
         getInternalServer().pushToWorker(connectionId, sessionId, partition, clientId, msg);
+
+    }
+
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+
+        try {
+            log.info(" exceptionCaught : Unhandled exception: " , cause);
+
+            getServerImpl().closeClient(ctx.channel().id());
+
+        } catch (Exception ex) {
+            log.debug(" exceptionCaught : trying to close socket because we got an unhandled exception", ex);
+        }
+
+
 
     }
 }
