@@ -38,11 +38,13 @@ import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.logger.slf4j.Slf4jLogger;
+import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Scheduler;
 import rx.Subscriber;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
@@ -52,6 +54,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * <code>WorkersInitializer</code> Handler for initializing base worker
@@ -304,9 +308,17 @@ public abstract class ServersInitializer implements SystemInitializer {
                 // Override default discovery SPI.
                 cfg.setDiscoverySpi(spi);
 
+                //Use sl4j logger
                 IgniteLogger gridLog = new Slf4jLogger(LoggerFactory.getLogger("org.apache.ignite")); // Provide correct SLF4J logger here.
-
                 cfg.setGridLogger(gridLog);
+
+                //Optimize marshaller
+                OptimizedMarshaller optimizedMarshaller = new OptimizedMarshaller();
+                optimizedMarshaller.setRequireSerializable(false);
+                cfg.setMarshaller(optimizedMarshaller);
+
+                //Peer class loading Set to true to enable distributed class loading
+                cfg.setPeerClassLoadingEnabled(true);
 
                 Ignition.start(cfg);
 
@@ -365,9 +377,11 @@ public abstract class ServersInitializer implements SystemInitializer {
             //correct excecutor groups.
 
             //Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
-            return observable
+            //Scheduler scheduler = Schedulers.from(Executors.newCachedThreadPool());
+            Scheduler scheduler = Schedulers.io();
+        return observable
                     .onBackpressureBuffer()
-                    .subscribeOn(Schedulers.io())
+                    .subscribeOn(scheduler)
                     .subscribe(subscriber);
 
     }
