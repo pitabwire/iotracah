@@ -22,11 +22,11 @@ package com.caricah.iotracah.system.handler.impl;
 
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.handler.LogHandler;
+import com.caricah.iotracah.system.ResourceFileUtil;
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.PropertyConfigurator;
 
 import java.io.File;
-import java.net.URL;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -56,14 +56,7 @@ public class DefaultLogHandler implements LogHandler {
 
             if (!logConfigurationFile.exists()) {
 
-                ClassLoader classLoader = getClass().getClassLoader();
-
-                URL configurationResource = classLoader.getResource(logsConfigFile);
-                if (null != configurationResource) {
-                    logConfigurationFile = new File(configurationResource.getFile());
-                }else{
-                    throw new UnRetriableException("Logging configuration file was not found.");
-                }
+                logConfigurationFile = ResourceFileUtil.getFileFromResource(getClass(), logsConfigFile);
 
             }
 

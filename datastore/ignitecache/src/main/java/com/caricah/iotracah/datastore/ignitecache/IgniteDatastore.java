@@ -26,12 +26,11 @@ import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.datastore.ignitecache.internal.impl.ClientHandler;
-import com.caricah.iotracah.datastore.ignitecache.internal.impl.MessageHandler;
-import com.caricah.iotracah.datastore.ignitecache.internal.impl.SubscriptionHandler;
-import com.caricah.iotracah.datastore.ignitecache.internal.impl.WillHandler;
-import com.caricah.iotracah.datastore.ignitecache.session.SessionManager;
+import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
+import com.caricah.iotracah.core.worker.session.SessionManager;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.security.realm.state.IOTAccount;
+import com.caricah.iotracah.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
@@ -50,10 +49,6 @@ import java.util.concurrent.CountDownLatch;
  */
 public class IgniteDatastore extends Datastore{
 
-    private String excecutorDefaultName;
-
-    private String datastoreExcecutorName;
-
     private IgniteAtomicSequence clientIdSequence;
 
     private final ClientHandler clientHandler = new ClientHandler();
@@ -64,24 +59,9 @@ public class IgniteDatastore extends Datastore{
 
     private final MessageHandler messageHandler = new MessageHandler();
 
-    private final SessionManager sessionManager = new SessionManager();
+    private final AccountHandler accountHandler = new AccountHandler();
 
-
-    public String getExcecutorDefaultName() {
-        return excecutorDefaultName;
-    }
-
-    public void setExcecutorDefaultName(String excecutorDefaultName) {
-        this.excecutorDefaultName = excecutorDefaultName;
-    }
-
-    public String getDatastoreExcecutorName() {
-        return datastoreExcecutorName;
-    }
-
-    public void setDatastoreExcecutorName(String datastoreExcecutorName) {
-        this.datastoreExcecutorName = datastoreExcecutorName;
-    }
+    private final RoleHandler roleHandler = new RoleHandler();
 
     public IgniteAtomicSequence getClientIdSequence() {
         return clientIdSequence;
@@ -102,26 +82,17 @@ public class IgniteDatastore extends Datastore{
     @Override
     public void configure(Configuration configuration) throws UnRetriableException {
 
-
-        String excecutorDefaultName = configuration.getString(ServersInitializer.CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME, ServersInitializer.CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME_DEFAULT_VALUE);
-        setExcecutorDefaultName(excecutorDefaultName);
-
-        String datastoreExcecutorName = configuration.getString(ServersInitializer.CORE_CONFIG_ENGINE_EXCECUTOR_DATASTORE_NAME, getExcecutorDefaultName());
-        setDatastoreExcecutorName(datastoreExcecutorName);
-
-        clientHandler.setExcecutorName(getDatastoreExcecutorName());
         clientHandler.configure(configuration);
 
-        subscriptionHandler.setExcecutorName(getDatastoreExcecutorName());
         subscriptionHandler.configure(configuration);
 
-        messageHandler.setExcecutorName(getDatastoreExcecutorName());
         messageHandler.configure(configuration);
 
-        willHandler.setExcecutorName(getDatastoreExcecutorName());
         willHandler.configure(configuration);
 
-        sessionManager.configure(configuration);
+        accountHandler.configure(configuration);
+
+        roleHandler.configure(configuration);
     }
 
     /**
@@ -133,20 +104,17 @@ public class IgniteDatastore extends Datastore{
     @Override
     public void initiate() throws UnRetriableException {
 
-        Ignite ignite = Ignition.ignite(getExcecutorDefaultName());
-
         long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
         String nameOfSequenceForClientId = "iotracah-sequence-client-id";
-        IgniteAtomicSequence seq = ignite.atomicSequence(nameOfSequenceForClientId, currentTime, true);
+        IgniteAtomicSequence seq = getIgnite().atomicSequence(nameOfSequenceForClientId, currentTime, true);
         setClientIdSequence(seq);
 
-        sessionManager.initiate(ignite);
-        clientHandler.initiate(Client.class, ignite);
-        subscriptionHandler.initiate(Subscription.class, ignite);
-        messageHandler.initiate(PublishMessage.class, ignite);
-        willHandler.initiate(WillMessage.class, ignite);
-
-
+        clientHandler.initiate(Client.class, getIgnite());
+        subscriptionHandler.initiate(Subscription.class, getIgnite());
+        messageHandler.initiate(PublishMessage.class, getIgnite());
+        willHandler.initiate(WillMessage.class, getIgnite());
+        accountHandler.initiate(IOTAccount.class, getIgnite());
+        roleHandler.initiate(IOTRole.class, getIgnite());
 
     }
 
@@ -313,4 +281,31 @@ public class IgniteDatastore extends Datastore{
     }
 
 
+    @Override
+    public IOTAccount getIOTAccount(String partition, String username) {
+
+        String cacheKey = IOTAccount.createCacheKey(partition, username);
+
+         return accountHandler.getByKey(cacheKey).toBlocking().singleOrDefault(null);
+    }
+
+    @Override
+    public void saveIOTAccount(IOTAccount account) {
+
+        accountHandler.save(account);
+
+    }
+
+    @Override
+    public IOTRole getIOTRole(String partition, String rolename) {
+
+        String cacheKey = IOTRole.createCacheKey(partition, rolename);
+
+        return roleHandler.getByKey(cacheKey).toBlocking().singleOrDefault(null);
+    }
+
+    @Override
+    public void saveIOTRole(IOTRole iotRole) {
+        roleHandler.save(iotRole);
+    }
 }

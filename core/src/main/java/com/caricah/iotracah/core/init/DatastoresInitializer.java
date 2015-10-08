@@ -23,6 +23,7 @@ package com.caricah.iotracah.core.init;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.core.security.DefaultSecurityHandler;
 import org.apache.commons.configuration.Configuration;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
     public static final String CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME = "core.config.datastore.partition.based.on.username";
     public static final boolean CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME_DEFAULT_VALUE = false;
 
+    private final DefaultSecurityHandler securityHandler = new DefaultSecurityHandler();
 
     private boolean datastoreEngineEnabled;
     private boolean datastorePartitionBasedOnUsername;
@@ -113,6 +115,7 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
             if(validateDatastoreCanBeLoaded(datastore)) {
 
+                datastore.setIgnite(getIgnite());
                 //Set partitioning scheme.
                 datastore.setPartitionBasedOnUsername(isDatastorePartitionBasedOnUsername());
 
@@ -128,6 +131,15 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
         //Assign our workers the active datastore.
         getWorkerList().forEach(worker -> worker.setDatastore(getActiveDatastore()));
+
+
+        //Initialize security.
+        securityHandler.setIotAccountDatastore(getActiveDatastore());
+        //Perform initialization of the security system too.
+        securityHandler.initiate(getIgnite());
+
+        String securityFile = securityHandler.getSecurityIniPath();
+        securityHandler.createSecurityManager(securityFile);
     }
 
     /**
@@ -205,6 +217,8 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
         setDatastoreClassName(configDatastoreClassName);
 
         super.configure(configuration);
+
+        securityHandler.configure(configuration);
 
     }
 

@@ -54,8 +54,6 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
     private final Server<T> internalServer;
 
-    public static final AttributeKey<String> REQUEST_PARTITION = AttributeKey.valueOf("requestPartitionKey");
-    public static final AttributeKey<String> REQUEST_CLIENT_ID = AttributeKey.valueOf("requestClientIdKey");
     public static final AttributeKey<Serializable> REQUEST_SESSION_ID = AttributeKey.valueOf("requestSessionIdKey");
     public static final AttributeKey<Serializable> REQUEST_CONNECTION_ID = AttributeKey.valueOf("requestConnectionIdKey");
 
@@ -235,8 +233,7 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
         Channel channel = getChannel(channelId);
         if (null != channel) {
 
-            channel.attr(ServerImpl.REQUEST_PARTITION).set(null);
-            channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(null);
+            channel.attr(ServerImpl.REQUEST_SESSION_ID).set(null);
             channel.attr(ServerImpl.REQUEST_CONNECTION_ID).set(null);
 
             channel.close();

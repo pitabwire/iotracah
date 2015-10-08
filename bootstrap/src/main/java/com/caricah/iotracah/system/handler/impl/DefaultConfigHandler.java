@@ -22,13 +22,12 @@ package com.caricah.iotracah.system.handler.impl;
 
 import com.caricah.iotracah.system.handler.ConfigHandler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.system.ResourceFileUtil;
 import org.apache.commons.configuration.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.*;
 import java.util.Locale;
 
@@ -102,12 +101,7 @@ public class DefaultConfigHandler implements ConfigHandler {
 
             if (null == configurationFile) {
 
-                ClassLoader classLoader = getClass().getClassLoader();
-
-                URL configurationResource = classLoader.getResource(getConfigurationFileName());
-                if (null != configurationResource) {
-                    configurationFile = new File(configurationResource.getFile()).toPath();
-                }
+               configurationFile = ResourceFileUtil.getFileFromResource(getClass(), getConfigurationFileName()).toPath();
 
             }
 

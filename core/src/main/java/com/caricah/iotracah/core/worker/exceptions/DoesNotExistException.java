@@ -18,27 +18,40 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.state.messages.base;
+package com.caricah.iotracah.core.worker.exceptions;
+
+import com.caricah.iotracah.exceptions.UnRetriableException;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/3/15
+ * @version 1.0 10/2/15
  */
-public enum Protocal {
+public class DoesNotExistException extends UnRetriableException {
 
-    MQTT(true), HTTP(false);
-
-    private final boolean persistent;
-
-    Protocal(boolean persistent){
-        this.persistent = persistent;
+    /**
+     * Creates a new instance.
+     */
+    public DoesNotExistException() {
     }
 
-    public boolean isPersistent(){
-        return persistent;
+    /**
+     * Creates a new instance.
+     */
+    public DoesNotExistException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    public boolean isNotPersistent(){
-        return !persistent;
+    /**
+     * Creates a new instance.
+     */
+    public DoesNotExistException(String message) {
+        super(message);
+    }
+
+    /**
+     * Creates a new instance.
+     */
+    public DoesNotExistException(Throwable cause) {
+        super(cause);
     }
 }

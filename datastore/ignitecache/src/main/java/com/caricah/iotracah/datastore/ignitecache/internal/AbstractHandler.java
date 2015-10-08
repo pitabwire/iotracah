@@ -20,18 +20,18 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal;
 
-import com.caricah.iotracah.core.worker.state.IdKeyComposer;
+import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
+import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
-import org.apache.ignite.IgniteCompute;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.cache.query.SqlQuery;
-import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.ignite.lang.IgniteFuture;
 import rx.Observable;
 
 import javax.cache.Cache.Entry;
@@ -44,9 +44,8 @@ import java.io.Serializable;
 public abstract class AbstractHandler<T extends IdKeyComposer> {
 
     private String cacheName;
-    private String excecutorName;
     private IgniteCache<Serializable, T> datastoreCache;
-    private IgniteCompute computeGrid;
+    private Class<T> classType;
 
     public String getCacheName() {
         return cacheName;
@@ -56,13 +55,6 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
         this.cacheName = cacheName;
     }
 
-    public String getExcecutorName() {
-        return excecutorName;
-    }
-
-    public void setExcecutorName(String excecutorName) {
-        this.excecutorName = excecutorName;
-    }
 
     public IgniteCache<Serializable, T> getDatastoreCache() {
         return datastoreCache;
@@ -70,14 +62,6 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
 
     public void setDatastoreCache(IgniteCache<Serializable, T> datastoreCache) {
         this.datastoreCache = datastoreCache;
-    }
-
-    public IgniteCompute getComputeGrid() {
-        return computeGrid;
-    }
-
-    public void setComputeGrid(IgniteCompute computeGrid) {
-        this.computeGrid = computeGrid;
     }
 
 
@@ -92,15 +76,12 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
         clCfg.setCacheMode(CacheMode.PARTITIONED);
         clCfg.setIndexedTypes(String.class, t);
         ignite.createCache(clCfg);
-        IgniteCache<Serializable, T> clientIgniteCache = ignite.cache(getCacheName());
+        IgniteCache clientIgniteCache = ignite.cache(getCacheName()).withAsync();
 
         setDatastoreCache(clientIgniteCache);
 
-        ClusterGroup clusterGroup = ignite.cluster().forAttribute("ROLE", getExcecutorName());
 
-        IgniteCompute compute = ignite.compute(clusterGroup).withAsync();
-        setComputeGrid(compute);
-
+        classType = t;
     }
 
     public Observable<T> getByKey(Serializable key) {
@@ -109,13 +90,21 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
 
                 try {
                     // do work on separate thread
-                    T value = getDatastoreCache().get(key);
+                    getDatastoreCache().get(key);
+                    IgniteFuture<T> future = getDatastoreCache().future();
 
-                    // callback with value only if not null
-                    if(null != value) {
-                       observer.onNext(value);
-                    }
-                    observer.onCompleted();
+                    future.listen(value -> {
+                        // callback with value only if not null
+                        if(null != value) {
+                            observer.onNext(value.get());
+                            observer.onCompleted();
+                        }else{
+                            observer.onError(new DoesNotExistException(String.format("%s with id [%s] does not exist.", classType, key)));
+                        }
+
+                    });
+
+
                 } catch (Exception e) {
                     observer.onError(e);
                 }
@@ -132,14 +121,21 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
             try {
                 // do work on separate thread
 
-                T value = getDatastoreCache().get(key);
-                if (null == value) {
-                    value = defaultValue;
-                }
+                getDatastoreCache().get(key);
+                IgniteFuture<T> future = getDatastoreCache().future();
 
-                // callback with value
-                observer.onNext(value);
-                observer.onCompleted();
+                future.listen(f -> {
+                    // callback with value only if not null
+                    T value = f.get();
+                    if (null != value) {
+                        observer.onNext(value);
+                    }else {
+                        observer.onNext(defaultValue);
+                    }
+                    observer.onCompleted();
+
+
+                });
             } catch (Exception e) {
                 observer.onError(e);
             }
@@ -163,7 +159,6 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                     QueryCursor<Entry<Serializable, T>> queryResult = getDatastoreCache().query(sql);
 
                     for (Entry<Serializable, T> entry : queryResult) {
-
                         // callback with value
                         observer.onNext(entry.getValue());
                     }

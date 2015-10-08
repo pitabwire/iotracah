@@ -65,81 +65,49 @@ public class SubscribeHandler extends RequestHandler {
 
         log.debug(" handle : begining to handle a subscription {}.", message);
 
-        try {
-
-
-            /**
-             * Before subscribing we should get the current session and validate it.
-             */
-            for (Map.Entry<String, Integer> topic : message.getTopicFilterList()) {
-                checkPermission(AuthorityRole.SUBSCRIBE, topic.getKey());
-            }
-
-            /**
-             *
+           /**
+             * First we obtain the client responsible for this connection.
              */
 
             List<Integer> grantedQos = new ArrayList<>();
 
-            Observable<Client> clientObservable = getClient(message.getPartition(), message.getClientIdentifier());
 
-            clientObservable.subscribe(new Subscriber<Client>() {
-                @Override
-                public void onCompleted() {
+                /**
+                 * Before subscribing we should get the current session and validate it.
+                 */
 
-                }
+                    List<String> topics = new ArrayList<>();
+                    message.getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
 
-                @Override
-                public void onError(Throwable e) {
-                    log.error(" handle onError : problems ", e);
-                }
+                        Observable<Client> permissionObservable = checkPermission(message.getSessionId(),
+                                message.getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
 
-                @Override
-                public void onNext(Client client) {
+                        permissionObservable.subscribe(
+                                (client)->{
 
+                                    //We have all the security to proceed.
+                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientIdentifier(), message.getTopicFilterList());
 
-                    log.debug(" handle : obtained client {}.", client);
+                            subscribeObservable.subscribe(
+                                    (entry) -> grantedQos.add(entry.getValue()),
+                                    this::disconnectDueToError,
+                                    () -> {
 
+                                        /**
+                                         * Save subscription payload
+                                         */
+                                        if(Protocal.HTTP.equals(message.getProtocal())){
+                                            client.setProtocalData(message.getReceptionUrl());
+                                            getDatastore().saveClient(client);
+                                        }
 
-                    Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientIdentifier(), message.getTopicFilterList());
+                                        SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), false, grantedQos);
+                                        subAckMessage.copyBase(message);
+                                        pushToServer(subAckMessage);
 
-                    subscribeObservable.subscribe(
-                            new Subscriber<Map.Entry<String, Integer>>() {
-                                @Override
-                                public void onCompleted() {
+                                    });
+                        }, this::disconnectDueToError);
 
-                                    /**
-                                     * Save subscription payload
-                                     */
-                                    if(Protocal.HTTP.equals(message.getProtocal())){
-                                        client.setProtocalData(message.getReceptionUrl());
-                                        getDatastore().saveClient(client);
-                                    }
-
-                                    SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), false, grantedQos);
-                                    subAckMessage.copyBase(message);
-                                    pushToServer(subAckMessage);
-
-                                }
-
-                                @Override
-                                public void onError(Throwable e) {
-                                    log.error(" handle onError : problems", e);
-                                }
-
-                                @Override
-                                public void onNext(Map.Entry<String, Integer> entry) {
-
-                                    grantedQos.add(entry.getValue());
-                                }
-                            });
-                }
-            });
-
-        } catch (AuthorizationException e) {
-            log.error(" handle : System experienced the error ", e);
-            throw new ShutdownException(e);
-        }
 
     }
 }

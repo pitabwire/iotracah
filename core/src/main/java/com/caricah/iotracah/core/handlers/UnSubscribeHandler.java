@@ -46,48 +46,36 @@ public class UnSubscribeHandler extends RequestHandler {
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        try {
+
+        /**
+         * If a Server receives an UNSUBSCRIBE packet that contains multiple Topic
+         * Filters it MUST handle that packet as if it had received a sequence of
+         * multiple UNSUBSCRIBE packets, except that it sends just one UNSUBACK response
+         */
 
 
-            /**
-             * Before unsubscribing we should get the current session and validate it.
-             */
+        /**
+         * Before unsubscribing we should get the current session and validate it.
+         */
+
+        Observable<Client> permittedObservable = checkPermission(message.getSessionId(),
+                message.getAuthKey(), AuthorityRole.SUBSCRIBE,
+                message.getTopicFilterList());
+
+        permittedObservable.subscribe(isPermitted -> {
+
             for (String topic : message.getTopicFilterList()) {
-                checkPermission(AuthorityRole.SUBSCRIBE, topic);
+                String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(message.getPartition(), -1, topic);
+
+                getMessenger().unSubscribe(message.getPartition(), message.getClientIdentifier(), partitionQosTopicFilter);
             }
 
-
-            /**
-             * If a Server receives an UNSUBSCRIBE packet that contains multiple Topic
-             * Filters it MUST handle that packet as if it had received a sequence of
-             * multiple UNSUBSCRIBE packets, except that it sends just one UNSUBACK response
-             */
-
-            Observable<Client> clientObservable = getClient(message.getPartition(), message.getClientIdentifier());
-
-            clientObservable.subscribe(
-
-                    client -> {
-
-                            for (String topic : message.getTopicFilterList()) {
-                                String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(message.getPartition(), -1, topic);
-
-                                getMessenger().unSubscribe(message.getPartition(), message.getClientIdentifier(), partitionQosTopicFilter);
-                            }
-
-                            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(message.getMessageId(), false, message.getQos(), false);
-                            unSubscribeAcknowledgeMessage.copyBase(message);
-                            pushToServer(unSubscribeAcknowledgeMessage);
+            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(message.getMessageId(), false, message.getQos(), false);
+            unSubscribeAcknowledgeMessage.copyBase(message);
+            pushToServer(unSubscribeAcknowledgeMessage);
 
 
-                    }
-            );
-
-        } catch (AuthorizationException e) {
-            log.error(" handle : System experienced the error ", e);
-            throw new ShutdownException(e);
-        }
-
+        }, this::disconnectDueToError);
 
     }
 

@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.worker.state.models;
 
-import com.caricah.iotracah.core.worker.state.IdKeyComposer;
+import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 

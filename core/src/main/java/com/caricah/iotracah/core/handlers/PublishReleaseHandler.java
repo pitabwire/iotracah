@@ -52,6 +52,10 @@ public class PublishReleaseHandler extends RequestHandler {
         clientObservable.subscribe(client -> {
 
 
+
+
+
+
             Observable<PublishMessage> messageObservable = getDatastore().getMessage(
                     message.getPartition(), message.getClientIdentifier(), message.getMessageId(), true);
 

@@ -25,7 +25,9 @@ import com.caricah.iotracah.core.worker.state.messages.WillMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.security.realm.IOTAccountDatastore;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.ignite.Ignite;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -43,7 +45,7 @@ import java.util.Set;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/10/15
  */
-public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
+public abstract class Datastore implements IOTAccountDatastore, Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -51,12 +53,22 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
 
     List<Eventer> eventerList = new ArrayList<>();
 
+    private Ignite ignite;
+
     public boolean isPartitionBasedOnUsername() {
         return partitionBasedOnUsername;
     }
 
     public void setPartitionBasedOnUsername(boolean partitionBasedOnUsername) {
         this.partitionBasedOnUsername = partitionBasedOnUsername;
+    }
+
+    protected Ignite getIgnite() {
+        return ignite;
+    }
+
+    public void setIgnite(Ignite ignite) {
+        this.ignite = ignite;
     }
 
     public abstract Observable<Client> getClient(String partition, String clientIdentifier);
@@ -93,6 +105,9 @@ public abstract class Datastore implements Observable.OnSubscribe<IOTMessage>,Ba
     public abstract void removeMessage(PublishMessage publishMessage);
 
     public abstract String nextClientId();
+
+
+
 
     @Override
     public void call(Subscriber<? super IOTMessage> subscriber) {

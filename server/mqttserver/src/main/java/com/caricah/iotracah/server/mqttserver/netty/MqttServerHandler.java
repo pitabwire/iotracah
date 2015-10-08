@@ -57,12 +57,10 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
 
         log.debug(" messageReceived : received the message {}", msg);
 
-        String partition = ctx.channel().attr(ServerImpl.REQUEST_PARTITION).get();
-        String clientId = ctx.channel().attr(ServerImpl.REQUEST_CLIENT_ID).get();
         Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
         Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
-        getInternalServer().pushToWorker(connectionId, sessionId, partition, clientId, msg);
+        getInternalServer().pushToWorker(connectionId, sessionId, null, null, msg);
 
     }
 

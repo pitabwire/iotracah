@@ -49,13 +49,8 @@ import rx.Subscriber;
 import rx.Subscription;
 import rx.schedulers.Schedulers;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * <code>WorkersInitializer</code> Handler for initializing base worker
@@ -89,17 +84,17 @@ public abstract class ServersInitializer implements SystemInitializer {
 
     private boolean serverEngineEnabled;
 
-    private boolean excecutorClusterSeparated;
+    private boolean executorClusterSeparated;
 
-    private String excecutorDefaultName;
+    private String executorDefaultName;
 
-    private String excecutorServerName;
+    private String executorServerName;
 
-    private String excecutorWorkerName;
+    private String executorWorkerName;
 
-    private String excecutorDatastoreName;
+    private String executorDatastoreName;
 
-    private String excecutorEventerName;
+    private String executorEventerName;
 
     private String[] discoveryAddresses;
 
@@ -113,52 +108,52 @@ public abstract class ServersInitializer implements SystemInitializer {
         this.serverEngineEnabled = serverEngineEnabled;
     }
 
-    public boolean isExcecutorClusterSeparated() {
-        return excecutorClusterSeparated;
+    public boolean isExecutorClusterSeparated() {
+        return executorClusterSeparated;
     }
 
-    public void setExcecutorClusterSeparated(boolean excecutorClusterSeparated) {
-        this.excecutorClusterSeparated = excecutorClusterSeparated;
+    public void setExecutorClusterSeparated(boolean executorClusterSeparated) {
+        this.executorClusterSeparated = executorClusterSeparated;
     }
 
-    public String getExcecutorDefaultName() {
-        return excecutorDefaultName;
+    public String getExecutorDefaultName() {
+        return executorDefaultName;
     }
 
-    public void setExcecutorDefaultName(String excecutorDefaultName) {
-        this.excecutorDefaultName = excecutorDefaultName;
+    public void setExecutorDefaultName(String executorDefaultName) {
+        this.executorDefaultName = executorDefaultName;
     }
 
-    public String getExcecutorServerName() {
-        return excecutorServerName;
+    public String getExecutorServerName() {
+        return executorServerName;
     }
 
-    public void setExcecutorServerName(String excecutorServerName) {
-        this.excecutorServerName = excecutorServerName;
+    public void setExecutorServerName(String executorServerName) {
+        this.executorServerName = executorServerName;
     }
 
-    public String getExcecutorWorkerName() {
-        return excecutorWorkerName;
+    public String getExecutorWorkerName() {
+        return executorWorkerName;
     }
 
-    public void setExcecutorWorkerName(String excecutorWorkerName) {
-        this.excecutorWorkerName = excecutorWorkerName;
+    public void setExecutorWorkerName(String executorWorkerName) {
+        this.executorWorkerName = executorWorkerName;
     }
 
-    public String getExcecutorDatastoreName() {
-        return excecutorDatastoreName;
+    public String getExecutorDatastoreName() {
+        return executorDatastoreName;
     }
 
-    public void setExcecutorDatastoreName(String excecutorDatastoreName) {
-        this.excecutorDatastoreName = excecutorDatastoreName;
+    public void setExecutorDatastoreName(String executorDatastoreName) {
+        this.executorDatastoreName = executorDatastoreName;
     }
 
-    public String getExcecutorEventerName() {
-        return excecutorEventerName;
+    public String getExecutorEventerName() {
+        return executorEventerName;
     }
 
-    public void setExcecutorEventerName(String excecutorEventerName) {
-        this.excecutorEventerName = excecutorEventerName;
+    public void setExecutorEventerName(String executorEventerName) {
+        this.executorEventerName = executorEventerName;
     }
 
     public String[] getDiscoveryAddresses() {
@@ -219,7 +214,7 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 //Set the cluster and node identifications.
                 Server server = (Server) baseSystemHandler;
-                server.setCluster(getExcecutorDefaultName());
+                server.setCluster(getExecutorDefaultName());
                 server.setNodeId(getNodeId());
 
                 serverList.add(server);
@@ -251,24 +246,24 @@ public abstract class ServersInitializer implements SystemInitializer {
 
         setServerEngineEnabled(configWorkerEnabled);
 
-        String excecutorName = configuration.getString(CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME, CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME_DEFAULT_VALUE);
-        setExcecutorDefaultName(excecutorName);
+        String executorName = configuration.getString(CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME, CORE_CONFIG_DEFAULT_ENGINE_EXCECUTOR_NAME_DEFAULT_VALUE);
+        setExecutorDefaultName(executorName);
 
 
-        excecutorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_EVENT_NAME, getExcecutorDefaultName());
-        setExcecutorEventerName(excecutorName);
+        executorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_EVENT_NAME, getExecutorDefaultName());
+        setExecutorEventerName(executorName);
 
-        excecutorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_DATASTORE_NAME, getExcecutorDefaultName());
-        setExcecutorDatastoreName(excecutorName);
+        executorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_DATASTORE_NAME, getExecutorDefaultName());
+        setExecutorDatastoreName(executorName);
 
-        excecutorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_WORKER_NAME, getExcecutorDefaultName());
-        setExcecutorWorkerName(excecutorName);
+        executorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_WORKER_NAME, getExecutorDefaultName());
+        setExecutorWorkerName(executorName);
 
-        excecutorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_SERVER_NAME, getExcecutorDefaultName());
-        setExcecutorServerName(excecutorName);
+        executorName = configuration.getString(CORE_CONFIG_ENGINE_EXCECUTOR_SERVER_NAME, getExecutorDefaultName());
+        setExecutorServerName(executorName);
 
         boolean excecutorClusterSeparated = configuration.getBoolean(CORE_CONFIG_ENGINE_EXCECUTOR_IS_CLUSTER_SEPARATED, CORE_CONFIG_ENGINE_EXCECUTOR_IS_CLUSTER_SEPARATED_DEFAULT_VALUE);
-        setExcecutorClusterSeparated(excecutorClusterSeparated);
+        setExecutorClusterSeparated(excecutorClusterSeparated);
 
         String[] discoveryAddresses = configuration.getStringArray(CORE_CONFIG_ENGINE_CLUSTER_DISCOVERY_ADDRESSES);
         setDiscoveryAddresses(discoveryAddresses);
@@ -303,10 +298,15 @@ public abstract class ServersInitializer implements SystemInitializer {
                 spi.setIpFinder(ipFinder);
 
                 IgniteConfiguration cfg = new IgniteConfiguration();
-                cfg.setGridName(getExcecutorDefaultName());
+                cfg.setGridName(getExecutorDefaultName());
 
                 // Override default discovery SPI.
                 cfg.setDiscoverySpi(spi);
+
+                //Set node attribute.
+                Map<String, String> attributes = new HashMap<>();
+                attributes.put("ROLE", getExecutorDefaultName());
+                cfg.setUserAttributes(attributes);
 
                 //Use sl4j logger
                 IgniteLogger gridLog = new Slf4jLogger(LoggerFactory.getLogger("org.apache.ignite")); // Provide correct SLF4J logger here.
@@ -325,7 +325,7 @@ public abstract class ServersInitializer implements SystemInitializer {
                 //Also instantiate the server router.
                 IgniteMessaging igniteMessaging = getIgnite().message();
 
-                String cluster = getExcecutorDefaultName();
+                String cluster = getExecutorDefaultName();
 
                 UUID nodeId = getNodeId();
 
@@ -376,9 +376,9 @@ public abstract class ServersInitializer implements SystemInitializer {
             //The schedular obtained allows for processing of data to be sent to the
             //correct excecutor groups.
 
-            //Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
+            Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
             //Scheduler scheduler = Schedulers.from(Executors.newCachedThreadPool());
-            Scheduler scheduler = Schedulers.io();
+            //Scheduler scheduler = Schedulers.io();
         return observable
                     .onBackpressureBuffer()
                     .subscribeOn(scheduler)
@@ -395,30 +395,30 @@ public abstract class ServersInitializer implements SystemInitializer {
 
         ClusterGroup executionGrp;
 
-        if (isExcecutorClusterSeparated()) {
+        if (isExecutorClusterSeparated()) {
 
             if (observableOnSubscriber instanceof Server) {
 
                 // Cluster group for nodes where the attribute 'worker' is defined.
-                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorServerName());
+                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorServerName());
 
             } else if (observableOnSubscriber instanceof Worker || observableOnSubscriber instanceof ServerRouter) {
 
-                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorWorkerName());
+                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorWorkerName());
 
             } else if (observableOnSubscriber instanceof Eventer) {
 
-                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorEventerName());
+                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorEventerName());
             } else if( observableOnSubscriber instanceof Datastore) {
 
-                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorDatastoreName());
+                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorDatastoreName());
 
             }else{
-                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorDefaultName());
+                executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorDefaultName());
             }
         } else {
 
-            executionGrp = getIgnite().cluster().forAttribute("ROLE", getExcecutorDefaultName());
+            executionGrp = getIgnite().cluster().forAttribute("ROLE", getExecutorDefaultName());
         }
 
         return getIgnite().executorService(executionGrp);
@@ -428,7 +428,7 @@ public abstract class ServersInitializer implements SystemInitializer {
 
 
     public final Ignite getIgnite() {
-        return Ignition.ignite(getExcecutorDefaultName());
+        return Ignition.ignite(getExecutorDefaultName());
     }
 
 

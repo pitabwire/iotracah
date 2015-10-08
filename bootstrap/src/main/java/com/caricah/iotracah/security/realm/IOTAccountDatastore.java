@@ -18,40 +18,26 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.exceptions;
+package com.caricah.iotracah.security.realm;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.security.realm.auth.IdConstruct;
+import com.caricah.iotracah.security.realm.state.IOTAccount;
+import com.caricah.iotracah.security.realm.state.IOTRole;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 10/2/15
+ * @version 1.0 10/6/15
  */
-public class ClientDoesNotExistException extends UnRetriableException {
+public interface IOTAccountDatastore {
 
-    /**
-     * Creates a new instance.
-     */
-    public ClientDoesNotExistException() {
-    }
 
-    /**
-     * Creates a new instance.
-     */
-    public ClientDoesNotExistException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    IOTAccount getIOTAccount(String partition, String username);
 
-    /**
-     * Creates a new instance.
-     */
-    public ClientDoesNotExistException(String message) {
-        super(message);
-    }
+    void saveIOTAccount(IOTAccount account);
 
-    /**
-     * Creates a new instance.
-     */
-    public ClientDoesNotExistException(Throwable cause) {
-        super(cause);
-    }
+    IOTRole getIOTRole(String partition, String rolename);
+
+
+    void saveIOTRole(IOTRole iotRole);
+
 }

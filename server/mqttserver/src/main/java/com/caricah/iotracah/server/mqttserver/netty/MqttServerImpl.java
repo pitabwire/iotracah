@@ -117,8 +117,6 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
                 Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
                 if (null != channel) {
 
-                    channel.attr(ServerImpl.REQUEST_PARTITION).set(ioTMessage.getPartition());
-                    channel.attr(ServerImpl.REQUEST_CLIENT_ID).set(ioTMessage.getClientIdentifier());
                     channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
                     channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
                     channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());

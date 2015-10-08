@@ -31,20 +31,19 @@ import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.security.realm.auth.IdConstruct;
+import com.caricah.iotracah.security.realm.auth.IdPassToken;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttIdentifierRejectedException;
 import io.netty.handler.codec.mqtt.MqttUnacceptableProtocolVersionException;
 import io.netty.handler.codec.mqtt.MqttVersion;
 import org.apache.shiro.authc.AuthenticationException;
-import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.authz.AuthorizationException;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.subject.Subject;
 import rx.Observable;
-import rx.Subscriber;
-import rx.schedulers.Schedulers;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -60,7 +59,8 @@ import java.util.regex.Pattern;
  */
 public class ConnectionHandler extends RequestHandler {
 
-    private final Pattern partitionPattern = Pattern.compile("(?<partition>.*)-<(?<clientId>.*)>");
+    private final Pattern usernamePartitionPattern = Pattern.compile("(?<username>.*)-<(?<partition>.*)>");
+    private final Pattern clientIdPartitionPattern = Pattern.compile("(?<clientId>.*)-<(?<partition>.*)>");
     private final Pattern pattern = Pattern.compile("[-/<>a-zA-Z0-9_]*");
 
     private ConnectMessage message;
@@ -222,101 +222,90 @@ public class ConnectionHandler extends RequestHandler {
                     message.getKeepAliveTime(), message.getSourceHost(), message.getProtocal()
             );
 
-            newClientObservable.first().subscribeOn(Schedulers.io()).subscribe(
+            newClientObservable.subscribe(
 
-                    new Subscriber<Client>() {
-                        @Override
-                        public void onCompleted() {
-                        }
+                    (client) -> {
 
-                        @Override
-                        public void onError(Throwable e) {
+                        message.setSessionId(client.getSessionId());
+                        message.setAuthKey(client.getGeneratedAuthKey());
 
-                            log.error(" onError : Problems ", e);
+                        log.debug(" handle: obtained a client : {}. ", client);
 
-                            ConnectAcknowledgeMessage connectAcknowledgeMessage;
-
-                            if (e instanceof AuthenticationException) {
-
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
-
-                            } else if (e instanceof AuthorizationException) {
-
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
-
-                            } else {
-                                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
-                            }
-
-                            connectAcknowledgeMessage.copyBase(message);
-                            pushToServer(connectAcknowledgeMessage);
+                        /**
+                         * 3.     The Server MAY check that the contents of the CONNECT Packet meet any further restrictions
+                         *        and MAY perform authentication and authorization checks. If any of these checks fail,
+                         *        it SHOULD send an appropriate CONNACK response with a non-zero return code as described
+                         *      in section 3.2 and it MUST close the Network Connection.
+                         *
+                         */
 
 
-                        }
+                        log.info(" onNext : Successfully initiated a session.");
 
-                        @Override
-                        public void onNext(Client client) {
+                        //Respond to server with a connection successfull.
+                        ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+                        connectAcknowledgeMessage.copyBase(message);
 
-                            message.setClientIdentifier(client.getClientIdentifier());
-                            message.setPartition(client.getPartition());
-                            message.setAuthKey(client.getGeneratedAuthKey());
+                        pushToServer(connectAcknowledgeMessage);
 
-                            log.debug(" handle: obtained a client : {}. ", client);
+
+                        WillMessage will;
+                        if (message.isHasWill()) {
 
                             /**
-                             * 3.     The Server MAY check that the contents of the CONNECT Packet meet any further restrictions
-                             *        and MAY perform authentication and authorization checks. If any of these checks fail,
-                             *        it SHOULD send an appropriate CONNACK response with a non-zero return code as described
-                             *      in section 3.2 and it MUST close the Network Connection.
-                             *
+                             * If the Will Flag is set to 1 this indicates that, if the Connect request is accepted,
+                             * a Will Message MUST be stored on the Server and associated with the Network Connection.
+                             * The Will Message MUST be published when the Network Connection is subsequently closed unless
+                             * the Will Message has been deleted by the Server on receipt of a DISCONNECT Packet [MQTT-3.1.2-8].
                              */
 
 
-                            log.info(" onNext : Successfully initiated a session.");
+                            will = WillMessage.from(message.isRetainWill(), message.getWillQos(),
+                                    message.getWillTopic(), message.getWillMessage());
+                            will.copyBase(message);
 
-                            //Respond to server with a connection successfull.
-                            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
-                            connectAcknowledgeMessage.copyBase(message);
-
-                            pushToServer(connectAcknowledgeMessage);
-
-
-                            WillMessage will;
-                            if (message.isHasWill()) {
-
-                                /**
-                                 * If the Will Flag is set to 1 this indicates that, if the Connect request is accepted,
-                                 * a Will Message MUST be stored on the Server and associated with the Network Connection.
-                                 * The Will Message MUST be published when the Network Connection is subsequently closed unless
-                                 * the Will Message has been deleted by the Server on receipt of a DISCONNECT Packet [MQTT-3.1.2-8].
-                                 */
-
-
-                                will = WillMessage.from(message.isRetainWill(), message.getWillQos(),
-                                        message.getWillTopic(), message.getWillMessage());
-                                will.copyBase(message);
-
-                                getDatastore().saveWill(will);
-                            } else {
-                                //We need to clear the existing will message.
-                                will = WillMessage.from(false, 0, "", "");
-                                will.setPartition(message.getPartition());
-                                will.setClientIdentifier(message.getClientIdentifier());
-                                will.copyBase(message);
-                                getDatastore().removeWill(will);
-                            }
-
-
-                            //Perform a reset for our session.
-                            SessionResetManager resetManager = getWorker().getSessionResetManager();
-                            resetManager.process(client);
-
-
+                            getDatastore().saveWill(will);
+                        } else {
+                            //We need to clear the existing will message.
+                            will = WillMessage.from(false, 0, "", "");
+                            will.setPartition(message.getPartition());
+                            will.setClientIdentifier(message.getClientIdentifier());
+                            will.copyBase(message);
+                            getDatastore().removeWill(will);
                         }
-                    }
 
 
-            );
+                        //Perform a reset for our session.
+                        SessionResetManager resetManager = getWorker().getSessionResetManager();
+                        resetManager.process(client);
+
+
+                    },
+
+                    (e) -> {
+
+                        log.error(" onError : Problems ", e);
+
+                        ConnectAcknowledgeMessage connectAcknowledgeMessage;
+
+                        if (e instanceof AuthenticationException) {
+
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
+
+                        } else if (e instanceof AuthorizationException) {
+
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
+
+                        } else {
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                        }
+
+                        connectAcknowledgeMessage.copyBase(message);
+                        pushToServer(connectAcknowledgeMessage);
+
+                    }, () -> {
+
+                    });
         } catch (MqttUnacceptableProtocolVersionException | MqttIdentifierRejectedException | AuthenticationException | UnknownProtocalException e) {
 
             log.debug(" handle : Client connection issues ", e);
@@ -364,13 +353,17 @@ public class ConnectionHandler extends RequestHandler {
 
                 log.debug(" openSubject : create -- initiating subject creation.");
 
-                String activeClientId = clientIdentifier;
+                final String activeClientId;
                 if (null == clientIdentifier) {
                     activeClientId = worker.getDatastore().nextClientId();
+                }else{
+                    activeClientId  = clientIdentifier;
                 }
 
-                String partition = userName;
-                if (!getDatastore().isPartitionBasedOnUsername()) {
+                final String partition ;
+                if (getDatastore().isPartitionBasedOnUsername()) {
+                    partition = processUsernameForPartition(userName);
+                }else{
                     partition = processClientIdForPartition(activeClientId);
                 }
 
@@ -387,18 +380,7 @@ public class ConnectionHandler extends RequestHandler {
                 log.debug(" openSubject : create -- Futher into the database.");
 
                 Observable<Client> clientObservable = getDatastore().getClient(partition, activeClientId);
-                clientObservable.firstOrDefault(defaultClient).subscribe(new Subscriber<Client>() {
-                    @Override
-                    public void onCompleted() {
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        observable.onError(e);
-                    }
-
-                    @Override
-                    public void onNext(Client client) {
+                clientObservable.firstOrDefault(defaultClient).subscribe(( client) ->{
 
                         //We have obtained a client to work with.
 
@@ -406,8 +388,8 @@ public class ConnectionHandler extends RequestHandler {
 
                         try {
 
-
-                            PrincipalCollection principals = new SimplePrincipalCollection(client.getClientIdentifier(), "");
+                            IdConstruct idConstruct = new IdConstruct(partition, userName, activeClientId);
+                            PrincipalCollection principals = new SimplePrincipalCollection(idConstruct, "");
 
                             Subject.Builder subjectBuilder = new Subject.Builder();
                             subjectBuilder = subjectBuilder.principals(principals);
@@ -421,27 +403,23 @@ public class ConnectionHandler extends RequestHandler {
                                 activeUser.logout();
                             }
 
-                            UsernamePasswordToken token = new UsernamePasswordToken(userName, password);
-
-
+                            IdPassToken token = new IdPassToken(partition, userName, activeClientId, password.toCharArray());
                             activeUser.login(token);
 
                             log.info(" openSubject : Authenticated client <{}> username {} ", client.getClientIdentifier(), userName);
 
                             Session session = activeUser.getSession();
-
                             Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
-
                             session.setTimeout(keepAliveDisconnectiontime.intValue());
+                            session.setAttribute(SESSION_CLIENTID_KEY, activeClientId );
                             session.touch();
-
 
                             client.setProtocal(protocal);
                             client.setActive(true);
                             client.setCleanSession(cleanSession);
                             client.setSessionId(session.getId());
 
-                            if(Protocal.HTTP.equals(client.getProtocal())){
+                            if (client.getProtocal().isNotPersistent()) {
                                 client.setGeneratedAuthKey(generateMAC());
                             }
 
@@ -450,11 +428,11 @@ public class ConnectionHandler extends RequestHandler {
                             observable.onNext(client);
                             observable.onCompleted();
 
-                        } catch (Exception e) {
+                        } catch (NoSuchAlgorithmException | AuthenticationException  e) {
                             observable.onError(e);
                         }
-                    }
-                });
+                    }, observable::onError
+                );
 
 
             } catch (Exception e) {
@@ -475,10 +453,21 @@ public class ConnectionHandler extends RequestHandler {
 
     private String processClientIdForPartition(String activeClientId) {
 
-        Matcher matcher = partitionPattern.matcher(activeClientId);
-        if(matcher.matches()) {
+        Matcher matcher = clientIdPartitionPattern.matcher(activeClientId);
+        if (matcher.matches()) {
             return matcher.group("partition");
-        }else {
+        } else {
+            return "";
+        }
+
+    }
+
+    private String processUsernameForPartition(String username) {
+
+        Matcher matcher = usernamePartitionPattern.matcher(username);
+        if (matcher.matches()) {
+            return matcher.group("partition");
+        } else {
             return "";
         }
 

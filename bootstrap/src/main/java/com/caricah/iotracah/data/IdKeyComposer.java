@@ -18,27 +18,17 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.state.messages.base;
+package com.caricah.iotracah.data;
+
+import com.caricah.iotracah.exceptions.UnRetriableException;
+
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/3/15
+ * @version 1.0 9/21/15
  */
-public enum Protocal {
+public interface IdKeyComposer {
 
-    MQTT(true), HTTP(false);
-
-    private final boolean persistent;
-
-    Protocal(boolean persistent){
-        this.persistent = persistent;
-    }
-
-    public boolean isPersistent(){
-        return persistent;
-    }
-
-    public boolean isNotPersistent(){
-        return !persistent;
-    }
+    Serializable generateIdKey() throws UnRetriableException;
 }

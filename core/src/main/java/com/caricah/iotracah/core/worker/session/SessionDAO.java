@@ -18,7 +18,7 @@
  *
  */
 
-package com.caricah.iotracah.datastore.ignitecache.session;
+package com.caricah.iotracah.core.worker.session;
 
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
@@ -29,8 +29,6 @@ import org.apache.shiro.session.mgt.eis.AbstractSessionDAO;
 import org.apache.shiro.session.mgt.eis.SessionIdGenerator;
 import org.apache.shiro.util.Destroyable;
 import org.apache.shiro.util.Initializable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -42,15 +40,15 @@ import java.util.Collections;
  */
 public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator, Initializable, Destroyable{
 
-    private final IgniteCache<Serializable, Session> igniteCache;
+    private final IgniteCache<Serializable, String> igniteCache;
     private final IgniteAtomicSequence igniteAtomicSequence;
 
-    public SessionDAO(IgniteCache<Serializable, Session> igniteCache, IgniteAtomicSequence igniteAtomicSequence){
+    public SessionDAO(IgniteCache<Serializable, String> igniteCache, IgniteAtomicSequence igniteAtomicSequence){
         this.igniteCache = igniteCache;
         this.igniteAtomicSequence = igniteAtomicSequence;
     }
 
-    public IgniteCache<Serializable, Session> getIgniteCache() {
+    public IgniteCache<Serializable, String> getIgniteCache() {
         return igniteCache;
     }
 
@@ -88,7 +86,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
         if (id == null) {
             throw new NullPointerException("id argument cannot be null.");
         }
-         getIgniteCache().putIfAbsent(id, session);
+         getIgniteCache().put(id, SerializableUtils.serialize(session));
         return  session;
     }
 
@@ -120,7 +118,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
     @Override
     protected Session doReadSession(Serializable sessionId) {
 
-       return   getIgniteCache().get(sessionId);
+       return  SerializableUtils.deserialize( getIgniteCache().get(sessionId));
 
     }
 

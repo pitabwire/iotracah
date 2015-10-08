@@ -22,6 +22,8 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.modules.Datastore;
+import com.caricah.iotracah.security.realm.auth.IdConstruct;
+import com.caricah.iotracah.security.realm.auth.permission.IOTPermission;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.models.Client;
@@ -29,11 +31,20 @@ import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.shiro.authc.AuthenticationException;
+import org.apache.shiro.authz.AuthorizationException;
+import org.apache.shiro.authz.Permission;
+import org.apache.shiro.authz.UnauthenticatedException;
+import org.apache.shiro.session.Session;
+import org.apache.shiro.subject.Subject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import java.util.StringJoiner;
+import java.io.Serializable;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -41,6 +52,9 @@ import java.util.StringJoiner;
 public abstract class RequestHandler {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
+
+    protected static final String SESSION_CLIENTID_KEY = "clientid_key";
+    protected static final String SESSION_AUTH_KEY = "auth_key";
 
     private Worker worker;
 
@@ -64,17 +78,84 @@ public abstract class RequestHandler {
         return getDatastore().getClient(partition, clientIdentifier);
     }
 
-    private String getPermission(AuthorityRole role, String topic) {
-        return new StringJoiner("").add(role.name()).add(":").add(topic).toString();
+    private IOTPermission getPermission( String partition, String username, String clientId, AuthorityRole role, String topic) {
+        String permissionString = new StringJoiner("")
+                .add(role.name())
+                .add(":").add(topic).toString();
+
+        return new IOTPermission(partition, username, clientId, permissionString);
     }
 
-    public void checkPermission(AuthorityRole role, String topic) {
+    public Observable<Client> checkPermission(Serializable sessionId, String authKey, AuthorityRole role, String ... topicList) {
+        return checkPermission(sessionId, authKey, role, Arrays.asList(topicList));
 
-        String permission = getPermission(role, topic);
+    }
+    public Observable<Client> checkPermission(Serializable sessionId, String authKey, AuthorityRole role, List<String>  topicList) {
+
+        return Observable.create(observable ->{
+
+            Subject subject = new Subject.Builder().sessionId(sessionId).buildSubject();
+
+            final Session session = subject.getSession(false);
+
+            if (session != null && subject.isAuthenticated() ) {
+
+
+                try{
+                IdConstruct idConstruct = (IdConstruct) subject.getPrincipal();
+
+                String partition = idConstruct.getPartition();
+                String username = idConstruct.getUsername();
+                String session_client_id = (String) session.getAttribute(SESSION_CLIENTID_KEY);
+                String session_auth_key = (String) session.getAttribute(SESSION_AUTH_KEY);
+
+
+
+                /**
+                 * Make sure for non persistent connections the authKey matches
+                 * the stored authKey. Otherwise fail the request.
+                 */
+                if(!StringUtils.isEmpty(session_auth_key)){
+                    if(!session_auth_key.equals(authKey))
+                        throw new UnauthenticatedException("Client fails auth key assertion.");
+
+                }
+
+
+                List<Permission> permissions = topicList
+                        .stream()
+                        .map(topic ->
+                                getPermission(
+                                        username, partition,
+                                        session_client_id,
+                                        role, topic))
+                        .collect(Collectors.toList());
+
+
+
+                    subject.checkPermissions(permissions);
+
+                    Observable<Client> clientObservable = getDatastore().getClient(partition, session_client_id);
+
+                    clientObservable.subscribe(observable::onNext, observable::onError, observable::onCompleted);
+
+
+                }catch (AuthorizationException e) {
+                    //Notify failure to authorize user.
+                    observable.onError(e);
+                }
+
+            }else{
+                observable.onError(new AuthenticationException("Client must be authenticated {Try connecting first}"));
+            }
+
+        });
+
     }
 
 
-    public void disconnectDueToError(Exception e){
+    public void disconnectDueToError(Throwable e){
+        log.warn(" handle : System experienced the error ", e);
 
     }
     /**

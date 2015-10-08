@@ -18,17 +18,37 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.state;
+package com.caricah.iotracah.core.worker.session;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
+
+import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteAtomicSequence;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.configuration.CacheConfiguration;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.authz.ModularRealmAuthorizer;
+import org.apache.shiro.config.Ini;
+import org.apache.shiro.mgt.DefaultSecurityManager;
+import org.apache.shiro.session.mgt.DefaultSessionManager;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/21/15
+ * @version 1.0 9/23/15
  */
-public interface IdKeyComposer {
+public class SessionManager {
 
-    Serializable generateIdKey() throws UnRetriableException;
+
+
+
+
+
+
+
 }

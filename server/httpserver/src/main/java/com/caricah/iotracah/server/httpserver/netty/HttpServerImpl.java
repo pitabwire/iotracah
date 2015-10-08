@@ -103,6 +103,5 @@ public class HttpServerImpl extends ServerImpl<FullHttpMessage> {
         //Always close the connection once there is a response.
         closeClient((ChannelId)ioTMessage.getConnectionId());
 
-
     }
 }
