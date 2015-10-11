@@ -60,7 +60,7 @@ public class HttpServerHandler extends ServerHandler<FullHttpMessage> {
 
          Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
 
-        getInternalServer().pushToWorker(connectionId, null, null, null, msg);
+        getInternalServer().pushToWorker(connectionId, null, msg);
 
     }
 

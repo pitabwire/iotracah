@@ -18,11 +18,13 @@
  *
  */
 
-package com.caricah.iotracah.core.worker.session;
+package com.caricah.iotracah.core.worker.state.session;
 
+import com.caricah.iotracah.core.worker.state.models.IOTSession;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
 import org.apache.shiro.ShiroException;
+import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.session.mgt.eis.AbstractSessionDAO;
@@ -40,15 +42,15 @@ import java.util.Collections;
  */
 public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator, Initializable, Destroyable{
 
-    private final IgniteCache<Serializable, String> igniteCache;
+    private final IgniteCache<Serializable, IOTSession> igniteCache;
     private final IgniteAtomicSequence igniteAtomicSequence;
 
-    public SessionDAO(IgniteCache<Serializable, String> igniteCache, IgniteAtomicSequence igniteAtomicSequence){
+    public SessionDAO(IgniteCache<Serializable, IOTSession> igniteCache, IgniteAtomicSequence igniteAtomicSequence){
         this.igniteCache = igniteCache;
         this.igniteAtomicSequence = igniteAtomicSequence;
     }
 
-    public IgniteCache<Serializable, String> getIgniteCache() {
+    public IgniteCache<Serializable, IOTSession> getIgniteCache() {
         return igniteCache;
     }
 
@@ -86,7 +88,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
         if (id == null) {
             throw new NullPointerException("id argument cannot be null.");
         }
-         getIgniteCache().put(id, SerializableUtils.serialize(session));
+         getIgniteCache().put(id, new IOTSession(session));
         return  session;
     }
 
@@ -118,7 +120,13 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
     @Override
     protected Session doReadSession(Serializable sessionId) {
 
-       return  SerializableUtils.deserialize( getIgniteCache().get(sessionId));
+        IOTSession iotSession = getIgniteCache().get(sessionId);
+
+        if(null == iotSession){
+            return null;
+        }
+
+       return iotSession.toSession();
 
     }
 
@@ -190,6 +198,13 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
      */
     @Override
     public Collection<Session> getActiveSessions() {
+
+
+
+
+
+
+
         return Collections.emptySet();
     }
 

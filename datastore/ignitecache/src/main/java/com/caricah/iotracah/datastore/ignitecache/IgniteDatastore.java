@@ -20,21 +20,17 @@
 
 package com.caricah.iotracah.datastore.ignitecache;
 
-import com.caricah.iotracah.core.init.ServersInitializer;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
-import com.caricah.iotracah.core.worker.session.SessionManager;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.security.realm.state.IOTAccount;
 import com.caricah.iotracah.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
-import org.apache.ignite.Ignition;
 import rx.Observable;
 import rx.Subscriber;
 
@@ -130,7 +126,7 @@ public class IgniteDatastore extends Datastore{
     @Override
     public Observable<Client> getClient(String partition, String clientIdentifier) {
 
-        String query = "partition = ? and clientIdentifier = ?";
+        String query = "partition = ? and clientId = ?";
         Object[] params = {partition, clientIdentifier};
 
        return clientHandler.getByQuery(Client.class, query, params );
@@ -149,7 +145,7 @@ public class IgniteDatastore extends Datastore{
     @Override
     public Observable<WillMessage> getWill(String partition, String clientIdentifier) {
 
-        String query = "partition = ? and clientIdentifier = ?";
+        String query = "partition = ? and clientId = ?";
         Object[] params = {partition, clientIdentifier};
 
         return willHandler.getByQuery(WillMessage.class, query, params);
@@ -186,7 +182,7 @@ public class IgniteDatastore extends Datastore{
     }
 
     @Override
-    public Observable<String> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage) {
+    public Observable<String> distributePublish(String partition, Set<String> topicBreakDown, PublishMessage publishMessage) {
 
         return Observable.create(observer -> {
 
@@ -239,8 +235,8 @@ public class IgniteDatastore extends Datastore{
     @Override
     public Observable<PublishMessage> getActiveMessages(Client client) {
 
-        String query = "partition = ? and clientIdentifier = ?";
-        Object[] params = {client.getPartition(), client.getClientIdentifier()};
+        String query = "partition = ? and clientId = ?";
+        Object[] params = {client.getPartition(), client.getClientId()};
 
         return messageHandler.getByQuery(PublishMessage.class, query, params);
     }
@@ -248,7 +244,7 @@ public class IgniteDatastore extends Datastore{
     @Override
     public Observable<PublishMessage> getMessage(String partition, String clientIdentifier, long messageId, boolean isInbound) {
 
-        String query = "partition = ? and clientIdentifier = ? and messageId = ? and inBound = ?";
+        String query = "partition = ? and clientId = ? and messageId = ? and inBound = ?";
         Object[] params = {partition, clientIdentifier, messageId, isInbound};
 
         return messageHandler.getByQuery(PublishMessage.class, query, params);

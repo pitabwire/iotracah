@@ -247,14 +247,14 @@ public class Messenger {
 
     }
 
-    public void publish(PublishMessage publishMessage) throws RetriableException {
+    public void publish(String partition, PublishMessage publishMessage) throws RetriableException {
 
-        log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientIdentifier(), publishMessage.getPartition());
+        log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientId(), partition);
 
-        Set<String> topicBreakDown = getTopicBreakDown(publishMessage.getPartition(), publishMessage.getQos(), publishMessage.getTopic());
+        Set<String> topicBreakDown = getTopicBreakDown(partition, publishMessage.getQos(), publishMessage.getTopic());
 
         //Obtain a list of all the subscribed clients who will receive a message.
-        Observable<String> distributePublishObservable = getDatastore().distributePublish(topicBreakDown, publishMessage);
+        Observable<String> distributePublishObservable = getDatastore().distributePublish(partition, topicBreakDown, publishMessage);
 
         distributePublishObservable.subscribe(
 
@@ -277,7 +277,7 @@ public class Messenger {
                         log.debug(" publish onNext : obtained a client {} to send message to", clientIdentifier);
 
 
-                        Observable<Client> clientObservable = getDatastore().getClient(publishMessage.getPartition(), clientIdentifier);
+                        Observable<Client> clientObservable = getDatastore().getClient(partition, clientIdentifier);
 
                         clientObservable.subscribe(client -> {
 

@@ -21,8 +21,10 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
@@ -30,22 +32,32 @@ import rx.Observable;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PublishAcknowledgeHandler extends RequestHandler {
-
-    AcknowledgeMessage message;
+public class PublishAcknowledgeHandler extends RequestHandler<AcknowledgeMessage> {
 
     public PublishAcknowledgeHandler(AcknowledgeMessage message) {
-        this.message = message;
+        super(message);
     }
 
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                message.getPartition(), message.getClientIdentifier(),
-                message.getMessageId(), false);
+        //Check for connect permissions
+        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
+                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+
+        permissionObservable.subscribe(
+
+                (client) -> {
+
+                    //Handle acknowledging of message.
+
+                    Observable<PublishMessage> messageObservable = getDatastore().getMessage(
+                client.getPartition(), client.getClientId(),
+                getMessage().getMessageId(), false);
 
         messageObservable.subscribe(getDatastore()::removeMessage);
+
+                }, this::disconnectDueToError);
 
     }
 }

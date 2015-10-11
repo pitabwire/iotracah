@@ -54,8 +54,7 @@ public class IOTHttpTransformerImpl implements IOTMqttTransformer<FullHttpMessag
             case ConnectAcknowledgeMessage.MESSAGE_TYPE:
                 ConnectAcknowledgeMessage conAck = (ConnectAcknowledgeMessage) internalMessage;
 
-                json.put("clientId", conAck.getClientIdentifier() );
-                json.put("partition", conAck.getPartition() );
+                json.put("sessionId", conAck.getSessionId() );
                 json.put("authKey", conAck.getAuthKey());
                 json.put("message", conAck.getReturnCode().name() );
 
@@ -80,7 +79,7 @@ public class IOTHttpTransformerImpl implements IOTMqttTransformer<FullHttpMessag
 
                 DisconnectMessage discMsg = (DisconnectMessage) internalMessage;
 
-                json.put("clientId", discMsg.getClientIdentifier() );
+                json.put("sessionId", discMsg.getSessionId() );
                 json.put("message", "disconnected" );
 
                 break;

@@ -119,6 +119,7 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
     }
 
     public IOTAccount getIOTAccount(String partition, String username){
+
         IOTAccount account= getIotAccountDatastore().getIOTAccount(partition, username);
 
         if(null != account)
@@ -162,5 +163,10 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
     @Override
     public boolean supports(AuthenticationToken token) {
         return token != null && IdPassToken.class.isAssignableFrom(token.getClass());
+    }
+
+    @Override
+    public void onLogout(PrincipalCollection principals) {
+        super.onLogout(principals);
     }
 }

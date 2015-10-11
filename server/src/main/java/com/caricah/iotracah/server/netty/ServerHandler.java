@@ -75,7 +75,7 @@ public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
 
             Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
 
-            getInternalServer().dirtyDisconnect(connectionId, sessionId,null, null);
+            getInternalServer().dirtyDisconnect(connectionId, sessionId);
 
         }
     }

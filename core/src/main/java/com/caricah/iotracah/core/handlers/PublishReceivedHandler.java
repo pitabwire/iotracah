@@ -20,9 +20,11 @@
 
 package com.caricah.iotracah.core.handlers;
 
+import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishReceivedMessage;
 import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
+import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
@@ -30,12 +32,11 @@ import rx.Observable;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PublishReceivedHandler extends RequestHandler {
+public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessage> {
 
-    private PublishReceivedMessage message;
 
     public PublishReceivedHandler(PublishReceivedMessage message) {
-        this.message = message;
+        super( message);
 
     }
 
@@ -43,9 +44,18 @@ public class PublishReceivedHandler extends RequestHandler {
     public void handle() throws RetriableException, UnRetriableException {
 
 
+//Check for connect permissions
+        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
+                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+
+        permissionObservable.subscribe(
+
+                (client) -> {
+
+
         Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                message.getPartition(), message.getClientIdentifier(),
-                message.getMessageId(), false);
+                client.getPartition(), client.getClientId(),
+                getMessage().getMessageId(), false);
 
         messageObservable.subscribe(publishMessage -> {
 
@@ -57,12 +67,18 @@ public class PublishReceivedHandler extends RequestHandler {
 
                 //Generate a PUBREL message.
 
-                ReleaseMessage releaseMessage = ReleaseMessage.from(messageId, message.isDup(), message.getQos(), message.isRetain(), false);
-                releaseMessage.copyBase(message);
+                ReleaseMessage releaseMessage = ReleaseMessage.from(
+                        messageId, getMessage().isDup(), getMessage().getQos(),
+                        getMessage().isRetain(), false);
+                releaseMessage.copyBase(getMessage());
                 pushToServer(releaseMessage);
 
             });
 
         });
+
+                }, this::disconnectDueToError);
     }
+
+
 }

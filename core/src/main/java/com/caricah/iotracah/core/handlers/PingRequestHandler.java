@@ -21,6 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.Ping;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
@@ -30,38 +31,36 @@ import rx.Observable;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PingRequestHandler extends RequestHandler {
+public class PingRequestHandler extends RequestHandler<Ping> {
 
-    Ping message;
-
-    public PingRequestHandler(Ping message) {
-
-        this.message = message;
-    }
+   public PingRequestHandler(Ping message) {
+    super(message);
+   }
 
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        Observable<Client> clientObservable = getClient(message.getPartition(), message.getClientIdentifier());
+        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
+                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+
+        permissionObservable.subscribe(
+
+                (client) -> {
+
+                    try {
+
+                        //TODO: deal with ping issues.
 
 
-        clientObservable.subscribe(client -> {
+                        pushToServer(getMessage());
 
-            try {
+                    } catch (Exception e) {
+                        log.error(" handle : ping handler experienced issues", e);
 
-                //TODO: deal with ping issues.
-
-
-
-                pushToServer(message);
-
-            } catch (Exception e) {
-                log.error(" handle : ping handler experienced issues", e);
-
-            }
+                    }
 
 
-        });
+                }, this::disconnectDueToError);
 
     }
 }

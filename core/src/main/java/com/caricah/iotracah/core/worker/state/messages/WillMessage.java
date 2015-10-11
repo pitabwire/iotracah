@@ -23,6 +23,7 @@ package com.caricah.iotracah.core.worker.state.messages;
 import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
 import java.io.Serializable;
 
@@ -33,9 +34,17 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
 
     public static final String MESSAGE_TYPE = "WILL";
 
+    @QuerySqlField(index = true)
+    private String partition;
+
+    @QuerySqlField(index = true)
+    private String clientId;
+
     private final boolean retain;
     private final int qos;
     private final String topic;
+    private Serializable payload;
+
 
     public boolean isRetain() {
         return retain;
@@ -49,6 +58,31 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
     public String getTopic() {
         return topic;
     }
+
+    public String getPartition() {
+        return partition;
+    }
+
+    public void setPartition(String partition) {
+        this.partition = partition;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public Serializable getPayload() {
+        return payload;
+    }
+
+    public void setPayload(Serializable payload) {
+        this.payload = payload;
+    }
+
 
     private WillMessage(boolean retain, int qos, String topic, String payload) {
 
@@ -66,11 +100,11 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if(null == getClientIdentifier()){
+        if(null == getClientId()){
             throw new UnRetriableException(" Client Id has to be non null");
         }
 
-        return String.format("%s-%s", getPartition(), getClientIdentifier());
+        return String.format("%s-%s", getPartition(), getClientId());
 
     }
 }

@@ -45,6 +45,7 @@ public final class ConnectMessage extends IOTMessage {
     private int willQos;
     private String willTopic;
     private String willMessage;
+    private String clientId;
 
 
 
@@ -71,7 +72,7 @@ public final class ConnectMessage extends IOTMessage {
         this.protocolName = protocolName;
         this.protocalLevel = protocalLevel;
         this.cleanSession = cleanSession;
-        setClientIdentifier( clientIdentifier);
+        setClientId(clientIdentifier);
         this.userName = userName;
         this.password = password;
         this.keepAliveTime = keepAliveTime;
@@ -159,4 +160,13 @@ public final class ConnectMessage extends IOTMessage {
     public void setWillMessage(String willMessage) {
         this.willMessage = willMessage;
     }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
 }

@@ -58,6 +58,16 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
     @QuerySqlField()
     private boolean inBound;
 
+    @QuerySqlField(index = true)
+    private String partition;
+
+    @QuerySqlField(index = true)
+    private String clientId;
+
+    @QuerySqlField()
+    private Serializable payload;
+
+
     public int getQos() {
         return qos;
     }
@@ -106,6 +116,30 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
         this.inBound = inBound;
     }
 
+    public String getPartition() {
+        return partition;
+    }
+
+    public void setPartition(String partition) {
+        this.partition = partition;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public Serializable getPayload() {
+        return payload;
+    }
+
+    public void setPayload(Serializable payload) {
+        this.payload = payload;
+    }
+
     public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, ByteBuffer payloadBuffer, boolean inBound) {
 
         if (messageId < 1  ) {
@@ -141,11 +175,11 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if (null == getClientIdentifier() || getMessageId() <= 0) {
+        if (null == getClientId() || getMessageId() <= 0) {
             throw new UnRetriableException(" Messages are stored only if they have an owner and an Id");
         }
 
-        return String.format(Locale.US, "%s-%s-%d", getClientIdentifier(), isInBound() ? "i" : "o", getMessageId());
+        return String.format(Locale.US, "%s-%s-%d", getClientId(), isInBound() ? "i" : "o", getMessageId());
     }
 
     public PublishMessage cloneMessage() {

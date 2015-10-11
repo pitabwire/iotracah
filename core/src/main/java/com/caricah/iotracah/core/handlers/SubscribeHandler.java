@@ -22,16 +22,12 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import org.apache.shiro.authz.AuthorizationException;
 import rx.Observable;
-import rx.Subscriber;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,13 +36,10 @@ import java.util.Map;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class SubscribeHandler extends RequestHandler {
-
-
-    private SubscribeMessage message;
+public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
 
     public SubscribeHandler(SubscribeMessage message) {
-        this.message = message;
+        super(message);
     }
 
     /**
@@ -63,7 +56,7 @@ public class SubscribeHandler extends RequestHandler {
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        log.debug(" handle : begining to handle a subscription {}.", message);
+        log.debug(" handle : begining to handle a subscription {}.", getMessage());
 
            /**
              * First we obtain the client responsible for this connection.
@@ -77,16 +70,16 @@ public class SubscribeHandler extends RequestHandler {
                  */
 
                     List<String> topics = new ArrayList<>();
-                    message.getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
+                    getMessage().getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
 
-                        Observable<Client> permissionObservable = checkPermission(message.getSessionId(),
-                                message.getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
+                        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
+                                getMessage().getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
 
                         permissionObservable.subscribe(
                                 (client)->{
 
                                     //We have all the security to proceed.
-                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientIdentifier(), message.getTopicFilterList());
+                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientId(), getMessage().getTopicFilterList());
 
                             subscribeObservable.subscribe(
                                     (entry) -> grantedQos.add(entry.getValue()),
@@ -96,13 +89,15 @@ public class SubscribeHandler extends RequestHandler {
                                         /**
                                          * Save subscription payload
                                          */
-                                        if(Protocal.HTTP.equals(message.getProtocal())){
-                                            client.setProtocalData(message.getReceptionUrl());
+                                        if(getMessage().getProtocal().isNotPersistent()){
+                                            client.setProtocalData(getMessage().getReceptionUrl());
                                             getDatastore().saveClient(client);
                                         }
 
-                                        SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), false, grantedQos);
-                                        subAckMessage.copyBase(message);
+                                        SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(
+                                                getMessage().getMessageId(), getMessage().isDup(),
+                                                getMessage().getQos(), false, grantedQos);
+                                        subAckMessage.copyBase(getMessage());
                                         pushToServer(subAckMessage);
 
                                     });

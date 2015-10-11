@@ -43,36 +43,9 @@ public class IOTMessage implements Serializable {
 
     private Protocal protocal;
 
-    @QuerySqlField()
-    private Serializable payload;
-
-    @QuerySqlField(index = true)
-    private String partition;
-
-    @QuerySqlField(index = true)
-    private String clientIdentifier;
-
     private Serializable sessionId;
 
-
-
-    public String getPartition() {
-        return partition;
-    }
-
-    public void setPartition(String partition) {
-        this.partition = partition;
-    }
-
-    public String getClientIdentifier() {
-        return clientIdentifier;
-    }
-
-    public void setClientIdentifier(String clientIdentifier) {
-        this.clientIdentifier = clientIdentifier;
-    }
-
-    public Serializable getConnectionId() {
+   public Serializable getConnectionId() {
         return connectionId;
     }
 
@@ -136,22 +109,12 @@ public class IOTMessage implements Serializable {
         this.protocal = protocal;
     }
 
-    public Serializable getPayload() {
-        return payload;
-    }
-
-    public void setPayload(Serializable payload) {
-        this.payload = payload;
-    }
-
     public void copyBase(IOTMessage iotMessage) {
 
         setProtocal(iotMessage.getProtocal());
-        setPartition(iotMessage.getPartition());
-        setClientIdentifier(iotMessage.getClientIdentifier());
+        setSessionId(iotMessage.getSessionId());
         setAuthKey(iotMessage.getAuthKey());
         setConnectionId(iotMessage.getConnectionId());
-        setSessionId(iotMessage.getSessionId());
         setNodeId(iotMessage.getNodeId());
         setCluster(iotMessage.getCluster());
 

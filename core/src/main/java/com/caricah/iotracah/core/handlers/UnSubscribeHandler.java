@@ -22,25 +22,21 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.messages.UnSubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.UnSubscribeMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import org.apache.shiro.authz.AuthorizationException;
 import rx.Observable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class UnSubscribeHandler extends RequestHandler {
-
-    private UnSubscribeMessage message;
+public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
 
     public UnSubscribeHandler(UnSubscribeMessage message) {
-        this.message = message;
+        super(message);
     }
 
     @Override
@@ -58,20 +54,20 @@ public class UnSubscribeHandler extends RequestHandler {
          * Before unsubscribing we should get the current session and validate it.
          */
 
-        Observable<Client> permittedObservable = checkPermission(message.getSessionId(),
-                message.getAuthKey(), AuthorityRole.SUBSCRIBE,
-                message.getTopicFilterList());
+        Observable<Client> permittedObservable = checkPermission(getMessage().getSessionId(),
+                getMessage().getAuthKey(), AuthorityRole.SUBSCRIBE,
+                getMessage().getTopicFilterList());
 
-        permittedObservable.subscribe(isPermitted -> {
+        permittedObservable.subscribe(client -> {
 
-            for (String topic : message.getTopicFilterList()) {
-                String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(message.getPartition(), -1, topic);
+            for (String topic : getMessage().getTopicFilterList()) {
+                String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(client.getPartition(), -1, topic);
 
-                getMessenger().unSubscribe(message.getPartition(), message.getClientIdentifier(), partitionQosTopicFilter);
+                getMessenger().unSubscribe(client.getPartition(), client.getClientId(), partitionQosTopicFilter);
             }
 
-            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(message.getMessageId(), false, message.getQos(), false);
-            unSubscribeAcknowledgeMessage.copyBase(message);
+            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(getMessage().getMessageId(), false, getMessage().getQos(), false);
+            unSubscribeAcknowledgeMessage.copyBase(getMessage());
             pushToServer(unSubscribeAcknowledgeMessage);
 
 

@@ -66,6 +66,9 @@ public class IdConstruct implements Serializable {
         return clientId;
     }
 
+    public String getSessionId(){
+        return String.format("%s-%s-%s",getPartition(), getUsername(), getClientId());
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -94,6 +97,7 @@ public class IdConstruct implements Serializable {
         return new StringJoiner(";", "[", "]")
                 .add("partition=" + getPartition())
                 .add("username=" + getUsername())
+                .add("clientid=" + getClientId())
                 .toString();
     }
 }

@@ -78,7 +78,7 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                             PublishMessage publishMessage = PublishMessage.from(json.getLong("messageId"), json.getBoolean("dup"), json.getInt("qos"),
                                     json.getBoolean("retain"), json.getString("topic"), byteBuffer, true);
 
-                    publishMessage.setClientIdentifier(json.getString("clientId"));
+                    publishMessage.setSessionId(json.getString("sessionId"));
                     publishMessage.setPartition(json.getString("partition"));
                     publishMessage.setAuthKey(json.getString("authKey"));
                     return publishMessage;
@@ -102,8 +102,7 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                         subscribeMessage.getTopicFilterList().add(entry);
                     }
                     subscribeMessage.setReceptionUrl(json.getString("recipientUrl"));
-                    subscribeMessage.setClientIdentifier(json.getString("clientId"));
-                    subscribeMessage.setPartition(json.getString("partition"));
+                    subscribeMessage.setSessionId(json.getString("sessionId"));
                     subscribeMessage.setAuthKey(json.getString("authKey"));
 
 
@@ -120,15 +119,13 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                     }
 
                     UnSubscribeMessage unSubscribeMessage = UnSubscribeMessage.from(1, false, 1, false, topicList);
-                    unSubscribeMessage.setClientIdentifier(json.getString("clientId"));
-                    unSubscribeMessage.setPartition(json.getString("partition"));
+                    unSubscribeMessage.setSessionId(json.getString("sessionId"));
                     unSubscribeMessage.setAuthKey(json.getString("authKey"));
 
                 case "/DISCONNECT":
                     
                     DisconnectMessage disconMessage = DisconnectMessage.from(true);
-                    disconMessage.setClientIdentifier(json.getString("clientId"));
-                    disconMessage.setPartition(json.getString("partition"));
+                    disconMessage.setSessionId(json.getString("sessionId"));
                     disconMessage.setAuthKey(json.getString("authKey"));
 
                     return disconMessage;

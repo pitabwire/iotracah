@@ -112,6 +112,9 @@ public class IOTPermission implements Permission, Serializable {
     /*--------------------------------------------
      |             C O N S T A N T S             |
      ============================================*/
+    protected static final String PUBLISH_SUBSCRIBE_ROLE = "PUBSUB";
+    protected static final String PUBLISH_ROLE = "PUBLISH";
+    protected static final String SUBSCRIBE_ROLE = "SUBSCRIBE";
     protected static final String MULTI_LEVEL_WILDCARD_TOKEN = "#";
     protected static final String SINGLE_LEVEL_WILDCARD_TOKEN = "+";
     protected static final String PART_DIVIDER_TOKEN = "/";
@@ -274,7 +277,19 @@ public class IOTPermission implements Permission, Serializable {
         IOTPermission otherP = (IOTPermission) p;
 
         if(!getType().equals(otherP.getType())){
-           return false;
+
+            if (PUBLISH_SUBSCRIBE_ROLE.equals(getType())
+                    && (PUBLISH_ROLE.equals(otherP.getType())
+                    || SUBSCRIBE_ROLE.equals(otherP.getType()))
+                    || PUBLISH_SUBSCRIBE_ROLE.equals(otherP.getType())
+                    && (PUBLISH_ROLE.equals(getType())
+                    || SUBSCRIBE_ROLE.equals(getType()))) {
+
+                //This is an allowed situation.
+            }else
+
+            return false;
+
         }
 
 

@@ -25,6 +25,7 @@ import com.caricah.iotracah.security.realm.auth.permission.IOTPermissionResolver
 import com.caricah.iotracah.security.realm.impl.IOTIniBasedRealm;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.config.IniSecurityManagerFactory;
+import org.apache.shiro.mgt.*;
 import org.apache.shiro.realm.Realm;
 
 /**
@@ -54,6 +55,11 @@ public class IOTIniSecurityManagerFactory extends IniSecurityManagerFactory{
 
     public void setIotAccountDatastore(IOTAccountDatastore iotAccountDatastore) {
         this.iotAccountDatastore = iotAccountDatastore;
+    }
+
+    @Override
+    protected org.apache.shiro.mgt.SecurityManager createDefaultInstance() {
+        return new IOTSecurityManager();
     }
 
     @Override

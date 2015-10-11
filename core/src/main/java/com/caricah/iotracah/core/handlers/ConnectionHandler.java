@@ -31,6 +31,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.security.IOTSecurityManager;
 import com.caricah.iotracah.security.realm.auth.IdConstruct;
 import com.caricah.iotracah.security.realm.auth.IdPassToken;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
@@ -57,17 +58,15 @@ import java.util.regex.Pattern;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class ConnectionHandler extends RequestHandler {
+public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     private final Pattern usernamePartitionPattern = Pattern.compile("(?<username>.*)-<(?<partition>.*)>");
     private final Pattern clientIdPartitionPattern = Pattern.compile("(?<clientId>.*)-<(?<partition>.*)>");
     private final Pattern pattern = Pattern.compile("[-/<>a-zA-Z0-9_]*");
 
-    private ConnectMessage message;
-
-
+   
     public ConnectionHandler(ConnectMessage message) {
-        this.message = message;
+        super(message);
     }
 
 
@@ -133,8 +132,8 @@ public class ConnectionHandler extends RequestHandler {
 
         try {
 
-            if (!MqttVersion.MQTT_3_1_1.protocolName().equals(message.getProtocolName())
-                    && !MqttVersion.MQTT_3_1.protocolName().equals(message.getProtocolName())
+            if (!MqttVersion.MQTT_3_1_1.protocolName().equals(getMessage().getProtocolName())
+                    && !MqttVersion.MQTT_3_1.protocolName().equals(getMessage().getProtocolName())
                     ) {
 
                 /**
@@ -150,8 +149,8 @@ public class ConnectionHandler extends RequestHandler {
             }
 
 
-            if (MqttVersion.MQTT_3_1_1.protocolLevel() != message.getProtocalLevel()
-                    && MqttVersion.MQTT_3_1.protocolLevel() != message.getProtocalLevel()
+            if (MqttVersion.MQTT_3_1_1.protocolLevel() != getMessage().getProtocalLevel()
+                    && MqttVersion.MQTT_3_1.protocolLevel() != getMessage().getProtocalLevel()
                     ) {
 
                 /**
@@ -171,7 +170,7 @@ public class ConnectionHandler extends RequestHandler {
 
 
             //We now proceed to openning a session on our core service interface.
-            boolean cleanSession = message.isCleanSession();
+            boolean cleanSession = getMessage().isCleanSession();
 
             /**
              * The Server MUST allow ClientIds which are between 1 and 23 UTF-8 encoded bytes in length,
@@ -187,7 +186,7 @@ public class ConnectionHandler extends RequestHandler {
              * It MUST then process the CONNECT packet as if the Client had provided that unique ClientId [MQTT-3.1.3-6].
              *
              */
-            String clientIdentifier = message.getClientIdentifier();
+            String clientIdentifier = getMessage().getClientId();
 
 
             /**
@@ -217,17 +216,17 @@ public class ConnectionHandler extends RequestHandler {
             log.debug(" handle: we are ready now to obtain the core session.");
 
             Observable<Client> newClientObservable = openSubject(getWorker(),
-                    message.getCluster(), message.getNodeId(), message.getConnectionId(),
-                    clientIdentifier, cleanSession, message.getUserName(), message.getPassword(),
-                    message.getKeepAliveTime(), message.getSourceHost(), message.getProtocal()
+                    getMessage().getCluster(), getMessage().getNodeId(), getMessage().getConnectionId(),
+                    clientIdentifier, cleanSession, getMessage().getUserName(), getMessage().getPassword(),
+                    getMessage().getKeepAliveTime(), getMessage().getSourceHost(), getMessage().getProtocal()
             );
 
             newClientObservable.subscribe(
 
                     (client) -> {
 
-                        message.setSessionId(client.getSessionId());
-                        message.setAuthKey(client.getGeneratedAuthKey());
+                        getMessage().setSessionId(client.getSessionId());
+
 
                         log.debug(" handle: obtained a client : {}. ", client);
 
@@ -243,14 +242,14 @@ public class ConnectionHandler extends RequestHandler {
                         log.info(" onNext : Successfully initiated a session.");
 
                         //Respond to server with a connection successfull.
-                        ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
-                        connectAcknowledgeMessage.copyBase(message);
+                        ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+                        connectAcknowledgeMessage.copyBase(getMessage());
 
                         pushToServer(connectAcknowledgeMessage);
 
 
                         WillMessage will;
-                        if (message.isHasWill()) {
+                        if (getMessage().isHasWill()) {
 
                             /**
                              * If the Will Flag is set to 1 this indicates that, if the Connect request is accepted,
@@ -260,17 +259,17 @@ public class ConnectionHandler extends RequestHandler {
                              */
 
 
-                            will = WillMessage.from(message.isRetainWill(), message.getWillQos(),
-                                    message.getWillTopic(), message.getWillMessage());
-                            will.copyBase(message);
+                            will = WillMessage.from(getMessage().isRetainWill(), getMessage().getWillQos(),
+                                    getMessage().getWillTopic(), getMessage().getWillMessage());
+                            will.copyBase(getMessage());
 
                             getDatastore().saveWill(will);
                         } else {
-                            //We need to clear the existing will message.
+                            //We need to clear the existing will getMessage().
                             will = WillMessage.from(false, 0, "", "");
-                            will.setPartition(message.getPartition());
-                            will.setClientIdentifier(message.getClientIdentifier());
-                            will.copyBase(message);
+                            will.setPartition(client.getPartition());
+                            will.setClientId(client.getClientId());
+                            will.copyBase(getMessage());
                             getDatastore().removeWill(will);
                         }
 
@@ -290,17 +289,17 @@ public class ConnectionHandler extends RequestHandler {
 
                         if (e instanceof AuthenticationException) {
 
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
 
                         } else if (e instanceof AuthorizationException) {
 
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
 
                         } else {
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
                         }
 
-                        connectAcknowledgeMessage.copyBase(message);
+                        connectAcknowledgeMessage.copyBase(getMessage());
                         pushToServer(connectAcknowledgeMessage);
 
                     }, () -> {
@@ -314,27 +313,27 @@ public class ConnectionHandler extends RequestHandler {
             ConnectAcknowledgeMessage connectAcknowledgeMessage;
 
             if (e instanceof MqttIdentifierRejectedException) {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
 
             } else if (e instanceof MqttUnacceptableProtocolVersionException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else if (e instanceof UnknownProtocalException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
             }
 
-            connectAcknowledgeMessage.copyBase(message);
+            connectAcknowledgeMessage.copyBase(getMessage());
             throw new ShutdownException(connectAcknowledgeMessage);
 
         } catch (Exception systemError) {
 
-            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(message.isDup(), message.getQos(), message.isRetain(), message.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
-            connectAcknowledgeMessage.copyBase(message);
+            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+            connectAcknowledgeMessage.copyBase(getMessage());
             log.error(" handle : System experienced the error ", systemError);
             throw new ShutdownException(connectAcknowledgeMessage);
 
@@ -371,7 +370,7 @@ public class ConnectionHandler extends RequestHandler {
                 defaultClient.setConnectedCluster(connectedCluster);
                 defaultClient.setConnectedNode(connectedNode);
                 defaultClient.setConnectionId(connectionID);
-                defaultClient.setClientIdentifier(activeClientId);
+                defaultClient.setClientId(activeClientId);
                 defaultClient.setPartition(partition);
                 defaultClient.setSessionId(null);
                 defaultClient.setActive(false);
@@ -406,22 +405,29 @@ public class ConnectionHandler extends RequestHandler {
                             IdPassToken token = new IdPassToken(partition, userName, activeClientId, password.toCharArray());
                             activeUser.login(token);
 
-                            log.info(" openSubject : Authenticated client <{}> username {} ", client.getClientIdentifier(), userName);
+                            Double keepAliveDisconnectiontime = keepAliveTime * 1.5 * 1000;
+
+
+                            log.info(" openSubject : Authenticated client <{}> username {} with keep alive of {} seconds", client.getClientId(), userName, keepAliveDisconnectiontime);
 
                             Session session = activeUser.getSession();
-                            Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
                             session.setTimeout(keepAliveDisconnectiontime.intValue());
-                            session.setAttribute(SESSION_CLIENTID_KEY, activeClientId );
+                            session.setAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY, principals);
+
+                            if (client.getProtocal().isNotPersistent()) {
+                                String sessionAuthKey = generateMAC();
+                                session.setAttribute(SESSION_AUTH_KEY, sessionAuthKey);
+                                getMessage().setAuthKey(sessionAuthKey);
+                            }
+
+
+
                             session.touch();
 
                             client.setProtocal(protocal);
                             client.setActive(true);
                             client.setCleanSession(cleanSession);
                             client.setSessionId(session.getId());
-
-                            if (client.getProtocal().isNotPersistent()) {
-                                client.setGeneratedAuthKey(generateMAC());
-                            }
 
                             getDatastore().saveClient(client);
 

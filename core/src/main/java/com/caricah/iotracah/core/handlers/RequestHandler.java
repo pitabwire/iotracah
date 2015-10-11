@@ -22,6 +22,8 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.modules.Datastore;
+import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
+import com.caricah.iotracah.security.IOTSecurityManager;
 import com.caricah.iotracah.security.realm.auth.IdConstruct;
 import com.caricah.iotracah.security.realm.auth.permission.IOTPermission;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
@@ -37,6 +39,7 @@ import org.apache.shiro.authz.AuthorizationException;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.authz.UnauthenticatedException;
 import org.apache.shiro.session.Session;
+import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.Subject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,14 +52,23 @@ import java.util.stream.Collectors;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public abstract class RequestHandler {
+public abstract class RequestHandler<T extends IOTMessage> {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    protected static final String SESSION_CLIENTID_KEY = "clientid_key";
     protected static final String SESSION_AUTH_KEY = "auth_key";
 
+    private final T message;
+
     private Worker worker;
+
+    public RequestHandler(T message){
+        this.message = message;
+    }
+
+    public T getMessage() {
+        return message;
+    }
 
     public Worker getWorker() {
         return worker;
@@ -72,10 +84,6 @@ public abstract class RequestHandler {
 
     public Messenger getMessenger(){
         return  getWorker().getMessenger();
-    }
-
-    public Observable<Client> getClient(String partition, String clientIdentifier) {
-        return getDatastore().getClient(partition, clientIdentifier);
     }
 
     private IOTPermission getPermission( String partition, String username, String clientId, AuthorityRole role, String topic) {
@@ -102,12 +110,17 @@ public abstract class RequestHandler {
 
 
                 try{
-                IdConstruct idConstruct = (IdConstruct) subject.getPrincipal();
 
-                String partition = idConstruct.getPartition();
-                String username = idConstruct.getUsername();
-                String session_client_id = (String) session.getAttribute(SESSION_CLIENTID_KEY);
-                String session_auth_key = (String) session.getAttribute(SESSION_AUTH_KEY);
+
+                PrincipalCollection principales = (PrincipalCollection) session.getAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY);
+                IdConstruct construct = (IdConstruct) principales.getPrimaryPrincipal();
+
+                    String partition = construct.getPartition();
+                    String username = construct.getUsername();
+                    String session_client_id = construct.getClientId();
+
+
+                    String session_auth_key = (String) session.getAttribute(SESSION_AUTH_KEY);
 
 
 
@@ -121,19 +134,25 @@ public abstract class RequestHandler {
 
                 }
 
+                    if(AuthorityRole.CONNECT.equals(role)){
+                        //No need to check for this permission.
+                    }else {
 
-                List<Permission> permissions = topicList
-                        .stream()
-                        .map(topic ->
-                                getPermission(
-                                        username, partition,
-                                        session_client_id,
-                                        role, topic))
-                        .collect(Collectors.toList());
+                        List<Permission> permissions = topicList
+                                .stream()
+                                .map(topic ->
+                                        getPermission(
+                                                username, partition,
+                                                session_client_id,
+                                                role, topic))
+                                .collect(Collectors.toList());
 
 
+                        subject.checkPermissions(permissions);
+                    }
 
-                    subject.checkPermissions(permissions);
+                    //Update session last accessed time.
+                    session.touch();
 
                     Observable<Client> clientObservable = getDatastore().getClient(partition, session_client_id);
 
@@ -146,7 +165,7 @@ public abstract class RequestHandler {
                 }
 
             }else{
-                observable.onError(new AuthenticationException("Client must be authenticated {Try connecting first}"));
+                observable.onError(new AuthenticationException("Client must be authenticated {Try connecting first} found : "+ session));
             }
 
         });
@@ -155,7 +174,21 @@ public abstract class RequestHandler {
 
 
     public void disconnectDueToError(Throwable e){
-        log.warn(" handle : System experienced the error ", e);
+        log.warn(" disconnectDueToError : System experienced the error ", e);
+
+        //Notify the server to remove this client from further sending in requests.
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+        disconnectMessage.copyBase(getMessage());
+
+        DisconnectHandler handler = new DisconnectHandler(disconnectMessage);
+        handler.setWorker(getWorker());
+
+        try {
+            handler.handle();
+        } catch (RetriableException | UnRetriableException ex) {
+            log.error(" disconnectDueToError : issues disconnecting.", ex);
+        }
+
 
     }
     /**

@@ -25,5 +25,5 @@ package com.caricah.iotracah.core.security;
  */
 public enum AuthorityRole {
 
-     PUBLISH, SUBSCRIBE
+     CONNECT, PUBLISH, SUBSCRIBE
 }

@@ -43,7 +43,7 @@ import java.util.UUID;
 public class Client implements IdKeyComposer, Serializable {
 
     @QuerySqlField(index = true)
-    private String clientIdentifier;
+    private String clientId;
 
     @QuerySqlField()
     private Serializable sessionId;
@@ -73,12 +73,12 @@ public class Client implements IdKeyComposer, Serializable {
 
     private String protocalData;
 
-    public String getClientIdentifier() {
-        return clientIdentifier;
+    public String getClientId() {
+        return clientId;
     }
 
-    public void setClientIdentifier(String clientIdentifier) {
-        this.clientIdentifier = clientIdentifier;
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
     }
 
     public Serializable getSessionId() {
@@ -137,14 +137,6 @@ public class Client implements IdKeyComposer, Serializable {
         this.cleanSession = cleanSession;
     }
 
-    public String getGeneratedAuthKey() {
-        return generatedAuthKey;
-    }
-
-    public void setGeneratedAuthKey(String generatedAuthKey) {
-        this.generatedAuthKey = generatedAuthKey;
-    }
-
     public Protocal getProtocal() {
         return protocal;
     }
@@ -166,7 +158,7 @@ public class Client implements IdKeyComposer, Serializable {
      */
     public void internalPublishMessage(Messenger messenger, PublishMessage publishMessage) throws RetriableException {
 
-        messenger.publish(publishMessage);
+        messenger.publish(getPartition(), publishMessage);
     }
 
 
@@ -183,7 +175,7 @@ public class Client implements IdKeyComposer, Serializable {
     }
 
     public Observable<WillMessage> getWill(Datastore datastore) {
-        return datastore.getWill(getPartition(), getClientIdentifier());
+        return datastore.getWill(getPartition(), getClientId());
     }
 
 
@@ -193,22 +185,27 @@ public class Client implements IdKeyComposer, Serializable {
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if(null == getClientIdentifier()){
+        if(null == getClientId()){
             throw new UnRetriableException(" Client Id has to be non null");
         }
 
-        return String.format("%s-%s", getPartition(), getClientIdentifier());
+        return String.format("%s-%s", getPartition(), getClientId());
     }
 
     public <T extends IOTMessage> T copyTransmissionData(T iotMessage) {
 
-        iotMessage.setPartition(getPartition());
-        iotMessage.setProtocal(getProtocal());
-        iotMessage.setClientIdentifier(getClientIdentifier());
         iotMessage.setSessionId(getSessionId());
+        iotMessage.setProtocal(getProtocal());
         iotMessage.setConnectionId(getConnectionId());
         iotMessage.setNodeId(getConnectedNode());
         iotMessage.setCluster(getConnectedCluster());
+
+        if(iotMessage instanceof PublishMessage) {
+            PublishMessage publishMessage = (PublishMessage) iotMessage;
+            publishMessage.setPartition(getPartition());
+            publishMessage.setClientId(getClientId());
+        }
+
 
 
         return iotMessage;

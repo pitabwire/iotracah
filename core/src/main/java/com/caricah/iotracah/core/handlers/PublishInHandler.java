@@ -35,13 +35,10 @@ import rx.Observable;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PublishInHandler extends RequestHandler {
-
-    private PublishMessage message;
+public class PublishInHandler extends RequestHandler<PublishMessage> {
 
     public PublishInHandler(PublishMessage message) {
-
-        this.message = message;
+        super(message);
     }
 
 
@@ -71,86 +68,93 @@ public class PublishInHandler extends RequestHandler {
          * Topic Names and Topic Filters are UTF-8 encoded strings, they MUST NOT encode to more than 65535 bytes [MQTT-4.7.3-3]. See Section 1.5.3
          *
          */
-        String topic = message.getTopic();
+        String topic = getMessage().getTopic();
         if (null == topic ||
                 topic.isEmpty() ||
                 topic.contains(Constant.MULTI_LEVEL_WILDCARD) ||
                 topic.contains(Constant.SINGLE_LEVEL_WILDCARD) ||
                 topic.contains(Constant.SYS_PREFIX)
                 ) {
-            log.info(" handle : Invalid topic " + message.getTopic());
+            log.info(" handle : Invalid topic " + getMessage().getTopic());
             throw new ShutdownException(" Invalid topic name");
         }
 
 
-              /**
-             * Before publishing we should get the current session and validate it.
-             */
-            Observable<Client> permissionObservable = checkPermission(message.getSessionId(), message.getAuthKey(), AuthorityRole.PUBLISH, topic);
+        /**
+         * Before publishing we should get the current session and validate it.
+         */
+        Observable<Client> permissionObservable = checkPermission(
+                getMessage().getSessionId(), getMessage().getAuthKey(),
+                AuthorityRole.PUBLISH, topic);
 
-            permissionObservable.subscribe(
-                    (client) -> {
+        permissionObservable.subscribe(
+                (client) -> {
 
-                        try {
+                    try {
 
-                            /**
-                             * Message processing is based on 4.3 Quality of Service levels and protocol flows
-                             */
+                        getMessage().setPartition(client.getPartition());
+                        getMessage().setClientId(client.getClientId());
 
-                            /**
-                             *  4.3.1 QoS 0: At most once delivery
-                             *  Accepts ownership of the message when it receives the PUBLISH packet.
-                             */
-                            if (MqttQoS.AT_MOST_ONCE.value() == message.getQos()) {
+                        /**
+                         * Message processing is based on 4.3 Quality of Service levels and protocol flows
+                         */
 
-                                client.internalPublishMessage(getMessenger(), message);
-                            }
+                        /**
+                         *  4.3.1 QoS 0: At most once delivery
+                         *  Accepts ownership of the message when it receives the PUBLISH packet.
+                         */
+                        if (MqttQoS.AT_MOST_ONCE.value() == getMessage().getQos()) {
 
-
-                            /**
-                             * 4.3.2 QoS 1: At least once delivery
-                             *
-                             * MUST respond with a PUBACK Packet containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message
-                             * After it has sent a PUBACK Packet the Receiver MUST treat any incoming PUBLISH packet that contains the same Packet Identifier as being a new publication, irrespective of the setting of its DUP flag.
-                             */
-                            if (MqttQoS.AT_LEAST_ONCE.value() == message.getQos()) {
-
-                                client.internalPublishMessage(getMessenger(), message);
+                            client.internalPublishMessage(getMessenger(), getMessage());
+                        }
 
 
-                                //We need to generate a puback message to close this conversation.
+                        /**
+                         * 4.3.2 QoS 1: At least once delivery
+                         *
+                         * MUST respond with a PUBACK Packet containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message
+                         * After it has sent a PUBACK Packet the Receiver MUST treat any incoming PUBLISH packet that contains the same Packet Identifier as being a new publication, irrespective of the setting of its DUP flag.
+                         */
+                        if (MqttQoS.AT_LEAST_ONCE.value() == getMessage().getQos()) {
 
-                                AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(message.getMessageId(), message.isDup(), message.getQos(), message.isRetain(), false);
-                                acknowledgeMessage.copyBase(message);
-
-                                pushToServer(acknowledgeMessage);
-
-
-                            }
-
-
-                            /**
-                             * 4.3.3 QoS 2: Exactly once delivery
-                             *
-                             * MUST respond with a PUBREC containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message.
-                             * Until it has received the corresponding PUBREL packet, the Receiver MUST acknowledge any subsequent PUBLISH packet with the same Packet Identifier by sending a PUBREC.
-                             * It MUST NOT cause duplicate messages to be delivered to any onward recipients in this case.
-                             *
-                             */
-
-                            if (MqttQoS.EXACTLY_ONCE.value() == message.getQos()) {
+                            client.internalPublishMessage(getMessenger(), getMessage());
 
 
-                                queueQos2Message(message);
-                            }
+                            //We need to generate a puback message to close this conversation.
 
-                        } catch (UnRetriableException | RetriableException e) {
+                            AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(
+                                    getMessage().getMessageId(), getMessage().isDup(),
+                                    getMessage().getQos(), getMessage().isRetain(), false);
+                            acknowledgeMessage.copyBase(getMessage());
+
+                            pushToServer(acknowledgeMessage);
+
 
                         }
 
-                    }, this::disconnectDueToError
 
-            );
+                        /**
+                         * 4.3.3 QoS 2: Exactly once delivery
+                         *
+                         * MUST respond with a PUBREC containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message.
+                         * Until it has received the corresponding PUBREL packet, the Receiver MUST acknowledge any subsequent PUBLISH packet with the same Packet Identifier by sending a PUBREC.
+                         * It MUST NOT cause duplicate messages to be delivered to any onward recipients in this case.
+                         *
+                         */
+
+                        if (MqttQoS.EXACTLY_ONCE.value() == getMessage().getQos()) {
+
+
+                            queueQos2Message(getMessage());
+                        }
+
+                    } catch (UnRetriableException | RetriableException e) {
+                        disconnectDueToError(e);
+                    }
+
+                }, this::disconnectDueToError
+
+        );
 
     }
 

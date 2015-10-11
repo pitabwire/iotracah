@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.core.modules;
 
+import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
@@ -86,11 +87,10 @@ public abstract class Server<T> extends IOTBaseHandler {
      *
      * @param connectionId
      * @param sessionId
-     * @param clientId
      * @param message
      *
      */
-    public final void pushToWorker(Serializable connectionId, Serializable sessionId, String partition, String clientId, T message){
+    public final void pushToWorker(Serializable connectionId, Serializable sessionId, T message){
 
         if(null == message){
             return;
@@ -98,13 +98,19 @@ public abstract class Server<T> extends IOTBaseHandler {
 
         IOTMessage ioTMessage = toIOTMessage(message);
 
+        internalPushToWorker(connectionId, sessionId, ioTMessage);
+
+    }
+
+
+    private void internalPushToWorker(Serializable connectionId, Serializable sessionId, IOTMessage ioTMessage){
+
         ioTMessage.setConnectionId(connectionId);
 
         if(isPersistentConnection()) {
             //Client specific variables.
             ioTMessage.setSessionId(sessionId);
-            ioTMessage.setClientIdentifier(clientId);
-            ioTMessage.setPartition(partition);
+
         }
         //Hardware specific variables
         ioTMessage.setNodeId(getNodeId());
@@ -115,10 +121,13 @@ public abstract class Server<T> extends IOTBaseHandler {
 
     }
 
-    public void dirtyDisconnect(Serializable connectionId, Serializable sessionId, String partition, String clientId) {
+
+    public void dirtyDisconnect(Serializable connectionId, Serializable sessionId) {
 
         //TODO: performs a dirty disconnection for our message.
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
 
+        internalPushToWorker(connectionId, sessionId, disconnectMessage);
 
     }
 

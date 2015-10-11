@@ -1,4 +1,4 @@
-package com.caricah.iotracah.core.worker.session;
+package com.caricah.iotracah.core.worker.state.session;
 
 import org.apache.shiro.codec.Base64;
 import org.apache.shiro.session.Session;

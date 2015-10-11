@@ -60,7 +60,7 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
         Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
         Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
-        getInternalServer().pushToWorker(connectionId, sessionId, null, null, msg);
+        getInternalServer().pushToWorker(connectionId, sessionId, msg);
 
     }
 

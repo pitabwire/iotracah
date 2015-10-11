@@ -94,7 +94,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public abstract void removeSubscription(Subscription subscription);
 
 
-    public abstract Observable<String> distributePublish(Set<String> topicBreakDown, PublishMessage publishMessage);
+    public abstract Observable<String> distributePublish(String partition, Set<String> topicBreakDown, PublishMessage publishMessage);
 
     public abstract Observable<PublishMessage> getActiveMessages(Client client);
 

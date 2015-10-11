@@ -20,12 +20,12 @@
 
 package com.caricah.iotracah.core.security;
 
-import com.caricah.iotracah.core.worker.session.SessionDAO;
+import com.caricah.iotracah.core.worker.state.models.IOTSession;
+import com.caricah.iotracah.core.worker.state.session.SessionDAO;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.security.IOTIniSecurityManagerFactory;
-import com.caricah.iotracah.security.realm.IOTAbstractRealm;
+import com.caricah.iotracah.security.IOTSecurityManager;
 import com.caricah.iotracah.security.realm.IOTAccountDatastore;
-import com.caricah.iotracah.security.realm.auth.permission.IOTPermissionResolver;
 import com.caricah.iotracah.system.ResourceFileUtil;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
@@ -35,12 +35,9 @@ import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.authc.pam.ModularRealmAuthenticator;
-import org.apache.shiro.authz.ModularRealmAuthorizer;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.mgt.SecurityManager;
-import org.apache.shiro.realm.AuthenticatingRealm;
 import org.apache.shiro.session.mgt.DefaultSessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +46,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Date;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -71,7 +69,7 @@ public class DefaultSecurityHandler {
 
     private String cacheName;
     private String atomicSequenceName;
-    private IgniteCache<Serializable, String> datastoreCache;
+    private IgniteCache<Serializable, IOTSession> datastoreCache;
     private IgniteAtomicSequence atomicSequence;
 
     private IOTAccountDatastore iotAccountDatastore;
@@ -107,11 +105,11 @@ public class DefaultSecurityHandler {
         this.atomicSequenceName = atomicSequenceName;
     }
 
-    public IgniteCache<Serializable, String> getDatastoreCache() {
+    public IgniteCache<Serializable, IOTSession> getDatastoreCache() {
         return datastoreCache;
     }
 
-    public void setDatastoreCache(IgniteCache<Serializable, String> datastoreCache) {
+    public void setDatastoreCache(IgniteCache<Serializable, IOTSession> datastoreCache) {
         this.datastoreCache = datastoreCache;
     }
 
@@ -171,15 +169,13 @@ public class DefaultSecurityHandler {
 
         SecurityManager securityManager = iniSecurityManagerFactory.getInstance();
 
-        if(securityManager instanceof DefaultSecurityManager) {
+        if(securityManager instanceof IOTSecurityManager) {
 
             //configure the security manager.
-            DefaultSecurityManager defaultSecurityManager = (DefaultSecurityManager) securityManager;
-            DefaultSessionManager sessionManager = (DefaultSessionManager) defaultSecurityManager.getSessionManager();
+            IOTSecurityManager iotSecurityManager = (IOTSecurityManager) securityManager;
+            DefaultSessionManager sessionManager = (DefaultSessionManager) iotSecurityManager.getSessionManager();
 
-            SecurityUtils.setSecurityManager(defaultSecurityManager);
-
-
+            SecurityUtils.setSecurityManager(iotSecurityManager);
 
             //Create our sessions DAO
             SessionDAO sessionDAO = new SessionDAO(getDatastoreCache(), getAtomicSequence());
@@ -203,8 +199,10 @@ public class DefaultSecurityHandler {
         clCfg.setName(getCacheName());
         clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
+        //clCfg.setIndexedTypes(Date.class, IOTSession.class);
         ignite.createCache(clCfg);
-        IgniteCache<Serializable, String> clientIgniteCache = ignite.cache(getCacheName());
+
+        IgniteCache<Serializable, IOTSession> clientIgniteCache = ignite.cache(getCacheName());
         setDatastoreCache(clientIgniteCache);
 
 

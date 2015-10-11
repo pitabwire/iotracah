@@ -42,33 +42,32 @@ import java.nio.charset.Charset;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PublishOutHandler extends RequestHandler {
+public class PublishOutHandler extends RequestHandler<PublishMessage> {
 
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
-    private PublishMessage publishMessage;
     private String protocalData;
 
-    public PublishOutHandler(PublishMessage publishMessage, String protocalData) {
-        this.publishMessage = publishMessage;
+    public PublishOutHandler(PublishMessage message, String protocalData) {
+        super(message);
         this.protocalData = protocalData;
     }
 
     @Override
     public void handle() throws RetriableException, UnRetriableException {
 
-        log.debug(" handle : outbound message {} being processed", publishMessage);
+        log.debug(" handle : outbound message {} being processed", getMessage());
 
-        if (publishMessage.getProtocal().isPersistent()) {
+        if (getMessage().getProtocal().isPersistent()) {
 
             //We need to generate a publish message to start this conversation.
-            pushToServer(publishMessage);
+            pushToServer(getMessage());
 
         } else {
-            switch (publishMessage.getProtocal()) {
+            switch (getMessage().getProtocal()) {
 
                 case HTTP:
-                    httpPushToUrl(protocalData, publishMessage);
+                    httpPushToUrl(protocalData, getMessage());
                     break;
                 default:
                     log.error(" handle : outbound message {} using none implemented protocal");
