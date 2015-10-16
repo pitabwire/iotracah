@@ -32,11 +32,11 @@ import org.apache.commons.configuration.Configuration;
  */
 public interface LogHandler {
 
-    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE = "system.config.logging.log.config.file";
-    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE = "log4j.properties";
+    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE = "system.config.logging.log.config.file";
+    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE = "log4j.properties";
 
-    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY = "system.config.logging.log.config.directory";
-    public static final String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
+    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY = "system.config.logging.log.config.directory";
+    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
 
 
 

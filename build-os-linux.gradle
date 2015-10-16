@@ -1,0 +1,121 @@
+/*
+ *
+ * Copyright (c) 2015 Caricah <info@caricah.com>.
+ *
+ * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under
+ *  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ *  OF ANY  KIND, either express or implied.  See the License for the specific language
+ *  governing permissions and limitations under the License.
+ *
+ *
+ *
+ *
+ */
+
+import org.apache.tools.ant.filters.*
+apply plugin: "nebula.os-package"
+
+ospackage {
+
+    packageName 'iotracah'
+    release '1'
+    os LINUX
+    maintainer 'Bwire J. Peter <info@caricah.com>'
+    priority 'optional'
+    url 'http//:io.tracah.com'
+    packageDescription 'A distributed, fault tolerant mqtt v3.1/v3.1.1 broker for the cloud. Reference documentation can be found at https://io.tracah.com/en/reference/index.html'
+    requires('adduser')
+
+    into ('/usr/share/iotracah') {
+
+        from(jar.outputs.files) {
+            into 'lib'
+        }
+        from(configurations.runtime) {
+            into 'lib'
+        }
+        from('distribution/src/resources/bin') {
+
+            into 'bin'
+            fileMode 0755
+            exclude '*.bat'
+            exclude '*.exe'
+
+            filter(ReplaceTokens, tokens: packaging)
+        }
+
+    }
+
+    into(packaging."packaging.iotracah.conf.dir"){
+        from('distribution/src/resources/config') {
+            filter(ReplaceTokens, tokens: packaging)
+        }
+    }
+
+    //Add systemd service.
+    into(packaging."packaging.iotracah.systemd.dir"){
+        from('distribution/src/packaging/systemd/') {
+            include('iotracah.service')
+            filter(ReplaceTokens, tokens: packaging)
+        }
+    }
+
+    //Add systemd/sysctl.d configuration file.
+    into(packaging."packaging.iotracah.systemd.sysctl.dir"){
+        from('distribution/src/packaging/systemd/sysctl') {
+            include('iotracah.conf')
+            filter(ReplaceTokens, tokens: packaging)
+        }
+    }
+
+    //Adds systemd/tmpfiles.d configuration file.
+    into(packaging."packaging.iotracah.tmpfilesd.dir"){
+        from('distribution/src/packaging/systemd/') {
+            include('tmp_iotracah.conf')
+            rename('tmp_iotracah.conf', 'iotracah.conf')
+            filter(ReplaceTokens, tokens: packaging)
+        }
+    }
+
+}
+
+
+buildDeb {
+
+    packaging.load(new FileInputStream("distribution/deb/packaging.properties"))
+
+
+    preInstall file("distribution/deb/scripts/preinst")
+    postInstall file('distribution/deb/scripts/postinst')
+    preUninstall file('distribution/deb/scripts/prerm')
+    postUninstall file('distribution/deb/scripts/postrm')
+
+    from('distribution/deb/init.d/iotracah'){
+        into packaging."packaging.iotracah.int.d.dir"
+        fileMode = 0755
+
+        filter(ReplaceTokens, tokens: packaging)
+    }
+
+}
+
+buildRpm {
+
+    packaging.load(new FileInputStream("distribution/rpm/packaging.properties"))
+
+    preInstall file("distribution/rpm/scripts/preinst")
+    postInstall file('distribution/rpm/scripts/postinst')
+    preUninstall file('distribution/rpm/scripts/prerm')
+    postUninstall file('distribution/rpm/scripts/postrm')
+
+    from('distribution/rpm/init.d/iotracah'){
+        into '/etc/init.d/iotracah'
+        fileMode = 0755
+    }
+}

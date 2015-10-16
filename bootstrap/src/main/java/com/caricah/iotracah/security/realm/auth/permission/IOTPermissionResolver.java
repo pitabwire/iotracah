@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IOTPermissionResolver implements PermissionResolver {
 
-    private static final Logger log = LoggerFactory.getLogger(IOTPermissionResolver.class);
     /**
      * Resolves a Permission based on the given String representation.
      *
@@ -41,8 +40,6 @@ public class IOTPermissionResolver implements PermissionResolver {
      */
     @Override
     public Permission resolvePermission(String permissionString) {
-       log.info(" resolvePermission : converting permission {}", permissionString);
        return new IOTPermission(permissionString);
-
     }
 }

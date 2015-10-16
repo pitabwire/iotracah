@@ -25,6 +25,8 @@ import com.caricah.iotracah.system.handler.LogHandler;
 import com.caricah.iotracah.system.ResourceFileUtil;
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.PropertyConfigurator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
@@ -35,6 +37,7 @@ import java.io.File;
 public class DefaultLogHandler implements LogHandler {
 
 
+    private static final Logger log = LoggerFactory.getLogger(DefaultLogHandler.class);
 
 
     @Override
@@ -43,16 +46,18 @@ public class DefaultLogHandler implements LogHandler {
 
 
             String logsConfigFile = SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE;
-            String logsConfigDirectory = SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE;
+            String logsConfigDirectory = System.getProperty("iotracah.default.path.conf");
 
             if (null != configuration) {
                 logsConfigFile = configuration.getString(SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE, SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE);
-                logsConfigDirectory = configuration.getString(SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY, SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE);
+                logsConfigDirectory = configuration.getString(SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY, logsConfigDirectory);
 
             }
-            String logsConfigFileDir = logsConfigDirectory + File.pathSeparator + logsConfigFile;
+            String logsConfigFilePath = logsConfigDirectory + File.separator + logsConfigFile;
 
-            File logConfigurationFile = new File(logsConfigFileDir);
+        log.debug(" configure : path to logging configs is {} .", logsConfigFilePath);
+
+        File logConfigurationFile = new File(logsConfigFilePath);
 
             if (!logConfigurationFile.exists()) {
 
@@ -60,7 +65,10 @@ public class DefaultLogHandler implements LogHandler {
 
             }
 
-            PropertyConfigurator.configure(logConfigurationFile.getAbsolutePath());
+        log.debug(" configure : File with logging configs is {} .", logConfigurationFile);
+
+
+        PropertyConfigurator.configure(logConfigurationFile.getAbsolutePath());
 
 
 

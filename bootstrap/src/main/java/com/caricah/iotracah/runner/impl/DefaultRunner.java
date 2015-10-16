@@ -110,6 +110,11 @@ public class DefaultRunner extends ResourceService implements Runner {
 
         setConfiguration(configuration);
 
+        log.info(" init : {} set to : {}", "iotracah.pidfile", System.getProperty("iotracah.pidfile"));
+        log.info(" init : {} set to : {}", "iotracah.default.path.home", System.getProperty("iotracah.default.path.home"));
+        log.info(" init : {} set to : {}", "iotracah.default.path.logs", System.getProperty("iotracah.default.path.logs"));
+        log.info(" init : {} set to : {}", "iotracah.default.path.data", System.getProperty("iotracah.default.path.data"));
+        log.info(" init : {} set to : {}", "iotracah.default.path.conf", System.getProperty("iotracah.default.path.conf"));
 
         for(ConfigHandler configHandler: getConfigurationSetLoader()){
 

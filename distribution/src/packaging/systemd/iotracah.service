@@ -1,0 +1,51 @@
+[Unit]
+Description=iotracah
+Documentation=http://io.tracah.com
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Environment=IOT_HOME=@packaging.iotracah.home.dir@
+Environment=CONF_DIR=@packaging.iotracah.conf.dir@
+Environment=DATA_DIR=@packaging.iotracah.data.dir@
+Environment=LOG_DIR=@packaging.iotracah.log.dir@
+Environment=PID_DIR=@packaging.iotracah.pid.dir@
+EnvironmentFile=-@packaging.env.file@
+
+WorkingDirectory=@packaging.iotracah.home.dir@
+
+User=@packaging.iotracah.user@
+Group=@packaging.iotracah.group@
+
+ExecStart=@packaging.iotracah.bin.dir@/iotracah
+
+# Connects standard output to /dev/null
+StandardOutput=journal
+
+# Connects standard error to journal
+StandardError=journal
+
+# Specifies the maximum file descriptor number that can be opened by this process
+LimitNOFILE=@packaging.os.max.open.files@
+
+# Specifies the maximum number of bytes of memory that may be locked into RAM
+# Set to "infinity" if you use the 'bootstrap.mlockall: true' option
+# in iotracah.properties and 'MAX_LOCKED_MEMORY=unlimited' in @packaging.env.file@
+#LimitMEMLOCK=infinity
+
+# Disable timeout logic and wait until process is stopped
+TimeoutStopSec=0
+
+# SIGTERM signal is used to stop the Java process
+KillSignal=SIGTERM
+
+# Java process is never killed
+SendSIGKILL=no
+
+# When a JVM receives a SIGTERM signal it exits with code 143
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target
+
+# Built for @project.name@-@project.version@ (@packaging.type@)

@@ -176,10 +176,6 @@ public class IOTPermission implements Permission, Serializable {
 
     public IOTPermission(String wildcardString, boolean caseSensitive) {
         setParts(wildcardString, caseSensitive);
-
-        log.info("*********************************************************************");
-        log.info("*********      Creating a an IOTPermission from : {}    *************", wildcardString);
-        log.info("*********************************************************************");
     }
 
   public IOTPermission(String partition, String username, String clientId, String wildcardString) {
@@ -341,11 +337,6 @@ public class IOTPermission implements Permission, Serializable {
                 return false;
             }
         }
-
-        log.info("*********************************************************************");
-        log.info("*********      Successfully implied {} -> {}    *************", this, otherP);
-        log.info("*********************************************************************");
-
 
         return true;
     }

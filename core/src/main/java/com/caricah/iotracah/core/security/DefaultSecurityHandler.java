@@ -58,7 +58,12 @@ public class DefaultSecurityHandler {
 
     public static final String CONFIGURATION_VALUE_DEFAULT_SECURITY_FILE_NAME = "security.ini";
 
+    public static final String SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY = "system.config.security.config.directory";
+    public static final String SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
+
+
     private final String securityFileName;
+    private String securityFileDirectory;
 
     public static final String CONFIG_IGNITECACHE_SESSION_CACHE_NAME = "config.ignitecache.session.cache.name";
     public static final String CONFIG_IGNITECACHE_SESSION_CACHE_NAME_VALUE_DEFAULT = "iotracah_session_cache";
@@ -88,6 +93,13 @@ public class DefaultSecurityHandler {
         return securityFileName;
     }
 
+    public String getSecurityFileDirectory() {
+        return securityFileDirectory;
+    }
+
+    public void setSecurityFileDirectory(String securityFileDirectory) {
+        this.securityFileDirectory = securityFileDirectory;
+    }
 
     public String getCacheName() {
         return cacheName;
@@ -131,7 +143,7 @@ public class DefaultSecurityHandler {
 
     public String getSecurityIniPath() throws UnRetriableException{
 
-        File securityFile = new File(getSecurityFileName());
+        File securityFile = new File(getSecurityFileDirectory()+File.separator+getSecurityFileName());
 
         if(!securityFile.exists()) {
 
@@ -149,6 +161,14 @@ public class DefaultSecurityHandler {
 
 
     public void configure(Configuration configuration){
+
+
+
+        String securityFileDirectory = System.getProperty("iotracah.default.path.conf", SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY_DEFAULT_VALUE);
+
+        securityFileDirectory = configuration.getString(SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY, securityFileDirectory);
+
+        setSecurityFileDirectory(securityFileDirectory);
 
         String cacheName = configuration.getString(CONFIG_IGNITECACHE_SESSION_CACHE_NAME, CONFIG_IGNITECACHE_SESSION_CACHE_NAME_VALUE_DEFAULT);
         setCacheName(cacheName);

@@ -1,0 +1,6 @@
+${packaging.env.file}
+${packaging.iotracah.conf.dir}/iotracah.properties
+${packaging.iotracah.conf.dir}/log4j.properties
+${packaging.iotracah.conf.dir}/security.ini
+/etc/init.d/iotracah
+/usr/lib/systemd/system/iotracah.service

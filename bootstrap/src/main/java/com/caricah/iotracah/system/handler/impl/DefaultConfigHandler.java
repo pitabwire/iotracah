@@ -27,6 +27,7 @@ import org.apache.commons.configuration.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Locale;
@@ -46,13 +47,20 @@ public class DefaultConfigHandler implements ConfigHandler {
     private final String configurationDirectory;
     private final String configurationFileName;
     public DefaultConfigHandler(){
-        this( "" );
+
+        //Try to use the system set property.
+        this( System.getProperty("iotracah.default.path.conf") );
+
     }
     public DefaultConfigHandler(String configurationDirectory){
         this(configurationDirectory,SYSTEM_CONFIG_CONFIGURATION_FILE_NAME_DEFAULT_VALUE);
     }
 
     public DefaultConfigHandler(String configurationDirectory, String configurationFileName){
+
+        if(null == configurationDirectory){
+            configurationDirectory = "";
+        }
         this.configurationDirectory = configurationDirectory;
         this.configurationFileName = configurationFileName;
     }
@@ -65,17 +73,17 @@ public class DefaultConfigHandler implements ConfigHandler {
         return configurationFileName;
     }
 
-    private Path getConfigurationFileInClassPath(String directory) throws IOException {
+    private Path getConfigurationFileInDirectory(String directory) throws IOException {
 
-        PathMatcher matcher =
-                FileSystems.getDefault().getPathMatcher(String.format(Locale.US, "glob:*%s", getConfigurationFileName()));
+        String configFileName = getConfigurationFileName();
 
-        DirectoryStream<Path> directoryStream = Files.newDirectoryStream(Paths.get(directory));
-        for (Path path : directoryStream) {
+        File configFile = new File(directory+File.separator+configFileName);
+        if(configFile.exists()){
 
-            if (matcher.matches(path)) {
-                return path;
-            }
+                log.debug(" getConfigurationFileInDirectory : matched file {} in config directory.", configFileName);
+
+                return configFile.toPath();
+
         }
         return null;
     }
@@ -97,7 +105,11 @@ public class DefaultConfigHandler implements ConfigHandler {
     public Configuration populateConfiguration(Configuration configuration) throws UnRetriableException {
 
         try {
-            Path configurationFile = getConfigurationFileInClassPath(getConfigurationDirectory());
+            String configDirectory = getConfigurationDirectory();
+
+            log.debug(" populateConfiguration : obtained config directory - {}", configDirectory);
+
+            Path configurationFile = getConfigurationFileInDirectory(configDirectory);
 
             if (null == configurationFile) {
 
@@ -105,7 +117,6 @@ public class DefaultConfigHandler implements ConfigHandler {
 
             }
 
-            if (null != configurationFile) {
 
 
                 if(configuration instanceof CompositeConfiguration)
@@ -123,14 +134,13 @@ public class DefaultConfigHandler implements ConfigHandler {
                     return compositeConfiguration;
                 }
 
-            }
+
 
         } catch (IOException | ConfigurationException e) {
             log.error(" getConfiguration : ", e);
             throw new UnRetriableException(e);
         }
 
-        throw new UnRetriableException(" There was a problem getting configuration files.");
     }
 
 

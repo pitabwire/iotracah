@@ -1,0 +1,8 @@
+# Ignore arch dependent warnings, we chose the right libs on start
+iotracah binary: arch-independent-package-contains-binary-or-object
+# Not stripping external libraries
+iotracah binary: unstripped-binary-or-object
+# Ignore arch dependent warnings, we chose the right libs on start
+iotracah binary: arch-dependent-file-in-usr-share
+# Please check our changelog at http://io.tracah.com/downloads
+iotracah binary: changelog-file-missing-in-native-package
