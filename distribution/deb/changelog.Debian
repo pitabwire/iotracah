@@ -1,0 +1,19 @@
+iotracah (1.0-SNAPSHOT) unreleased; urgency=medium
+
+  * Developments on master; items to be completed:
+
+    - Load test broker to obtain its breaking points
+    - Work on user documentation
+    - Clean up settings and the naming conventions.
+    - Unit test everything within the broker.
+    - Control plugin loading mechanisms [probably via a plugin config file]
+    - Integrate automated packaging for distribution
+    - Use apache ignite to make it exteremely scalable.
+    - Make the broker asynchronous
+    - Create
+    - Create a modular base system that loads plugins from its classpath
+    - Develop a broker that works.
+
+
+
+ -- Bwire J. Peter <bwire@caricah.com>  Sat, 17 Oct 2015 21:45:42 +0200

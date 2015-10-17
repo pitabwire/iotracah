@@ -1,0 +1,82 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+/*
+ *
+ * Copyright (c) 2015 Caricah <info@caricah.com>.
+ *
+ * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under
+ *  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ *  OF ANY  KIND, either express or implied.  See the License for the specific language
+ *  governing permissions and limitations under the License.
+ *
+ *
+ *
+ *
+ */
+
+setupBuilder {
+    vendor = 'caricah'
+    application = "internet of tracah"
+    baseName = project.name
+    version = project.version
+    description = packaging."packaging.project.description"
+    licenseFile = 'distribution/copyright'
+
+    mainClass = project.mainClassName
+    mainJar = project.tasks.jar.archiveName
+
+    // icons in different sizes for different usage. you can also use a single *.ico or *.icns file
+    icons = ['distribution/icons/icon16.ico', 'distribution/icons/icon32.ico', 'distribution/icons/icon48.ico']
+    // all files for all platforms
+    from(jar.outputs.files) {
+        into 'lib'
+    }
+    from(configurations.runtime) {
+        into 'lib'
+    }
+    }
+
+
+msi {
+    // files only for the Windows platform
+
+}
+
+
+deb {
+
+    section 'web'
+    depends 'default-jre | default-jdk | openjdk-8-jdk | openjdk-8-jre'
+    homepage 'http://io.tracah.com'
+    maintainerEmail 'bwire@caricah.com'
+    //changes 'distribution/deb/changelog.Debian'
+
+    from('distribution/deb/') {
+
+        include 'changelog.Debian.gz'
+        fileMode = 0644
+        into '../doc/iotracah/'
+    }
+
+    from('distribution/deb/lintian/') {
+
+        include 'iotracah'
+        fileMode = 0644
+        into '../lintian/overrides/'
+    }
+}
+
+task zip(type: Zip) {
+    with setupBuilder
+    doLast {
+        artifacts {
+            archives zip
+        }
+    }
+}
