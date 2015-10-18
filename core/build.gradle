@@ -31,6 +31,6 @@ dependencies {
     compile group: 'com.mashape.unirest', name: 'unirest-java', version: '1.4.5'
     compile group: 'io.netty', name: 'netty-codec-mqtt', version: '5.0.0.Alpha2'
 
-    compile group: 'com.caricah.iotracah', name: 'iotracah-bootstrap', version: version, changing: true
+    compile project(':iotracah-bootstrap')
 
 }

@@ -1,4 +1,4 @@
 
 dependencies {
-    compile group: 'com.caricah.iotracah', name: 'iotracah-core', version: version, changing: true
+    compile project(':iotracah-core')
 }
