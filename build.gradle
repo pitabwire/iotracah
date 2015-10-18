@@ -27,7 +27,7 @@ apply plugin: 'java'
 
 mainClassName = 'com.caricah.iotracah.main.runner.IOTracah'
 
-version '1.0-SNAPSHOT'
+version '1.0'
 
 jar {
     manifest {
@@ -38,19 +38,21 @@ jar {
 }
 
 dependencies {
-    compile group: 'com.caricah.iotracah', name: 'iotracah-bootstrap', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-bootstrap', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-bootstrap', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-core', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-core', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-datastore-ignite', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-datastore-ignite', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-server', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-server', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-server-http', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-server-http', version: version,  changing: true
-    runtime group: 'com.caricah.iotracah', name: 'iotracah-server-mqtt', version: version,  changing: true
-    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-server-mqtt', version: version,  changing: true
+
+    compile project(':iotracah-bootstrap')
+
+    runtime project(':iotracah-bootstrap')
+    testRuntime project(':iotracah-bootstrap')
+    runtime project(':iotracah-core')
+    testRuntime project(':iotracah-core')
+    runtime project(':datastore:iotracah-datastore-ignite')
+    testRuntime project(':datastore:iotracah-datastore-ignite')
+    runtime project(':iotracah-server')
+    testRuntime project(':iotracah-server')
+    runtime project(':server:iotracah-server-http')
+    testRuntime project(':server:iotracah-server-http')
+    runtime project(':server:iotracah-server-mqtt')
+    testRuntime project(':server:iotracah-server-mqtt')
 }
 
 allprojects {
