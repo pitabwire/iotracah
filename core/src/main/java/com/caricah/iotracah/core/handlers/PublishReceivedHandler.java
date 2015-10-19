@@ -68,8 +68,7 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
                 //Generate a PUBREL message.
 
                 ReleaseMessage releaseMessage = ReleaseMessage.from(
-                        messageId, getMessage().isDup(), getMessage().getQos(),
-                        getMessage().isRetain(), false);
+                        messageId, getMessage().isDup(), getMessage().isRetain(), false);
                 releaseMessage.copyBase(getMessage());
                 pushToServer(releaseMessage);
 

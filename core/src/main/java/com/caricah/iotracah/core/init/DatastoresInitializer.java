@@ -51,7 +51,6 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
     private final DefaultSecurityHandler securityHandler = new DefaultSecurityHandler();
 
     private boolean datastoreEngineEnabled;
-    private boolean datastorePartitionBasedOnUsername;
 
     private String datastoreClassName;
 
@@ -63,13 +62,6 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
         this.datastoreEngineEnabled = datastoreEngineEnabled;
     }
 
-    public boolean isDatastorePartitionBasedOnUsername() {
-        return datastorePartitionBasedOnUsername;
-    }
-
-    public void setDatastorePartitionBasedOnUsername(boolean datastorePartitionBasedOnUsername) {
-        this.datastorePartitionBasedOnUsername = datastorePartitionBasedOnUsername;
-    }
 
     public String getDatastoreClassName() {
         return datastoreClassName;
@@ -116,8 +108,6 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
             if(validateDatastoreCanBeLoaded(datastore)) {
 
                 datastore.setIgnite(getIgnite());
-                //Set partitioning scheme.
-                datastore.setPartitionBasedOnUsername(isDatastorePartitionBasedOnUsername());
 
                 //Actually start our datastore guy.
                 datastore.initiate();
@@ -200,15 +190,6 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
         log.debug(" configure : The datastore function is configured to be enabled [{}]", configDatastoreEnabled );
 
         setDatastoreEngineEnabled(configDatastoreEnabled);
-
-
-        boolean configDatastorePartitionBasedOnUsername = configuration.getBoolean(CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME, CORE_CONFIG_DATASTORE_PARTITION_BASED_ON_USERNAME_DEFAULT_VALUE);
-
-        log.debug(" configure : Datastore partitions based on username : {}", configDatastorePartitionBasedOnUsername );
-
-        setDatastorePartitionBasedOnUsername(configDatastorePartitionBasedOnUsername);
-
-
 
         String configDatastoreClassName = configuration.getString(CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME, CORE_CONFIG_ENGINE_DATASTORE_CLASS_NAME_DEFAULT_VALUE);
 

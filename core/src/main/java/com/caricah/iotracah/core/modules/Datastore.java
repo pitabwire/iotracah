@@ -49,19 +49,9 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
-    private boolean partitionBasedOnUsername;
-
     List<Eventer> eventerList = new ArrayList<>();
 
     private Ignite ignite;
-
-    public boolean isPartitionBasedOnUsername() {
-        return partitionBasedOnUsername;
-    }
-
-    public void setPartitionBasedOnUsername(boolean partitionBasedOnUsername) {
-        this.partitionBasedOnUsername = partitionBasedOnUsername;
-    }
 
     protected Ignite getIgnite() {
         return ignite;

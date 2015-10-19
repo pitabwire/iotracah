@@ -95,8 +95,7 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                         }
 
                                         SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(
-                                                getMessage().getMessageId(), getMessage().isDup(),
-                                                getMessage().getQos(), false, grantedQos);
+                                                getMessage().getMessageId(), grantedQos);
                                         subAckMessage.copyBase(getMessage());
                                         pushToServer(subAckMessage);
 

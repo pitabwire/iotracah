@@ -30,22 +30,21 @@ public final class PublishReceivedMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "PUBREC";
 
     private final boolean dup;
-    private final int qos;
+    private final int qos = 0;
     private final boolean retain;
 
-    public static PublishReceivedMessage from(long messageId, boolean dup, int qos, boolean retain) {
+    public static PublishReceivedMessage from(long messageId, boolean dup, boolean retain) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new PublishReceivedMessage(messageId, dup, qos, retain);
+        return new PublishReceivedMessage(messageId, dup, retain);
     }
 
-    private PublishReceivedMessage(long messageId, boolean dup, int qos, boolean retain) {
+    private PublishReceivedMessage(long messageId, boolean dup, boolean retain) {
 
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
-        this.qos = qos;
         this.retain = retain;
     }
 

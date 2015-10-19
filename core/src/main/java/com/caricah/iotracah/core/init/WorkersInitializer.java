@@ -44,6 +44,14 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
     private boolean workerEngineEnabled;
 
+    private boolean annonymousLoginEnabled;
+
+    private String annonymousLoginUsername;
+
+    private String annonymousLoginPassword;
+
+
+
     private List<Worker> workerList = new ArrayList<>();
 
     public boolean isWorkerEngineEnabled() {
@@ -52,6 +60,30 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
     public void setWorkerEngineEnabled(boolean workerEngineEnabled) {
         this.workerEngineEnabled = workerEngineEnabled;
+    }
+
+    public boolean isAnnonymousLoginEnabled() {
+        return annonymousLoginEnabled;
+    }
+
+    public void setAnnonymousLoginEnabled(boolean annonymousLoginEnabled) {
+        this.annonymousLoginEnabled = annonymousLoginEnabled;
+    }
+
+    public String getAnnonymousLoginUsername() {
+        return annonymousLoginUsername;
+    }
+
+    public void setAnnonymousLoginUsername(String annonymousLoginUsername) {
+        this.annonymousLoginUsername = annonymousLoginUsername;
+    }
+
+    public String getAnnonymousLoginPassword() {
+        return annonymousLoginPassword;
+    }
+
+    public void setAnnonymousLoginPassword(String annonymousLoginPassword) {
+        this.annonymousLoginPassword = annonymousLoginPassword;
     }
 
     public List<Worker> getWorkerList() {
@@ -141,6 +173,9 @@ public abstract class WorkersInitializer extends ServersInitializer {
         log.debug(" configure : The worker function is configured to be enabled [{}]", configWorkerEnabled);
 
         setWorkerEngineEnabled(configWorkerEnabled);
+
+
+
 
         super.configure(configuration);
 

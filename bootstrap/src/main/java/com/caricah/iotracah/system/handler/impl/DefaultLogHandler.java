@@ -70,7 +70,9 @@ public class DefaultLogHandler implements LogHandler {
 
         PropertyConfigurator.configure(logConfigurationFile.getAbsolutePath());
 
-
-
     }
+
+
+
+
 }

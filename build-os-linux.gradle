@@ -19,6 +19,7 @@
  */
 
 import org.apache.tools.ant.filters.*
+
 apply plugin: "nebula.os-package"
 
 ospackage {
@@ -28,17 +29,20 @@ ospackage {
     os LINUX
     maintainer 'Bwire J. Peter <info@caricah.com>'
     priority 'optional'
-    url 'http//:io.tracah.com'
-    packageDescription 'A distributed, fault tolerant mqtt v3.1/v3.1.1 broker for the cloud. Reference documentation can be found at https://io.tracah.com/en/reference/index.html'
+    url 'http://io.tracah.com'
     requires('adduser')
+    permissionGroup 'root'
+    user 'root'
 
     into ('/usr/share/iotracah') {
 
         from(jar.outputs.files) {
             into 'lib'
+            fileMode = 0644
         }
         from(configurations.runtime) {
             into 'lib'
+            fileMode = 0644
         }
         from('distribution/src/resources/bin') {
 
@@ -55,6 +59,7 @@ ospackage {
     into(packaging."packaging.iotracah.conf.dir"){
         from('distribution/src/resources/config') {
             filter(ReplaceTokens, tokens: packaging)
+            fileMode = 0644
         }
     }
 
@@ -63,6 +68,7 @@ ospackage {
         from('distribution/src/packaging/systemd/') {
             include('iotracah.service')
             filter(ReplaceTokens, tokens: packaging)
+            fileMode = 0644
         }
     }
 
@@ -71,6 +77,7 @@ ospackage {
         from('distribution/src/packaging/systemd/sysctl') {
             include('iotracah.conf')
             filter(ReplaceTokens, tokens: packaging)
+            fileMode = 0644
         }
     }
 
@@ -80,34 +87,85 @@ ospackage {
             include('tmp_iotracah.conf')
             rename('tmp_iotracah.conf', 'iotracah.conf')
             filter(ReplaceTokens, tokens: packaging)
+            fileMode = 0644
         }
     }
 
 }
 
 
+task processScripts(type: Copy) {
+
+    packaging.put("build.temporary.scripts.assembly.dir", "$buildDir/tmp/script")
+
+    from "distribution/src/packaging/scripts/"
+    into packaging."build.temporary.scripts.assembly.dir"
+    fileMode = 0755
+    filter(ReplaceTokens, tokens: packaging)
+
+}
+
+
 buildDeb {
 
-    packaging.load(new FileInputStream("distribution/deb/packaging.properties"))
+    doFirst {
+        packaging.load(new FileInputStream("distribution/deb/packaging.properties"))
+        tasks.processScripts.execute()
+    }
 
 
-    preInstall file("distribution/deb/scripts/preinst")
-    postInstall file('distribution/deb/scripts/postinst')
-    preUninstall file('distribution/deb/scripts/prerm')
-    postUninstall file('distribution/deb/scripts/postrm')
+
+    packageDescription packaging."packaging.project.description"
+    summary packaging."packaging.project.summary"
+
+    preInstall file(packaging."build.temporary.scripts.assembly.dir"+"/preinst")
+    postInstall file(packaging."build.temporary.scripts.assembly.dir"+"/postinst")
+    preUninstall file(packaging."build.temporary.scripts.assembly.dir"+"/prerm")
+    postUninstall file(packaging."build.temporary.scripts.assembly.dir"+"/postrm")
+
+    configurationFile(
+            '/etc/iotracah/iotracah.properties\n' +
+                    '/etc/iotracah/log4j.properties\n' +
+                    '/etc/iotracah/security.ini\n' +
+                    '/etc/init.d/iotracah')
+
+
 
     from('distribution/deb/init.d/iotracah'){
         into packaging."packaging.iotracah.int.d.dir"
         fileMode = 0755
-
         filter(ReplaceTokens, tokens: packaging)
+    }
+
+    from('distribution/deb/lintian/') {
+        include 'iotracah'
+        fileMode = 0644
+        into packaging.'packaging.debian.lintian.overrides.dir'
+    }
+
+    from('distribution/deb/scripts/') {
+        include 'conffiles'
+        fileMode = 0644
+        into packaging.'packaging.debian.lintian.overrides.dir'
+    }
+
+    from('distribution/') {
+        include 'copyright'
+        fileMode = 0644
+        into packaging.'packaging.debian.doc.dir'
     }
 
 }
 
 buildRpm {
 
-    packaging.load(new FileInputStream("distribution/rpm/packaging.properties"))
+
+
+    packageDescription packaging."packaging.project.description"
+    summary packaging."packaging.project.summary"
+    permissionGroup 'root'
+    user 'root'
+
 
     preInstall file("distribution/rpm/scripts/preinst")
     postInstall file('distribution/rpm/scripts/postinst')
@@ -116,6 +174,8 @@ buildRpm {
 
     from('distribution/rpm/init.d/iotracah'){
         into '/etc/init.d/iotracah'
+        filter(ReplaceTokens, tokens: packaging)
         fileMode = 0755
     }
 }
+

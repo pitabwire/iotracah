@@ -30,23 +30,22 @@ public final class AcknowledgeMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "PUBACK";
 
     private final boolean dup;
-    private final int qos;
+    private final int qos = 0;
     private final boolean retain;
     private final boolean inBound;
 
-    public static AcknowledgeMessage from(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    public static AcknowledgeMessage from(long messageId, boolean dup, boolean retain, boolean inBound) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new AcknowledgeMessage(messageId, dup, qos, retain, inBound);
+        return new AcknowledgeMessage(messageId, dup, retain, inBound);
     }
 
-    private AcknowledgeMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    private AcknowledgeMessage(long messageId, boolean dup, boolean retain, boolean inBound) {
 
         setMessageId(messageId);
         setMessageType(MESSAGE_TYPE);
         this.dup = dup;
-        this.qos = qos;
         this.retain = retain;
         this.inBound = inBound;
 

@@ -4,5 +4,10 @@ iotracah binary: arch-independent-package-contains-binary-or-object
 iotracah binary: unstripped-binary-or-object
 # Ignore arch dependent warnings, we chose the right libs on start
 iotracah binary: arch-dependent-file-in-usr-share
+# Ignore unknown java version warnings, we are actually expecting to start using java 9
+iotracah binary: unknown-java-class-version
 # Please check our changelog at http://io.tracah.com/downloads
 iotracah binary: changelog-file-missing-in-native-package
+# Please check our changelog at http://io.tracah.com/downloads
+iotracah binary: debian-changelog-file-missing
+

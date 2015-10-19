@@ -27,6 +27,7 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.netty.*;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
+import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.commons.configuration.Configuration;
@@ -105,23 +106,37 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
         switch (ioTMessage.getMessageType()) {
             case  ConnectAcknowledgeMessage.MESSAGE_TYPE:
 
-
-                /**
-                 * Use the connection acknowledgement message to store
-                 */
+                ConnectAcknowledgeMessage conMessage =  (ConnectAcknowledgeMessage) ioTMessage ;
 
 
-                int keepAliveTime = ((ConnectAcknowledgeMessage) ioTMessage).getKeepAliveTime();
-                Double keepAliveDisconnectiontime = keepAliveTime * 1.5;
 
-                Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-                if (null != channel) {
+                    /**
+                     * Use the connection acknowledgement message to store session id for persistance.
+                     */
 
-                    channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
-                    channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
-                    channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
-                }
+                    Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
+                    if (null != channel) {
 
+                        if(MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
+
+                            Double keepAliveDisconnectiontime = conMessage.getKeepAliveTime() * 1.5;
+
+                            channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
+                            channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
+                            channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
+                        }else {
+                            closeClient((ChannelId)ioTMessage.getConnectionId());
+                        }
+                    }else{
+
+                        //We just close such a connection.
+                        if(MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
+
+                            getInternalServer().dirtyDisconnect(ioTMessage.getConnectionId(), ioTMessage.getSessionId());
+
+                        }
+
+                        }
 
                 break;
             default:

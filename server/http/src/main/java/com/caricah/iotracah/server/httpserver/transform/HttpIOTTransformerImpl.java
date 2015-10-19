@@ -64,11 +64,14 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
 
                 case "/CONNECT":
 
+                    boolean isAnnonymousConnect = (!json.has("username") && !json.has("password"));
+
                    
                     return ConnectMessage.from(
                             false, 1, false,
-                            "MQTT", 4, false, json.getString("clientId"),
-                            json.getString("username"), json.getString("password"),
+                            "MQTT", 4, false, isAnnonymousConnect, json.getString("clientId"),
+                            json.has("username")?json.getString("username"):"",
+                            json.has("password")?json.getString("password"):"",
                                     0, "");
 
                 case "/PUBLISH":

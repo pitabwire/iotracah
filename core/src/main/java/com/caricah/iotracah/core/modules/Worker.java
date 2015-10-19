@@ -33,6 +33,26 @@ import com.caricah.iotracah.system.BaseSystemHandler;
  */
 public abstract class Worker extends IOTBaseHandler {
 
+    public static final String CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED = "core.config.worker.annonymous.login.is.enabled";
+    public static final boolean CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED_DEFAULT_VALUE = true;
+
+    public static final String CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_USERNAME = "core.config.worker.annonymous.login.username";
+    public static final String CORE_CONFIG_ENGINE_WORKER_ANNONYMOUS_LOGIN_USERNAME_DEFAULT_VALUE = "annonymous_username";
+
+    public static final String CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_PASSWORD = "core.config.worker.annonymous.login.password";
+    public static final String CORE_CONFIG_ENGINE_WORKER_ANNONYMOUS_LOGIN_PASSWORD_DEFAULT_VALUE = "annonymous_password";
+
+    public static final String CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS = "core.config.worker.client.keep.alive.in.seconds";
+    public static final int CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS_DEFAULT_VALUE = 65535;
+
+
+    private boolean annonymousLoginEnabled;
+
+    private String annonymousLoginUsername;
+
+    private String annonymousLoginPassword;
+
+    private int keepAliveInSeconds;
 
     private Datastore datastore;
 
@@ -73,6 +93,39 @@ public abstract class Worker extends IOTBaseHandler {
     public void setSessionResetManager(SessionResetManager sessionResetManager) {
         this.sessionResetManager = sessionResetManager;
     }
+    public boolean isAnnonymousLoginEnabled() {
+        return annonymousLoginEnabled;
+    }
+
+    public void setAnnonymousLoginEnabled(boolean annonymousLoginEnabled) {
+        this.annonymousLoginEnabled = annonymousLoginEnabled;
+    }
+
+    public String getAnnonymousLoginUsername() {
+        return annonymousLoginUsername;
+    }
+
+    public void setAnnonymousLoginUsername(String annonymousLoginUsername) {
+        this.annonymousLoginUsername = annonymousLoginUsername;
+    }
+
+    public String getAnnonymousLoginPassword() {
+        return annonymousLoginPassword;
+    }
+
+    public void setAnnonymousLoginPassword(String annonymousLoginPassword) {
+        this.annonymousLoginPassword = annonymousLoginPassword;
+    }
+
+    public int getKeepAliveInSeconds() {
+        return keepAliveInSeconds;
+    }
+
+    public void setKeepAliveInSeconds(int keepAliveInSeconds) {
+        this.keepAliveInSeconds = keepAliveInSeconds;
+    }
+
+
 
     /**
      * Sole receiver of all messages from the servers.

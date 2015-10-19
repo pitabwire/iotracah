@@ -31,23 +31,22 @@ public final class CompleteMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "PUBCOMP";
 
     private final boolean dup;
-    private final int qos;
+    private final int qos =0;
     private final boolean retain;
     private final boolean inBound;
 
 
-    public static CompleteMessage from(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    public static CompleteMessage from(long messageId, boolean dup, boolean retain, boolean inBound) {
         if (messageId < 1) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new CompleteMessage(messageId, dup, qos, retain, inBound);
+        return new CompleteMessage(messageId, dup, retain, inBound);
     }
 
-    private CompleteMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    private CompleteMessage(long messageId, boolean dup, boolean retain, boolean inBound) {
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
-        this.qos = qos;
         this.retain = retain;
         this.inBound = inBound;
     }

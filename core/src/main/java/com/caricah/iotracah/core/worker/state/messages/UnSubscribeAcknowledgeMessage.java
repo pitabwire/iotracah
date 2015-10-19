@@ -30,24 +30,23 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "UNSUBACK";
 
     private final boolean dup;
-    private final int qos;
+    private final int qos = 0;
     private final boolean retain;
 
-    public static UnSubscribeAcknowledgeMessage from(long messageId, boolean dup, int qos, boolean retain) {
+    public static UnSubscribeAcknowledgeMessage from(long messageId) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
 
-        return new UnSubscribeAcknowledgeMessage(messageId, dup, qos,  retain);
+        return new UnSubscribeAcknowledgeMessage(messageId, false,false);
     }
 
-    private UnSubscribeAcknowledgeMessage(long messageId, boolean dup, int qos, boolean retain) {
+    private UnSubscribeAcknowledgeMessage(long messageId, boolean dup, boolean retain) {
 
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
 
         this.dup = dup;
-        this.qos = qos;
         this.retain = retain;
 
     }

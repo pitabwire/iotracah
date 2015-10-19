@@ -39,6 +39,8 @@ import java.io.IOException;
  * @version 1.0 8/15/15
  */
 public class DefaultWorker extends Worker {
+
+
     /**
      * <code>configure</code> allows the base system to configure itself by getting
      * all the settings it requires and storing them internally. The plugin is only expected to
@@ -49,6 +51,27 @@ public class DefaultWorker extends Worker {
      */
     @Override
     public void configure(Configuration configuration) throws UnRetriableException {
+
+        boolean configAnnoymousLoginEnabled = configuration.getBoolean(CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED, CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED_DEFAULT_VALUE);
+
+        log.debug(" configure : Anonnymous login is configured to be enabled [{}]", configAnnoymousLoginEnabled);
+
+        setAnnonymousLoginEnabled(configAnnoymousLoginEnabled);
+
+
+        String configAnnoymousLoginUsername = configuration.getString(CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_USERNAME, CORE_CONFIG_ENGINE_WORKER_ANNONYMOUS_LOGIN_USERNAME_DEFAULT_VALUE);
+        log.debug(" configure : Anonnymous login username is configured to be [{}]", configAnnoymousLoginUsername);
+        setAnnonymousLoginUsername(configAnnoymousLoginUsername);
+
+
+        String configAnnoymousLoginPassword = configuration.getString(CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_PASSWORD, CORE_CONFIG_ENGINE_WORKER_ANNONYMOUS_LOGIN_PASSWORD_DEFAULT_VALUE);
+        log.debug(" configure : Anonnymous login password is configured to be [{}]", configAnnoymousLoginPassword);
+        setAnnonymousLoginPassword(configAnnoymousLoginPassword);
+
+
+        int keepaliveInSeconds = configuration.getInt(CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS, CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS_DEFAULT_VALUE);
+        log.debug(" configure : Keep alive maximum is configured to be [{}]", keepaliveInSeconds);
+        setKeepAliveInSeconds(keepaliveInSeconds);
 
     }
 
@@ -139,11 +162,22 @@ public class DefaultWorker extends Worker {
 
     private RequestHandler getHandlerForMessage(IOTMessage iotMessage) {
 
-        RequestHandler requestHandler = null;
+        RequestHandler requestHandler;
 
         switch (iotMessage.getMessageType()) {
             case ConnectMessage.MESSAGE_TYPE:
-                requestHandler = new ConnectionHandler((ConnectMessage) iotMessage);
+
+                ConnectMessage connectMessage = (ConnectMessage) iotMessage;
+                if(connectMessage.isAnnonymousSession() && isAnnonymousLoginEnabled()){
+                    connectMessage.setUserName(getAnnonymousLoginUsername());
+                    connectMessage.setPassword(getAnnonymousLoginPassword());
+                }
+
+                if(connectMessage.getKeepAliveTime() <= 0){
+                    connectMessage.setKeepAliveTime(getKeepAliveInSeconds());
+                }
+
+                requestHandler = new ConnectionHandler(connectMessage);
 
                 break;
             case SubscribeMessage.MESSAGE_TYPE:

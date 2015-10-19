@@ -30,23 +30,22 @@ public final class ReleaseMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "PUBREL";
 
     private final boolean dup;
-    private final int qos;
+    private final int qos = 1;
     private final boolean retain;
     private final boolean inBound;
 
-    public static ReleaseMessage from(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    public static ReleaseMessage from(long messageId, boolean dup, boolean retain, boolean inBound) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new ReleaseMessage(messageId, dup, qos, retain, inBound);
+        return new ReleaseMessage(messageId, dup,  retain, inBound);
     }
 
-    private ReleaseMessage(long messageId, boolean dup, int qos, boolean retain, boolean inBound) {
+    private ReleaseMessage(long messageId, boolean dup, boolean retain, boolean inBound) {
 
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
-        this.qos = qos;
         this.retain = retain;
         this.inBound = inBound;
 

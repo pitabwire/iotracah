@@ -1,5 +1,4 @@
-#!/bin/sh
-set -e
+@packaging.scripts.header@
 
 #
 # This script is executed in the post-removal phase
@@ -52,16 +51,15 @@ case "$1" in
 esac
 
 # Sets the default values for iotracah variables used in this script
-IOT_USER="iotracah"
-IOT_GROUP="iotracah"
-LOG_DIR="/var/log/iotracah"
-PLUGINS_DIR=""
-PID_DIR="/var/run/iotracah"
-DATA_DIR="/var/lib/iotracah"
+IOT_USER="@packaging.iotracah.user@"
+IOT_GROUP="@packaging.iotracah.group@"
+LOG_DIR="@packaging.iotracah.log.dir@"
+PID_DIR="@packaging.iotracah.pid.dir@"
+DATA_DIR="@packaging.iotracah.data.dir@"
 
 # Source the default env file
 if [ "$SOURCE_ENV_FILE" = "true" ]; then
-    IOT_ENV_FILE="/etc/default/iotracah"
+    IOT_ENV_FILE="@packaging.env.file@"
     if [ -f "$IOT_ENV_FILE" ]; then
         . "$IOT_ENV_FILE"
     fi
@@ -89,12 +87,6 @@ if [ "$REMOVE_DIRS" = "true" ]; then
         echo " OK"
     fi
 
-    if [ -d "$PLUGINS_DIR" ]; then
-        echo -n "Deleting plugins directory..."
-        rm -rf "$PLUGINS_DIR"
-        echo " OK"
-    fi
-
     if [ -d "$PID_DIR" ]; then
         echo -n "Deleting PID directory..."
         rm -rf "$PID_DIR"
@@ -117,5 +109,4 @@ if [ "$REMOVE_USER_AND_GROUP" = "true" ]; then
     fi
 fi
 
-exit 0
-# Built for iotracah
+@packaging.scripts.footer@

@@ -16,8 +16,8 @@
 # Required-Stop:     $network $remote_fs $named
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Starts iotracah
-# Description:       Starts iotracah using start-stop-daemon
+# Short-Description: @packaging.project.summary@
+# Description:       @packaging.project.description@
 ### END INIT INFO
 
 PATH=/bin:/usr/bin:/sbin:/usr/sbin
@@ -86,12 +86,6 @@ PID_DIR="@packaging.iotracah.pid.dir@"
 # overwrite settings from default file
 if [ -f "$DEFAULT" ]; then
 	. "$DEFAULT"
-fi
-
-# CONF_FILE setting was removed
-if [ ! -z "$CONF_FILE" ]; then
-    echo "CONF_FILE setting is no longer supported. iotracah.properties must be placed in the config directory and cannot be renamed."
-    exit 1
 fi
 
 # Define other required variables

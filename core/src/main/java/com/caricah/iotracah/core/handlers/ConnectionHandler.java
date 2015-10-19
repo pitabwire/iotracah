@@ -61,8 +61,7 @@ import java.util.regex.Pattern;
 public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     private final Pattern usernamePartitionPattern = Pattern.compile("(?<username>.*)-<(?<partition>.*)>");
-    private final Pattern clientIdPartitionPattern = Pattern.compile("(?<clientId>.*)-<(?<partition>.*)>");
-    private final Pattern pattern = Pattern.compile("[-/<>a-zA-Z0-9_]*");
+    private final Pattern pattern = Pattern.compile("[\\w\\-\\s/<>]*");
 
    
     public ConnectionHandler(ConnectMessage message) {
@@ -359,12 +358,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                     activeClientId  = clientIdentifier;
                 }
 
-                final String partition ;
-                if (getDatastore().isPartitionBasedOnUsername()) {
-                    partition = processUsernameForPartition(userName);
-                }else{
-                    partition = processClientIdForPartition(activeClientId);
-                }
+                final String partition = processUsernameForPartition(userName);
 
                 Client defaultClient = new Client();
                 defaultClient.setConnectedCluster(connectedCluster);
@@ -402,7 +396,17 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                                 activeUser.logout();
                             }
 
-                            IdPassToken token = new IdPassToken(partition, userName, activeClientId, password.toCharArray());
+                            char[] passwordChars;
+
+                            if( null == password)
+                                passwordChars = null;
+                            else
+                                passwordChars = password.toCharArray();
+
+
+                            IdPassToken token = new IdPassToken(partition, userName, activeClientId, passwordChars);
+
+
                             activeUser.login(token);
 
                             Double keepAliveDisconnectiontime = keepAliveTime * 1.5 * 1000;
@@ -455,17 +459,6 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
         byte[] bytes = secretKey.getEncoded();
 
         return Base64.getEncoder().encodeToString(bytes);
-    }
-
-    private String processClientIdForPartition(String activeClientId) {
-
-        Matcher matcher = clientIdPartitionPattern.matcher(activeClientId);
-        if (matcher.matches()) {
-            return matcher.group("partition");
-        } else {
-            return "";
-        }
-
     }
 
     private String processUsernameForPartition(String username) {

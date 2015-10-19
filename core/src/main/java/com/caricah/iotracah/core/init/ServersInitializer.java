@@ -317,9 +317,6 @@ public abstract class ServersInitializer implements SystemInitializer {
                 optimizedMarshaller.setRequireSerializable(false);
                 cfg.setMarshaller(optimizedMarshaller);
 
-                //Peer class loading Set to true to enable distributed class loading
-                cfg.setPeerClassLoadingEnabled(true);
-
                 Ignition.start(cfg);
 
                 //Also instantiate the server router.

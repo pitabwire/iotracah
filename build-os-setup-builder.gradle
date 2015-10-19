@@ -72,6 +72,16 @@ deb {
     }
 }
 
+
+rpm {
+
+    section 'web'
+    depends 'default-jre | default-jdk | openjdk-8-jdk | openjdk-8-jre'
+    url 'http://io.tracah.com'
+    license 'Apache v2'
+    summary packaging."packaging.project.description"
+}
+
 task zip(type: Zip) {
     with setupBuilder
     doLast {

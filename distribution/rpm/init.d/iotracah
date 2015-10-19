@@ -12,8 +12,8 @@
 # Required-Stop: $network $named
 # Default-Start: 2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: This service manages the iotracah daemon
-# Description: IOTracah is a distributed, fault tolerant mqtt v3.1/v3.1.1 broker that scales infinitely.
+# Short-Description: @packaging.project.summary@
+# Description: @packaging.project.description@
 ### END INIT INFO
 
 #
@@ -32,27 +32,21 @@ if [ -f /etc/rc.d/init.d/functions ]; then
 fi
 
 # Sets the default values for iotracah variables used in this script
-IOT_USER="${packaging.iotracah.user}"
-IOT_GROUP="${packaging.iotracah.group}"
-IOT_HOME="${packaging.iotracah.home.dir}"
-MAX_OPEN_FILES=${packaging.os.max.open.files}
-MAX_MAP_COUNT=${packaging.os.max.map.count}
-LOG_DIR="${packaging.iotracah.log.dir}"
-DATA_DIR="${packaging.iotracah.data.dir}"
-CONF_DIR="${packaging.tmp_iotracah.conf.dir}"
+IOT_USER="@packaging.iotracah.user@"
+IOT_GROUP="@packaging.iotracah.group@"
+IOT_HOME="@packaging.iotracah.home.dir@"
+MAX_OPEN_FILES=@packaging.os.max.open.files@
+MAX_MAP_COUNT=@packaging.os.max.map.count@
+LOG_DIR="@packaging.iotracah.log.dir@"
+DATA_DIR="@packaging.iotracah.data.dir@"
+CONF_DIR="@packaging.tmp_iotracah.conf.dir@"
 
-PID_DIR="${packaging.iotracah.pid.dir}"
+PID_DIR="@packaging.iotracah.pid.dir@"
 
 # Source the default env file
-IOT_ENV_FILE="${packaging.env.file}"
+IOT_ENV_FILE="@packaging.env.file@"
 if [ -f "$IOT_ENV_FILE" ]; then
     . "$IOT_ENV_FILE"
-fi
-
-# CONF_FILE setting was removed
-if [ ! -z "$CONF_FILE" ]; then
-    echo "CONF_FILE setting is no longer supported. iotracah.properties must be placed in the config directory and cannot be renamed."
-    exit 1
 fi
 
 exec="$IOT_HOME/bin/iotracah"
@@ -125,7 +119,7 @@ start() {
 stop() {
     echo -n $"Stopping $prog: "
     # stop it here, often "killproc $prog"
-    killproc -p $pidfile -d ${packaging.iotracah.stopping.timeout} $prog
+    killproc -p $pidfile -d @packaging.iotracah.stopping.timeout@ $prog
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile

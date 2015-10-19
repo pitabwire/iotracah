@@ -1,3 +1,4 @@
+@packaging.scripts.header@
 
 #
 # This script is executed in the pre-installation phase
@@ -13,11 +14,14 @@
 
 
 # Sets the default values for iotracah variables used in this script
-IOT_USER="iotracah"
-IOT_GROUP="iotracah"
+IOT_USER="@packaging.iotracah.user@"
+IOT_GROUP="@packaging.iotracah.group@"
+LOG_DIR="@packaging.iotracah.log.dir@"
+DATA_DIR="@packaging.iotracah.data.dir@"
+
 
 # Source the default env file
-IOT_ENV_FILE="/etc/sysconfig/iotracah"
+IOT_ENV_FILE="@packaging.env.file@"
 if [ -f "$IOT_ENV_FILE" ]; then
     . "$IOT_ENV_FILE"
 fi
@@ -79,5 +83,17 @@ case "$1" in
     ;;
 esac
 
-# Built for iotracah
 
+# Ensure the data directory exists
+if [! -d "$DATA_DIR" ]; then
+    echo -n "Creating data directory $DATA_DIR ..."
+    sudo mkdir -p "$DATA_DIR" && sudo chown "$IOT_USER":"$IOT_GROUP" "$DATA_DIR"
+fi
+
+# Ensure the logs directory exists
+if [ ! -d "$LOG_DIR" ]; then
+    echo -n "Creating data directory $LOG_DIR ..."
+    sudo mkdir -p "$LOG_DIR" && sudo chown "$IOT_USER":"$IOT_GROUP" "$LOG_DIR"
+fi
+
+@packaging.scripts.footer@

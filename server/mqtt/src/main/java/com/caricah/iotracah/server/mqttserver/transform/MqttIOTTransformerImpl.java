@@ -40,6 +40,11 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
 
         MqttFixedHeader fxH = serverMessage.fixedHeader();
 
+
+        if(null == fxH){
+            return null;
+        }
+
         switch (fxH.messageType()) {
 
 
@@ -61,24 +66,24 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                 MqttPubAckMessage pubAckMessage = (MqttPubAckMessage) serverMessage;
 
                 MqttMessageIdVariableHeader msgIdVH = pubAckMessage.variableHeader();
-                return AcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), true);
+                return AcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain(), true);
 
 
             case PUBREC:
 
                  msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
-                return PublishReceivedMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
+                return PublishReceivedMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain());
 
             case PUBREL:
 
                 msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
-                return ReleaseMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), true);
+                return ReleaseMessage.from(msgIdVH.messageId(), fxH.isDup(),  fxH.isRetain(), true);
 
             case PUBCOMP:
 
                 msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
 
-                return CompleteMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), true);
+                return CompleteMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain(), true);
             case PINGREQ: case PINGRESP:
                 return Ping.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
 
@@ -88,9 +93,10 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                 MqttConnectVariableHeader conVH = mqttConnectMessage.variableHeader();
                 MqttConnectPayload conPayload = mqttConnectMessage.payload();
 
+                boolean isAnnonymousConnect = (!conVH.hasPassword() && !conVH.hasUserName());
 
                 ConnectMessage connectionMessage = ConnectMessage.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(),
-                        conVH.name(), conVH.version(),conVH.isCleanSession(),conPayload.clientIdentifier(),
+                        conVH.name(), conVH.version(),conVH.isCleanSession(), isAnnonymousConnect, conPayload.clientIdentifier(),
                         conPayload.userName(), conPayload.password(), conVH.keepAliveTimeSeconds(),"" );
 
                 connectionMessage.setHasWill(conVH.isWillFlag());
@@ -123,13 +129,6 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
 
 
                 return subscribeMessage;
-            case SUBACK:
-
-                MqttSubAckMessage subAckMsg = (MqttSubAckMessage) serverMessage;
-                msgIdVH = subAckMsg.variableHeader();
-                MqttSubAckPayload subAckPayload = subAckMsg.payload();
-
-                return SubscribeAcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), subAckPayload.grantedQoSLevels());
 
             case UNSUBSCRIBE:
 
@@ -139,15 +138,6 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                 MqttUnsubscribePayload unsubscribePayload = unSubMsg.payload();
 
                return UnSubscribeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), unsubscribePayload.topics());
-
-
-            case UNSUBACK:
-
-                MqttUnsubAckMessage unsubAckMsg = (MqttUnsubAckMessage) serverMessage;
-
-                msgIdVH = unsubAckMsg.variableHeader();
-
-                return UnSubscribeAcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
 
             case DISCONNECT:
                return DisconnectMessage.from(true);

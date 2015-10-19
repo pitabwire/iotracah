@@ -36,9 +36,10 @@ public final class ConnectMessage extends IOTMessage {
     private final String protocolName;
     private final int protocalLevel;
     private final boolean cleanSession;
-    private final String userName;
-    private final String password;
-    private final int keepAliveTime;
+    private final boolean annonymousSession;
+    private String userName;
+    private String password;
+    private int keepAliveTime;
     private final String sourceHost;
     private boolean hasWill;
     private boolean retainWill;
@@ -53,17 +54,17 @@ public final class ConnectMessage extends IOTMessage {
 
 
     public static ConnectMessage from( boolean dup, int qos, boolean retain, String protocolName,
-                                       int protocalLevel, boolean cleanSession, String clientIdentifier,
+                                       int protocalLevel, boolean cleanSession, boolean annonymousSession, String clientIdentifier,
                                        String userName, String password, int keepAliveTime, String sourceHost
 
     ) {
 
-        return new ConnectMessage(dup, qos, retain, protocolName, protocalLevel, cleanSession,
+        return new ConnectMessage(dup, qos, retain, protocolName, protocalLevel, cleanSession, annonymousSession,
                 clientIdentifier, userName, password, keepAliveTime, sourceHost);
     }
 
     private ConnectMessage(boolean dup, int qos, boolean retain, String protocolName, int protocalLevel,
-                           boolean cleanSession, String clientIdentifier, String userName, String password,
+                           boolean cleanSession, boolean annonymousSession, String clientIdentifier, String userName, String password,
                            int keepAliveTime, String sourceHost) {
         setMessageType(MESSAGE_TYPE);
         this.dup = dup;
@@ -77,6 +78,7 @@ public final class ConnectMessage extends IOTMessage {
         this.password = password;
         this.keepAliveTime = keepAliveTime;
         this.sourceHost = sourceHost;
+        this.annonymousSession = annonymousSession;
     }
 
 
@@ -105,6 +107,10 @@ public final class ConnectMessage extends IOTMessage {
         return cleanSession;
     }
 
+    public boolean isAnnonymousSession() {
+        return annonymousSession;
+    }
+
     public String getUserName() {
         return userName;
     }
@@ -113,8 +119,20 @@ public final class ConnectMessage extends IOTMessage {
         return password;
     }
 
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
     public int getKeepAliveTime() {
         return keepAliveTime;
+    }
+
+    public void setKeepAliveTime(int keepAliveTime) {
+        this.keepAliveTime = keepAliveTime;
     }
 
     public String getSourceHost() {

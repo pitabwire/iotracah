@@ -92,7 +92,7 @@ public class SessionResetManager {
 //                        MqttMessage message = MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
 //                        getChannel().write(message);
 
-                        AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.getQos(), publishMessage.isRetain(), !publishMessage.isInBound());
+                        AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.isRetain(), !publishMessage.isInBound());
                         acknowledgeMessage.copyBase(publishMessage);
                         getWorker().pushToServer(acknowledgeMessage);
 
@@ -105,12 +105,7 @@ public class SessionResetManager {
                     if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.isReleased()) {
 
                         //We need to generate a PUBREL message to allow transmission of qos 2 message.
-//                        MqttFixedHeader recFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, publishMessage.isDup(), MqttQoS.AT_LEAST_ONCE, publishMessage.isRetain(), 0);
-//                        MqttMessageIdVariableHeader msgIdVariableHeader = MqttMessageIdVariableHeader.from(publishMessage.getMessageId());
-//                        MqttMessage message = MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
-//                        getChannel().write(message);
-
-                        ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), MqttQoS.AT_LEAST_ONCE.value(), publishMessage.isRetain(), publishMessage.isInBound());
+                        ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.isRetain(), publishMessage.isInBound());
                         releaseMessage.copyBase(publishMessage);
                         getWorker().pushToServer(releaseMessage);
 

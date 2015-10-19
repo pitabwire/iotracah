@@ -66,7 +66,7 @@ public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
                 getMessenger().unSubscribe(client.getPartition(), client.getClientId(), partitionQosTopicFilter);
             }
 
-            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(getMessage().getMessageId(), false, getMessage().getQos(), false);
+            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(getMessage().getMessageId());
             unSubscribeAcknowledgeMessage.copyBase(getMessage());
             pushToServer(unSubscribeAcknowledgeMessage);
 

@@ -124,7 +124,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
 
                             AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(
                                     getMessage().getMessageId(), getMessage().isDup(),
-                                    getMessage().getQos(), getMessage().isRetain(), false);
+                                    getMessage().isRetain(), false);
                             acknowledgeMessage.copyBase(getMessage());
 
                             pushToServer(acknowledgeMessage);
@@ -171,7 +171,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
 
                 //We need to push out a PUBREC
 
-                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId, message.isDup(), message.getQos(), message.isRetain());
+                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId, message.isDup(), message.isRetain());
                 publishReceivedMessage.copyBase(message);
                 pushToServer(publishReceivedMessage);
 

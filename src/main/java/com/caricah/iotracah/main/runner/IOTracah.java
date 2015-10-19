@@ -28,6 +28,8 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PatternLayout;
 
+import java.io.File;
+
 /**
  *
  * Entry point to run iotracah
@@ -53,14 +55,18 @@ public class IOTracah extends DefaultRunner {
         //configure the appender
         String PATTERN = "%d %p [ %c] %m%n";
         console.setLayout(new PatternLayout(PATTERN));
-        console.setThreshold(Level.ALL);
+        console.setThreshold(Level.INFO);
         console.activateOptions();
         //add appender to any Logger (here is root)
         Logger.getRootLogger().addAppender(console);
+
 
         Runner runner = defaultRunner();
         runner.init();
         runner.start();
 
     }
+
+
+
 }

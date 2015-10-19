@@ -1,3 +1,4 @@
+@packaging.scripts.header@
 
 #
 # This script is executed in the post-installation phase
@@ -12,11 +13,11 @@
 
 
 # Sets the default values for iotracah variables used in this script
-IOT_USER="iotracah"
-IOT_GROUP="iotracah"
+IOT_USER="@packaging.iotracah.user@"
+IOT_GROUP="@packaging.iotracah.group@"
 
 # Source the default env file
-IOT_ENV_FILE="/etc/sysconfig/iotracah"
+IOT_ENV_FILE="@packaging.env.file@"
 if [ -f "$IOT_ENV_FILE" ]; then
     . "$IOT_ENV_FILE"
 fi
@@ -97,4 +98,4 @@ elif [ "$RESTART_ON_UPGRADE" = "true" ]; then
     echo " OK"
 fi
 
-# Built for iotracah
+@packaging.scripts.footer@

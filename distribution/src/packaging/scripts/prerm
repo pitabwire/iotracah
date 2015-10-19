@@ -1,5 +1,4 @@
-#!/bin/sh
-set -e
+@packaging.scripts.header@
 
 #
 # This script is executed in the pre-remove phase
@@ -67,5 +66,4 @@ if [ "$STOP_REQUIRED" = "true" ]; then
     echo " OK"
 fi
 
-exit 0
-# Built for iotracah
+@packaging.scripts.footer@
