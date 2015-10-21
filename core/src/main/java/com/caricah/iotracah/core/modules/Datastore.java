@@ -23,8 +23,9 @@ package com.caricah.iotracah.core.modules;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.core.worker.state.models.ClSubscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.security.realm.IOTAccountDatastore;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.apache.ignite.Ignite;
@@ -34,8 +35,9 @@ import rx.Observable;
 import rx.Subscriber;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 /**
  *
@@ -53,6 +55,8 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     private Ignite ignite;
 
+    private ExecutorService executorService;
+
     protected Ignite getIgnite() {
         return ignite;
     }
@@ -60,6 +64,15 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public void setIgnite(Ignite ignite) {
         this.ignite = ignite;
     }
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
+
 
     public abstract Observable<Client> getClient(String partition, String clientIdentifier);
 
@@ -75,16 +88,21 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     public abstract void removeWill(WillMessage will);
 
-    public abstract Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter, Subscription newSubscription);
+    public abstract Observable<SubscriptionFilter> getSubscriptionFilter(String partition, int qos, String TopicFilter);
 
-    public abstract Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter);
+    public abstract void saveSubscriptionFilter(SubscriptionFilter subscriptionFilter);
 
-    public abstract void saveSubscription(Subscription subscription);
-
-    public abstract void removeSubscription(Subscription subscription);
+    public abstract void removeSubscriptionFilter(SubscriptionFilter subscriptionFilter);
 
 
-    public abstract Observable<String> distributePublish(String partition, Set<String> topicBreakDown, PublishMessage publishMessage);
+    public abstract Observable<ClSubscription> getSubscription(Client client);
+    public abstract Observable<ClSubscription> getSubscription(Client client, Collection<String> topicFilterList);
+    public abstract Observable<ClSubscription> getSubscription(String partition, int qos, Collection<String> topicFilterList);
+    public abstract void saveSubscription(ClSubscription clSubscription);
+    public abstract void removeSubscription(ClSubscription clSubscription);
+
+
+
 
     public abstract Observable<PublishMessage> getActiveMessages(Client client);
 
@@ -95,6 +113,10 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public abstract void removeMessage(PublishMessage publishMessage);
 
     public abstract String nextClientId();
+
+    public abstract String nextSubscriptionId();
+
+    public abstract String nextSubscriptionFilterId();
 
 
 

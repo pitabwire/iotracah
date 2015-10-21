@@ -23,8 +23,9 @@ package com.caricah.iotracah.datastore.ignitecache;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.core.worker.state.models.ClSubscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.security.realm.state.IOTAccount;
@@ -32,24 +33,29 @@ import com.caricah.iotracah.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.IgniteAtomicSequence;
 import rx.Observable;
-import rx.Subscriber;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/15/15
  */
-public class IgniteDatastore extends Datastore{
+public class IgniteDatastore extends Datastore {
 
     private IgniteAtomicSequence clientIdSequence;
+
+    private IgniteAtomicSequence subscriptionIdSequence;
+
+    private IgniteAtomicSequence subscriptionFilterIdSequence;
 
     private final ClientHandler clientHandler = new ClientHandler();
 
     private final WillHandler willHandler = new WillHandler();
+
+    private final SubscriptionFilterHandler subscriptionFilterHandler = new SubscriptionFilterHandler();
 
     private final SubscriptionHandler subscriptionHandler = new SubscriptionHandler();
 
@@ -67,6 +73,23 @@ public class IgniteDatastore extends Datastore{
         this.clientIdSequence = clientIdSequence;
     }
 
+    public IgniteAtomicSequence getSubscriptionIdSequence() {
+        return subscriptionIdSequence;
+    }
+
+    public void setSubscriptionIdSequence(IgniteAtomicSequence subscriptionIdSequence) {
+        this.subscriptionIdSequence = subscriptionIdSequence;
+    }
+
+    public IgniteAtomicSequence getSubscriptionFilterIdSequence() {
+        return subscriptionFilterIdSequence;
+    }
+
+    public void setSubscriptionFilterIdSequence(IgniteAtomicSequence subscriptionFilterIdSequence) {
+        this.subscriptionFilterIdSequence = subscriptionFilterIdSequence;
+    }
+
+
     /**
      * <code>configure</code> allows the base system to configure itself by getting
      * all the settings it requires and storing them internally. The plugin is only expected to
@@ -79,6 +102,8 @@ public class IgniteDatastore extends Datastore{
     public void configure(Configuration configuration) throws UnRetriableException {
 
         clientHandler.configure(configuration);
+
+        subscriptionFilterHandler.configure(configuration);
 
         subscriptionHandler.configure(configuration);
 
@@ -100,17 +125,30 @@ public class IgniteDatastore extends Datastore{
     @Override
     public void initiate() throws UnRetriableException {
 
+
+        clientHandler.initiate(Client.class, getIgnite());
+        subscriptionFilterHandler.initiate(SubscriptionFilter.class, getIgnite());
+        subscriptionHandler.initiate(ClSubscription.class, getIgnite());
+        messageHandler.initiate(PublishMessage.class, getIgnite());
+        willHandler.initiate(WillMessage.class, getIgnite());
+        accountHandler.initiate(IOTAccount.class, getIgnite());
+        roleHandler.initiate(IOTRole.class, getIgnite());
+
+
         long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
         String nameOfSequenceForClientId = "iotracah-sequence-client-id";
         IgniteAtomicSequence seq = getIgnite().atomicSequence(nameOfSequenceForClientId, currentTime, true);
         setClientIdSequence(seq);
 
-        clientHandler.initiate(Client.class, getIgnite());
-        subscriptionHandler.initiate(Subscription.class, getIgnite());
-        messageHandler.initiate(PublishMessage.class, getIgnite());
-        willHandler.initiate(WillMessage.class, getIgnite());
-        accountHandler.initiate(IOTAccount.class, getIgnite());
-        roleHandler.initiate(IOTRole.class, getIgnite());
+
+        String nameOfSequenceForSubscriptionId = "iotracah-sequence-subscription-id";
+        IgniteAtomicSequence seq2 = getIgnite().atomicSequence(nameOfSequenceForSubscriptionId, currentTime, true);
+        setSubscriptionIdSequence(seq2);
+
+        String nameOfSequenceForSubscriptionFilterId = "iotracah-sequence-subscription-filter-id";
+        IgniteAtomicSequence seq3 = getIgnite().atomicSequence(nameOfSequenceForSubscriptionFilterId, currentTime, true);
+        setSubscriptionFilterIdSequence(seq3);
+
 
     }
 
@@ -129,7 +167,7 @@ public class IgniteDatastore extends Datastore{
         String query = "partition = ? and clientId = ?";
         Object[] params = {partition, clientIdentifier};
 
-       return clientHandler.getByQuery(Client.class, query, params );
+        return clientHandler.getByQuery(Client.class, query, params);
     }
 
     @Override
@@ -162,75 +200,108 @@ public class IgniteDatastore extends Datastore{
     }
 
     @Override
-    public Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter, Subscription defaultSubscription) {
-       return subscriptionHandler.getByKeyWithDefault(partitionQosTopicFilter, defaultSubscription);
+    public Observable<SubscriptionFilter> getSubscriptionFilter(String partition, int qos, String topicFilter) {
+
+        String query = "partition = ? and qos = ? and topicFilter = ?";
+        Object[] params = {partition, qos, topicFilter};
+        return subscriptionFilterHandler.getByQuery(SubscriptionFilter.class, query, params);
+
+    }
+
+
+
+
+    @Override
+    public void saveSubscriptionFilter(SubscriptionFilter subscriptionFilter) {
+        subscriptionFilterHandler.save(subscriptionFilter);
     }
 
     @Override
-    public Observable<Subscription> getSubscription(String partition, String partitionQosTopicFilter) {
-        return subscriptionHandler.getByKey(partitionQosTopicFilter);
+    public void removeSubscriptionFilter(SubscriptionFilter subscriptionFilter) {
+        subscriptionFilterHandler.remove(subscriptionFilter);
+    }
+
+
+    @Override
+    public Observable<ClSubscription> getSubscription(Client client) {
+        String query = "partition = ? and clientId = ?";
+        Object[] params = {client.getPartition(), client.getClientId()};
+        return subscriptionHandler.getByQuery(ClSubscription.class, query, params);
+
     }
 
     @Override
-    public void saveSubscription(Subscription subscription) {
-        subscriptionHandler.save(subscription);
-    }
-
-    @Override
-    public void removeSubscription(Subscription subscription) {
-        subscriptionHandler.remove(subscription);
-    }
-
-    @Override
-    public Observable<String> distributePublish(String partition, Set<String> topicBreakDown, PublishMessage publishMessage) {
+    public Observable<ClSubscription> getSubscription(Client client, Collection<String> topicFilterList) {
 
         return Observable.create(observer -> {
 
-                    log.debug(" distributePublish : obtaining subscribers for topic {}", topicBreakDown);
+            Observable<List> subscriptionFilterListObservable = subscriptionFilterHandler.getAsList(client.getPartition(), 0, topicFilterList);
 
-                try {
+            subscriptionFilterListObservable.subscribe(
 
-                    CountDownLatch countDownLatch = new CountDownLatch(topicBreakDown.size());
+                    subscriptionFilterList -> {
 
-                    for (String topicFilter : topicBreakDown) {
-
-                        Observable<Subscription> subscriptionObservable = getSubscription(publishMessage.getPartition(), topicFilter);
-                        subscriptionObservable.subscribe(
-
-                                new Subscriber<Subscription>() {
-                                    @Override
-                                    public void onCompleted() {
-                                        countDownLatch.countDown();
-                                    }
-
-                                    @Override
-                                    public void onError(Throwable e) {
-                                        countDownLatch.countDown();
-                                    }
-
-                                    @Override
-                                    public void onNext(Subscription subscription) {
-
-                                        log.debug( " distributePublish onNext : obtained a subscription {} for message {}", subscription, publishMessage);
-                                        subscription.getSubscriptions().forEach(observer::onNext);
-
-                                    }
-                                }
-                        );
+//                        Observable<ClSubscription> subscriptionObservable = subscriptionHandler.getSubscription(client.getPartition(), subscriptionFilterList);
+//                        subscriptionObservable.subscribe(observer::onNext, observer::onError, observer::onCompleted);
 
 
-                    }
-                    //Wait for all subscribers to be dealt with.
-                    countDownLatch.await();
-                    observer.onCompleted();
-
-                } catch (Exception e) {
-                    observer.onError(e);
-                }
+                    }, observer::onError
+            );
 
         });
 
     }
+
+    @Override
+    public Observable<ClSubscription> getSubscription(String partition, int qos, Collection<String> topicFilterList) {
+
+
+        return Observable.create(observer ->
+                     {
+
+                log.debug(" getSubscription : processing request to :  ");
+                log.debug(" getSubscription : ************************************ ***********************************************");
+                log.debug(" getSubscription : **** get subscriptions for {} {} {} ********* ", partition, qos, topicFilterList);
+                log.debug(" getSubscription : ************************************************************************************ ");
+
+                Observable<List> subscriptionFilterListObservable = subscriptionFilterHandler.getAsList(partition, qos, topicFilterList);
+
+                subscriptionFilterListObservable.subscribe(
+
+                        subscriptionFilterList -> {
+
+                            Object[] array = subscriptionFilterList.stream().map(o1 -> ((List) o1).get(0)).filter(id -> null != id).toArray(Object[]::new);
+
+                            if(null ==array || array.length <=0){
+                                observer.onCompleted();
+                            }else {
+
+
+                                Observable<ClSubscription> subscriptionObservable = subscriptionHandler.getSubscription(partition, array);
+                                subscriptionObservable.subscribe(observer::onNext, observer::onError, observer::onCompleted);
+                            }
+                        }, observer::onError);}
+
+        );
+
+    }
+
+    @Override
+    public void saveSubscription(ClSubscription clSubscription) {
+
+        log.debug(" saveSubscription : -----------------------------------------------------------");
+        log.debug(" saveSubscription : --------------- Obtained {} -----------", clSubscription);
+        log.debug(" saveSubscription : -----------------------------------------------------------");
+
+
+        subscriptionHandler.save(clSubscription);
+    }
+
+    @Override
+    public void removeSubscription(ClSubscription clSubscription) {
+        subscriptionHandler.remove(clSubscription);
+    }
+
 
     @Override
     public Observable<PublishMessage> getActiveMessages(Client client) {
@@ -276,13 +347,22 @@ public class IgniteDatastore extends Datastore{
         return String.format("iotracah-cl-id-%d", nextSequence);
     }
 
+    @Override
+    public String nextSubscriptionFilterId() {
+        return "" + getSubscriptionFilterIdSequence().incrementAndGet();
+    }
+
+    @Override
+    public String nextSubscriptionId() {
+        return "" + getSubscriptionIdSequence().incrementAndGet();
+    }
 
     @Override
     public IOTAccount getIOTAccount(String partition, String username) {
 
         String cacheKey = IOTAccount.createCacheKey(partition, username);
 
-         return accountHandler.getByKeyWithDefault(cacheKey, null).toBlocking().single();
+        return accountHandler.getByKeyWithDefault(cacheKey, null).toBlocking().single();
     }
 
     @Override
@@ -297,11 +377,13 @@ public class IgniteDatastore extends Datastore{
 
         String cacheKey = IOTRole.createCacheKey(partition, rolename);
 
-        return roleHandler.getByKeyWithDefault(cacheKey,null).toBlocking().single();
+        return roleHandler.getByKeyWithDefault(cacheKey, null).toBlocking().single();
     }
 
     @Override
     public void saveIOTRole(IOTRole iotRole) {
         roleHandler.save(iotRole);
     }
+
+
 }

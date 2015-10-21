@@ -122,8 +122,13 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
                             Double keepAliveDisconnectiontime = conMessage.getKeepAliveTime() * 1.5;
 
                             channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
-                            channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
-                            channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
+
+
+                            boolean pipelineDoesNotContainidleStateHandler = channel.pipeline().context("idleStateHandler")==null;
+                            if(pipelineDoesNotContainidleStateHandler) {
+                                channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
+                                channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
+                            }
                         }else {
                             closeClient((ChannelId)ioTMessage.getConnectionId());
                         }

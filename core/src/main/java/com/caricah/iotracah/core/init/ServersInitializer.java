@@ -38,6 +38,7 @@ import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.logger.slf4j.Slf4jLogger;
+import org.apache.ignite.marshaller.jdk.JdkMarshaller;
 import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
@@ -50,7 +51,7 @@ import rx.Subscription;
 import rx.schedulers.Schedulers;
 
 import java.util.*;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 
 /**
  * <code>WorkersInitializer</code> Handler for initializing base worker
@@ -99,6 +100,8 @@ public abstract class ServersInitializer implements SystemInitializer {
     private String[] discoveryAddresses;
 
     private List<Subscription> rxSubscriptionList = new ArrayList<>();
+
+    private ExecutorService executorService;
 
     public boolean isServerEngineEnabled() {
         return serverEngineEnabled;
@@ -174,6 +177,14 @@ public abstract class ServersInitializer implements SystemInitializer {
         return rxSubscriptionList;
     }
 
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
 
     public void startServers() throws UnRetriableException {
 
@@ -314,7 +325,7 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 //Optimize marshaller
                 OptimizedMarshaller optimizedMarshaller = new OptimizedMarshaller();
-                optimizedMarshaller.setRequireSerializable(false);
+//                optimizedMarshaller.setRequireSerializable(false);
                 cfg.setMarshaller(optimizedMarshaller);
 
                 Ignition.start(cfg);
@@ -373,7 +384,9 @@ public abstract class ServersInitializer implements SystemInitializer {
             //The schedular obtained allows for processing of data to be sent to the
             //correct excecutor groups.
 
-            Scheduler scheduler = Schedulers.from(getExcecutor(observableOnSubscriber));
+            setExecutorService(obtainExcecutor(observableOnSubscriber));
+
+            Scheduler scheduler = Schedulers.from(getExecutorService());
             //Scheduler scheduler = Schedulers.from(Executors.newCachedThreadPool());
             //Scheduler scheduler = Schedulers.io();
         return observable
@@ -384,7 +397,7 @@ public abstract class ServersInitializer implements SystemInitializer {
     }
 
 
-    private Executor getExcecutor(Object observableOnSubscriber) {
+    private ExecutorService obtainExcecutor(Object observableOnSubscriber) {
 
         //Note: since ignite expects a runnable that is serializable we will deffer
         // Work on distributing the load to a cluster separated by functions.

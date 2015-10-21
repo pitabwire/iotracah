@@ -23,6 +23,8 @@ package com.caricah.iotracah.system;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
+import java.io.Serializable;
+
 /**
  *
  * All plugins that perform/interact with client related work are
@@ -36,7 +38,7 @@ import org.apache.commons.configuration.Configuration;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/8/15
  */
-public interface BaseSystemHandler extends Comparable<BaseSystemHandler>{
+public interface BaseSystemHandler extends Comparable<BaseSystemHandler>, Serializable{
 
     /**
      * <code>configure</code> allows the base system to configure itself by getting

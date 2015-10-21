@@ -25,20 +25,19 @@ import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.models.ClSubscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.Subscriber;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
 
 /**
  * Implementation class that handles subscribing, unsubscribing and publishing of messages
@@ -53,8 +52,6 @@ public class Messenger {
     private Datastore datastore;
 
     private Worker worker;
-
-    private ExecutorService executorService;
 
     public Datastore getDatastore() {
         return datastore;
@@ -72,75 +69,65 @@ public class Messenger {
         this.worker = worker;
     }
 
-    public ExecutorService getExecutorService() {
-        return executorService;
-    }
-
-    public void setExecutorService(ExecutorService executorService) {
-        this.executorService = executorService;
-    }
-
-    public Observable<Map.Entry<String, Integer>> subscribe(String partition, String clientIdentifier, List<Map.Entry<String, Integer>> topicFilterQosList) {
+    public Observable<Map.Entry<String, Integer>> subscribe(Client client, List<Map.Entry<String, Integer>> topicFilterQosList) {
 
         return Observable.create(observer -> {
 
-                for (Map.Entry<String, Integer> topicFilterQos : topicFilterQosList) {
+            for (Map.Entry<String, Integer> topicFilterQos : topicFilterQosList) {
 
 
+                /**
+                 *
+                 * Allowed return codes:
+                 *  0x00 - Success - Maximum QoS 0
+                 *  0x01 - Success - Maximum QoS 1
+                 *  0x02 - Success - Maximum QoS 2
+                 *  0x80 - Failure
+                 */
 
-                    /**
-                     *
-                     * Allowed return codes:
-                     *  0x00 - Success - Maximum QoS 0
-                     *  0x01 - Success - Maximum QoS 1
-                     *  0x02 - Success - Maximum QoS 2
-                     *  0x80 - Failure
-                     */
+                SubscriptionFilter newSubscriptionFilter = new SubscriptionFilter();
+                newSubscriptionFilter.setTopicFilter(topicFilterQos.getKey());
 
-                    Subscription newSubscription = new Subscription();
-                    newSubscription.setTopicFilter(topicFilterQos.getKey());
+                int qos = null == topicFilterQos.getValue() ? 0 : topicFilterQos.getValue();
 
-                    int qos = null == topicFilterQos.getValue()? 0: topicFilterQos.getValue();
-
-                    newSubscription.setQos(qos);
-                    newSubscription.setPartition(partition);
-
-                    String partionQosTopicFilter = newSubscription.getPartitionQosTopicFilter();
-
-                    Observable<Subscription> subscriptionObservable = getDatastore().getSubscription(
-                            newSubscription.getPartition(), partionQosTopicFilter, newSubscription);
-
-                    subscriptionObservable.subscribe(
-                            subscription -> {
+                newSubscriptionFilter.setQos(qos);
+                newSubscriptionFilter.setPartition(client.getPartition());
 
 
-                                try {
-                                    if (null == subscription.getSubscriptions()) {
-                                        subscription.setSubscriptions(new HashSet<>());
-                                    }
+                Observable<SubscriptionFilter> subscriptionObservable
+                        = getDatastore().getSubscriptionFilter(
+                        newSubscriptionFilter.getPartition(),
+                        newSubscriptionFilter.getQos(),
+                        newSubscriptionFilter.getTopicFilter());
 
-                                    //TODO: clean by futher rationalizing the dataset.
-                                    subscription.getSubscriptions().add(clientIdentifier);
-                                    getDatastore().saveSubscription(subscription);
+                subscriptionObservable.singleOrDefault(newSubscriptionFilter).subscribe(
+                        subscriptionFilter -> {
 
-                                    Observable<Client> clientObservable = getDatastore().getClient(partition, clientIdentifier);
+                            try {
 
-                                    final Subscription finalSubscription = subscription;
-                                    clientObservable.subscribe(client -> {
-                                        client.getPartiotionQosTopicFilters().add(finalSubscription.getPartitionQosTopicFilter());
-                                        getDatastore().saveClient(client);
+                                if (null == subscriptionFilter.getId()) {
+                                    //This is a new clSubscription filter we need to save it.
 
-                                    });
-
-                                    observer.onNext(topicFilterQos);
-
-                                } catch (Exception e) {
-                                    topicFilterQos.setValue(3);
-                                    observer.onNext(topicFilterQos);
+                                    subscriptionFilter.setId(datastore.nextSubscriptionFilterId());
+                                    getDatastore().saveSubscriptionFilter(subscriptionFilter);
                                 }
 
-                            });
-                }
+                                ClSubscription clSubscription = new ClSubscription();
+                                clSubscription.setId(datastore.nextSubscriptionId());
+                                clSubscription.setPartition(client.getPartition());
+                                clSubscription.setClientId(client.getClientId());
+                                clSubscription.setTopicFilterKey(  subscriptionFilter.getId());
+                                getDatastore().saveSubscription(clSubscription);
+
+                                observer.onNext(topicFilterQos);
+
+                            } catch (Exception e) {
+                                topicFilterQos.setValue(0x80);
+                                observer.onNext(topicFilterQos);
+                            }
+
+                        });
+            }
 
 
             observer.onCompleted();
@@ -153,15 +140,13 @@ public class Messenger {
      * getTopicBreakDown is a utility method expected to return
      * the topic and all its associated lower level wildcards that match it.
      *
-     * @param partition
-     * @param qos
      * @param topic
      * @return
      */
-    private Set<String> getTopicBreakDown(String partition, int qos, String topic) {
+    private Set<String> getTopicBreakDown(String topic) {
 
         Set<String> topicBreakDownSet = new HashSet<>();
-        addTopicBreakDownBasedOnQos(partition, qos, topic, topicBreakDownSet);
+        topicBreakDownSet.add(topic);
 
         String[] topicLevels = topic.split(Constant.PATH_SEPARATOR);
         String activeMultiLevelTopicFilter = "";
@@ -170,7 +155,7 @@ public class Messenger {
 
             if (topicLevels.length > i + 1) {
                 activeMultiLevelTopicFilter += topicLevels[i] + Constant.PATH_SEPARATOR;
-                addTopicBreakDownBasedOnQos(partition, qos, activeMultiLevelTopicFilter + Constant.MULTI_LEVEL_WILDCARD, topicBreakDownSet);
+                topicBreakDownSet.add(activeMultiLevelTopicFilter + Constant.MULTI_LEVEL_WILDCARD);
             }
 
             String activeSingleLevelTopicFilter = "";
@@ -187,63 +172,20 @@ public class Messenger {
                 }
             }
 
-            addTopicBreakDownBasedOnQos(partition, qos, activeSingleLevelTopicFilter, topicBreakDownSet);
+            topicBreakDownSet.add(activeSingleLevelTopicFilter);
 
         }
         return topicBreakDownSet;
     }
 
-    private void addTopicBreakDownBasedOnQos(String partition, int qos, String topicPart, Set<String> topicBreakDownSet){
 
-       String qos2topic = Subscription.getPartitionQosTopicFilter(partition, 2, topicPart );
-       topicBreakDownSet.add(qos2topic);
+    public void unSubscribe(ClSubscription clSubscription) {
 
 
-        if(qos < 2 ) {
+        getDatastore().removeSubscription(clSubscription);
 
-            String qos1topic = Subscription.getPartitionQosTopicFilter(partition, 1, topicPart);
-            topicBreakDownSet.add(qos1topic);
+        //TODO: Completely remove the subscriptionFilter if it has no subscribers.
 
-            if(qos < 1) {
-                String qos0topic = Subscription.getPartitionQosTopicFilter(partition, 0, topicPart);
-                topicBreakDownSet.add(qos0topic);
-            }
-        }
-    }
-
-    public void unSubscribe(String partition, String clientIdentifier, String partitionQosTopicFilter) {
-
-        Observable<Subscription> subscriptionObservable = getDatastore().getSubscription(partition, partitionQosTopicFilter);
-
-        subscriptionObservable.subscribe(subscription -> {
-
-            try {
-                if (null != subscription) {
-                    subscription.getSubscriptions().remove(clientIdentifier);
-
-
-                    //Completely remove the subscription if it has no subscribers.
-                    if (subscription.getSubscriptions().isEmpty()) {
-                        getDatastore().removeSubscription(subscription);
-                    } else {
-                        getDatastore().saveSubscription(subscription);
-                    }
-                }
-
-                Observable<Client> clientObservable = getDatastore().getClient(partition, clientIdentifier);
-
-                clientObservable.subscribe(client -> {
-                    client.getPartiotionQosTopicFilters().remove(partitionQosTopicFilter);
-                    getDatastore().saveClient(client);
-                });
-
-            } catch (Exception e) {
-
-                log.error(" unSubscribe : issues unsubscribing : " + clientIdentifier + " from : " + partitionQosTopicFilter, e);
-
-            }
-
-        });
 
     }
 
@@ -251,65 +193,53 @@ public class Messenger {
 
         log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientId(), partition);
 
-        Set<String> topicBreakDown = getTopicBreakDown(partition, publishMessage.getQos(), publishMessage.getTopic());
+        Set<String> topicBreakDown = getTopicBreakDown(publishMessage.getTopic());
+
 
         //Obtain a list of all the subscribed clients who will receive a message.
-        Observable<String> distributePublishObservable = getDatastore().distributePublish(partition, topicBreakDown, publishMessage);
 
-        distributePublishObservable.subscribe(
+                        Observable<ClSubscription> subscriptionObservable
+                                = getDatastore().getSubscription(partition, publishMessage.getQos(), topicBreakDown);
+                        subscriptionObservable.subscribe(
+                                subscription -> {
 
+                                    log.debug(" publish onNext : obtained a subscription {} to send message to", subscription);
 
-                new Subscriber<String>() {
-                    @Override
-                    public void onCompleted() {
-                        log.info(" publish onCompleted : publish of {} complete", publishMessage );
-                    }
+                                    Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
 
-                    @Override
-                    public void onError(Throwable e) {
-                        log.error(" publish onError : problems publishing a message  ", e);
-                    }
+                                    clientObservable.subscribe(client -> {
 
-                    @Override
-                    public void onNext(String clientIdentifier) {
+                                        PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                                        clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
 
 
-                        log.debug(" publish onNext : obtained a client {} to send message to", clientIdentifier);
+                                        if (clonePublishMessage.getQos() > 0) {
+                                            //Save the message as we proceed.
+                                            getDatastore().saveMessage(clonePublishMessage);
+                                        }
+
+                                        //Actually push out the message.
+                                        //This message should be released to the connected client
+                                        PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
+                                        handler.setWorker(getWorker());
+
+                                        try {
+                                            handler.handle();
+                                        } catch (RetriableException | UnRetriableException e) {
+                                            log.error(" process : problems releasing stored messages", e);
+                                        }
+                                    });
 
 
-                        Observable<Client> clientObservable = getDatastore().getClient(partition, clientIdentifier);
-
-                        clientObservable.subscribe(client -> {
-
-                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+                                }, throwable -> log.error(" process : database problems", throwable));
 
 
-                            if (clonePublishMessage.getQos() > 0 ) {
-                                //Save the message as we proceed.
-                                getDatastore().saveMessage(clonePublishMessage);
-                            }
-
-                            //Actually push out the message.
-                            //This message should be released to the connected client
-                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
-                            handler.setWorker(getWorker());
-
-                            try {
-                                handler.handle();
-                            } catch (RetriableException | UnRetriableException e) {
-                                log.error(" process : problems releasing stored messages", e);
-                            }
-                        });
-
-                    }
-                }
-
-
-                );
 
 
     }
+
+
+
 
 
 }

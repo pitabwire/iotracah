@@ -25,9 +25,11 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import com.caricah.iotracah.core.security.DefaultSecurityHandler;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cluster.ClusterGroup;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 /**
  * <code>DatastoresInitializer</code> Handler for initializing base datastore handler
@@ -108,6 +110,14 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
             if(validateDatastoreCanBeLoaded(datastore)) {
 
                 datastore.setIgnite(getIgnite());
+
+                //Assign
+
+                    ClusterGroup datastoreCluster = getIgnite().cluster().forAttribute("ROLE", getExecutorDatastoreName());
+                    ExecutorService executorService = getIgnite().executorService(datastoreCluster);
+                    datastore.setExecutorService(executorService);
+
+
 
                 //Actually start our datastore guy.
                 datastore.initiate();

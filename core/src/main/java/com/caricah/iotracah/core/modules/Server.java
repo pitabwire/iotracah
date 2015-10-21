@@ -92,11 +92,12 @@ public abstract class Server<T> extends IOTBaseHandler {
      */
     public final void pushToWorker(Serializable connectionId, Serializable sessionId, T message){
 
+        IOTMessage ioTMessage = toIOTMessage(message);
+
         if(null == message){
+            dirtyDisconnect(connectionId, sessionId);
             return;
         }
-
-        IOTMessage ioTMessage = toIOTMessage(message);
 
         internalPushToWorker(connectionId, sessionId, ioTMessage);
 

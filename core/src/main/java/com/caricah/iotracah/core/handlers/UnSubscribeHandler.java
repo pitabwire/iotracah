@@ -25,7 +25,7 @@ import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.UnSubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.UnSubscribeMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.core.worker.state.models.ClSubscription;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
@@ -60,11 +60,21 @@ public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
 
         permittedObservable.subscribe(client -> {
 
-            for (String topic : getMessage().getTopicFilterList()) {
-                String partitionQosTopicFilter = Subscription.getPartitionQosTopicFilter(client.getPartition(), -1, topic);
+            Observable<ClSubscription> subscriptionObservable = getDatastore().getSubscription(client, getMessage().getTopicFilterList());
 
-                getMessenger().unSubscribe(client.getPartition(), client.getClientId(), partitionQosTopicFilter);
-            }
+            subscriptionObservable.subscribe(
+                    subscription -> {
+
+                        getMessenger().unSubscribe(subscription);
+                        // and delete it from our db
+                        getDatastore().removeSubscription(subscription);
+                    },
+                    throwable ->
+                            log.error(" handle : problems unsubscribing ", throwable)
+
+
+            );
+
 
             UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(getMessage().getMessageId());
             unSubscribeAcknowledgeMessage.copyBase(getMessage());

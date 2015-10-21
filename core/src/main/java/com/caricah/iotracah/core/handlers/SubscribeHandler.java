@@ -44,10 +44,10 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
 
     /**
      * The SUBSCRIBE Packet is sent from the Client to the Server to create one or more
-     * Subscriptions. Each Subscription registers a Client’s interest in one or more Topics.
+     * Subscriptions. Each SubscriptionFilter registers a Client’s interest in one or more Topics.
      * The Server sends PUBLISH Packets to the Client in order to forward Application Messages
      * that were published to Topics that match these Subscriptions.
-     * The SUBSCRIBE Packet also specifies (for each Subscription) the maximum QoS with which
+     * The SUBSCRIBE Packet also specifies (for each SubscriptionFilter) the maximum QoS with which
      * the Server can send Application Messages to the Client
      *
      * @throws RetriableException
@@ -79,7 +79,7 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                 (client)->{
 
                                     //We have all the security to proceed.
-                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client.getPartition(), client.getClientId(), getMessage().getTopicFilterList());
+                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client, getMessage().getTopicFilterList());
 
                             subscribeObservable.subscribe(
                                     (entry) -> grantedQos.add(entry.getValue()),

@@ -25,13 +25,13 @@ import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.core.worker.state.models.ClSubscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
 
 import java.nio.ByteBuffer;
-import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -75,20 +75,27 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
     public void cleanDisconnect(Client client) {
 
         // Unsubscribe all
-        Set<String> partiotionQosTopicFilters = client.getPartiotionQosTopicFilters();
-        for (String partitionQosTopicFilter : partiotionQosTopicFilters) {
-
-            getMessenger().unSubscribe(client.getPartition(), client.getClientId(), partitionQosTopicFilter);
-        }
-
         //Notify the server to remove this client from further sending in requests.
         DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
         disconnectMessage = client.copyTransmissionData(disconnectMessage);
         pushToServer(disconnectMessage);
 
-        // and delete it from our db
-        getDatastore().removeClient(client);
+            Observable<ClSubscription> subscriptionObservable = getDatastore().getSubscription(client);
 
+            subscriptionObservable.subscribe(
+                    subscription -> {
+                        getMessenger().unSubscribe(subscription);
+
+                    }, throwable -> {
+                        // and delete it from our db
+                        getDatastore().removeClient(client);
+
+                    }, () -> {
+                        // and delete it from our db
+                        getDatastore().removeClient(client);
+
+                    }
+            );
 
     }
 

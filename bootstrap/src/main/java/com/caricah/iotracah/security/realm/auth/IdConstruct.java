@@ -32,6 +32,7 @@ import java.util.StringJoiner;
  */
 public class IdConstruct implements Serializable {
 
+
     /**
      * The username
      */
@@ -92,12 +93,5 @@ public class IdConstruct implements Serializable {
         return false;
     }
 
-    @Override
-    public String toString() {
-        return new StringJoiner(";", "[", "]")
-                .add("partition=" + getPartition())
-                .add("username=" + getUsername())
-                .add("clientid=" + getClientId())
-                .toString();
-    }
+
 }

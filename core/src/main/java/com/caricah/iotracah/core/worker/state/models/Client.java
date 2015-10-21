@@ -42,7 +42,12 @@ import java.util.UUID;
  */
 public class Client implements IdKeyComposer, Serializable {
 
-    @QuerySqlField(index = true)
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_clientid_idx", order = 0)})
+    private String partition;
+
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_clientid_idx", order = 2)})
     private String clientId;
 
     @QuerySqlField()
@@ -57,17 +62,10 @@ public class Client implements IdKeyComposer, Serializable {
     @QuerySqlField()
     private Serializable connectionId;
 
-    @QuerySqlField(index = true)
-    private String partition;
-
-    @QuerySqlField(index = true)
+    @QuerySqlField()
     private boolean active;
 
     private boolean cleanSession;
-
-    private Set<String> partitionQosTopicFilters;
-
-    private String generatedAuthKey;
 
     private Protocal protocal;
 
@@ -162,24 +160,9 @@ public class Client implements IdKeyComposer, Serializable {
     }
 
 
-    public Set<String> getPartiotionQosTopicFilters() {
-        if (null == partitionQosTopicFilters) {
-            setPartitionQosTopicFilters(new HashSet<>());
-        }
-
-        return partitionQosTopicFilters;
-    }
-
-    public void setPartitionQosTopicFilters(Set<String> partitionQosTopicFilters) {
-        this.partitionQosTopicFilters = partitionQosTopicFilters;
-    }
-
     public Observable<WillMessage> getWill(Datastore datastore) {
         return datastore.getWill(getPartition(), getClientId());
     }
-
-
-
 
 
     @Override

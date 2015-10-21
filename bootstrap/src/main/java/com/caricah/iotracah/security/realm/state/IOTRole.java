@@ -125,10 +125,6 @@ public class IOTRole implements IdKeyComposer, Serializable {
         return false;
     }
 
-    public String toString() {
-        return getName();
-    }
-
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
 

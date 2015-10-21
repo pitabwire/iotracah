@@ -29,19 +29,26 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.cache.query.QueryCursor;
+import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.cache.query.SqlQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.lang.IgniteFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import rx.Observable;
 
 import javax.cache.Cache.Entry;
 import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public abstract class AbstractHandler<T extends IdKeyComposer> {
+public abstract class AbstractHandler<T extends IdKeyComposer> implements Serializable {
+
+    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private String cacheName;
     private IgniteCache<Serializable, T> datastoreCache;
@@ -74,7 +81,9 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
         clCfg.setName(getCacheName());
         clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
-        clCfg.setIndexedTypes(String.class, t);
+
+        clCfg = setIndexData(t, clCfg);
+
         ignite.createCache(clCfg);
         IgniteCache clientIgniteCache = ignite.cache(getCacheName()).withAsync();
 
@@ -82,6 +91,12 @@ public abstract class AbstractHandler<T extends IdKeyComposer> {
 
 
         classType = t;
+    }
+
+    protected CacheConfiguration setIndexData(Class<T> t, CacheConfiguration clCfg) {
+
+        clCfg.setIndexedTypes(String.class, t);
+        return clCfg;
     }
 
     public Observable<T> getByKey(Serializable key) {
@@ -147,10 +162,10 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
     }
 
 
-    public Observable<T> getByQuery(Class<T> t, String query, Object[] params) {
+
+    public Observable<T>  getByQuery(Class<T> t, String query, Object[] params ) {
 
         return Observable.create(observer -> {
-
 
                 try {
 
@@ -164,6 +179,61 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
                         // callback with value
                         observer.onNext(entry.getValue());
                     }
+
+
+                    observer.onCompleted();
+                } catch (Exception e) {
+                    observer.onError(e);
+                }
+
+        });
+
+    }
+
+public Observable<T>  getByQueryAsValue(String query, Object[] params ) {
+
+        return Observable.create(observer -> {
+
+                try {
+
+                    SqlFieldsQuery sql = new SqlFieldsQuery(query);
+
+
+                    // Execute the query and obtain the query result cursor.
+                    try (QueryCursor<List<?>> queryResult =  getDatastoreCache().query(sql.setArgs(params))) {
+                        // callback with value
+
+                        for (List entry : queryResult) {
+                            // callback with value
+                            observer.onNext((T) entry.get(0));
+                        }
+
+                    }
+
+                    observer.onCompleted();
+                } catch (Exception e) {
+                    observer.onError(e);
+                }
+
+        });
+
+    }
+
+public Observable<List>  getByQueryAsValueList(String query, Object[] params ) {
+
+        return Observable.create(observer -> {
+
+                try {
+
+                    SqlFieldsQuery sql = new SqlFieldsQuery(query);
+
+
+                    // Execute the query and obtain the query result cursor.
+                    try (QueryCursor<?> cursor =  getDatastoreCache().query(sql.setArgs(params))) {
+                        // callback with value
+                        observer.onNext(cursor.getAll());
+                    }
+
                     observer.onCompleted();
                 } catch (Exception e) {
                     observer.onError(e);
@@ -191,5 +261,15 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
             }
 
+    }
+
+
+    public static String preparePlaceHolders(int length) {
+        StringBuilder builder = new StringBuilder(length * 2 - 1);
+        for (int i = 0; i < length; i++) {
+            if (i > 0) builder.append(',');
+            builder.append('?');
+        }
+        return builder.toString();
     }
 }

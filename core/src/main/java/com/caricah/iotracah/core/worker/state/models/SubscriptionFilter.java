@@ -25,28 +25,35 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
 import java.io.Serializable;
-import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 6/30/15
  */
-public class Subscription implements Serializable, IdKeyComposer {
+public class SubscriptionFilter implements Serializable, IdKeyComposer {
 
     @QuerySqlField(index = true)
-    private String topicFilter;
+    private String id;
 
-    @QuerySqlField()
-    private int qos;
-
-    @QuerySqlField(index = true)
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_qos_topicfilter_idx", order = 0)})
     private String partition;
 
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_qos_topicfilter_idx", order = 3)})
+    private String topicFilter;
 
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_qos_topicfilter_idx", order = 2)})
+    private int qos;
 
-    @QuerySqlField()
-    private Set<String> subscriptions;
+    public String getId() {
+        return id;
+    }
 
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getTopicFilter() {
         return topicFilter;
@@ -73,23 +80,13 @@ public class Subscription implements Serializable, IdKeyComposer {
         this.partition = partition;
     }
 
-    public Set<String> getSubscriptions() {
-        return subscriptions;
-    }
-
-    public void setSubscriptions(Set<String> subscriptions) {
-        this.subscriptions = subscriptions;
-    }
-
-    public static String getPartitionQosTopicFilter(String partition, int qos, String topicFilter){
-        return String.format("%s:%d-%s", partition, qos, topicFilter);
-    }
-    public String getPartitionQosTopicFilter(){
-        return Subscription.getPartitionQosTopicFilter(getPartition(), getQos(), getTopicFilter());
-    }
-
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
-        return getPartitionQosTopicFilter();
+
+        if(null == getId()){
+            throw new UnRetriableException(" id has to be set before you use the subscription filter");
+        }
+
+        return getId();
     }
 }
