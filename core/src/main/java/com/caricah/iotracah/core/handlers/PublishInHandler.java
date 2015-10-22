@@ -123,8 +123,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                             //We need to generate a puback message to close this conversation.
 
                             AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(
-                                    getMessage().getMessageId(), getMessage().isDup(),
-                                    getMessage().isRetain(), false);
+                                    getMessage().getMessageId());
                             acknowledgeMessage.copyBase(getMessage());
 
                             pushToServer(acknowledgeMessage);
@@ -171,7 +170,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
 
                 //We need to push out a PUBREC
 
-                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId, message.isDup(), message.isRetain());
+                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId);
                 publishReceivedMessage.copyBase(message);
                 pushToServer(publishReceivedMessage);
 

@@ -36,7 +36,7 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
 
 
     public PublishReceivedHandler(PublishReceivedMessage message) {
-        super( message);
+        super(message);
 
     }
 
@@ -52,29 +52,29 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
 
                 (client) -> {
 
+                    Observable<PublishMessage> messageObservable = getDatastore().getMessage(
+                            client.getPartition(), client.getClientId(),
+                            getMessage().getMessageId(), false);
 
-        Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                client.getPartition(), client.getClientId(),
-                getMessage().getMessageId(), false);
+                    messageObservable.subscribe(publishMessage -> {
 
-        messageObservable.subscribe(publishMessage -> {
+                        log.debug(" handle : Obtained the message {} to be released.", publishMessage);
 
-            publishMessage.setReleased(true);
+                        publishMessage.setReleased(true);
 
 
-            Observable<Long> messageIdObservable = getDatastore().saveMessage(publishMessage);
-            messageIdObservable.subscribe(messageId -> {
+                        Observable<Long> messageIdObservable = getDatastore().saveMessage(publishMessage);
+                        messageIdObservable.subscribe(messageId -> {
 
-                //Generate a PUBREL message.
+                            //Generate a PUBREL message.
 
-                ReleaseMessage releaseMessage = ReleaseMessage.from(
-                        messageId, getMessage().isDup(), getMessage().isRetain(), false);
-                releaseMessage.copyBase(getMessage());
-                pushToServer(releaseMessage);
+                            ReleaseMessage releaseMessage = ReleaseMessage.from(messageId, false);
+                            releaseMessage.copyBase(getMessage());
+                            pushToServer(releaseMessage);
 
-            });
+                        });
 
-        });
+                    });
 
                 }, this::disconnectDueToError);
     }

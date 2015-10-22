@@ -65,7 +65,7 @@ public class SessionResetManager {
 
     public void process(Client client) {
 
-        Observable<PublishMessage> publishMessageObservable = getDatastore().getActiveMessages(client);
+        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(client);
 
         publishMessageObservable.subscribe(new Subscriber<PublishMessage>() {
             @Override
@@ -92,7 +92,7 @@ public class SessionResetManager {
 //                        MqttMessage message = MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
 //                        getChannel().write(message);
 
-                        AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.isRetain(), !publishMessage.isInBound());
+                        AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
                         acknowledgeMessage.copyBase(publishMessage);
                         getWorker().pushToServer(acknowledgeMessage);
 
@@ -105,7 +105,7 @@ public class SessionResetManager {
                     if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.isReleased()) {
 
                         //We need to generate a PUBREL message to allow transmission of qos 2 message.
-                        ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.isRetain(), publishMessage.isInBound());
+                        ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), true);
                         releaseMessage.copyBase(publishMessage);
                         getWorker().pushToServer(releaseMessage);
 

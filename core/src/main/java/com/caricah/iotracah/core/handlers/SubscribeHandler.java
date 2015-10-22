@@ -22,9 +22,12 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.security.AuthorityRole;
+import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
@@ -32,6 +35,7 @@ import rx.Observable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -98,6 +102,51 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                                 getMessage().getMessageId(), grantedQos);
                                         subAckMessage.copyBase(getMessage());
                                         pushToServer(subAckMessage);
+
+
+                                        /**
+                                         * Queue retained messages to our subscriber.
+                                         */
+
+
+                                        int count = 0;
+                                        for(Map.Entry<String, Integer> entry : getMessage().getTopicFilterList()){
+                                            if(grantedQos.get(count++) != 0x80  ){
+                                                Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(client.getPartition(), entry.getKey());
+                                                subscriptionFilterObservable.subscribe(
+                                                        subscriptionFilter -> {
+
+                                                            Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(client.getPartition(), subscriptionFilter.getId());
+                                                            retainedMessageObservable.subscribe(retainedMessage -> {
+
+                                                                PublishMessage publishMessage = retainedMessage.toPublishMessage();
+                                                                publishMessage.setPartition(client.getPartition());
+                                                                publishMessage.setClientId(client.getClientId());
+                                                                publishMessage.copyBase(getMessage());
+
+                                                                if (publishMessage.getQos() > 0) {
+
+                                                                    publishMessage.setReleased(false);
+
+                                                                    //Save the message as we proceed.
+                                                                    getDatastore().saveMessage(publishMessage);
+                                                                }
+
+                                                                PublishOutHandler publishOutHandler = new PublishOutHandler(publishMessage,client.getProtocalData());
+                                                                publishOutHandler.setWorker(getWorker());
+                                                                try {
+                                                                    publishOutHandler.handle();
+                                                                } catch (RetriableException | UnRetriableException e) {
+                                                                    log.error(" handle : problems publishing ", e);
+                                                                 }
+
+
+                                                            }, throwable -> {});
+                                                        }
+                                                );
+
+                                            }
+                                        }
 
                                     });
                         }, this::disconnectDueToError);

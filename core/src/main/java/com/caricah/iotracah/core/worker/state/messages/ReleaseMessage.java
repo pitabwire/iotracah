@@ -31,23 +31,19 @@ public final class ReleaseMessage extends IOTMessage {
 
     private final boolean dup;
     private final int qos = 1;
-    private final boolean retain;
-    private final boolean inBound;
 
-    public static ReleaseMessage from(long messageId, boolean dup, boolean retain, boolean inBound) {
+    public static ReleaseMessage from(long messageId, boolean dup) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new ReleaseMessage(messageId, dup,  retain, inBound);
+        return new ReleaseMessage(messageId, dup);
     }
 
-    private ReleaseMessage(long messageId, boolean dup, boolean retain, boolean inBound) {
+    private ReleaseMessage(long messageId, boolean dup) {
 
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
         this.dup = dup;
-        this.retain = retain;
-        this.inBound = inBound;
 
     }
 
@@ -57,14 +53,6 @@ public final class ReleaseMessage extends IOTMessage {
 
     public int getQos() {
         return qos;
-    }
-
-    public boolean isRetain() {
-        return retain;
-    }
-
-    public boolean isInBound() {
-        return inBound;
     }
 
     @Override

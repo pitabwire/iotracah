@@ -30,34 +30,30 @@ import java.io.Serializable;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/20/15
  */
-public class ClSubscription implements IdKeyComposer, Serializable {
-
-    @QuerySqlField
-    private String id;
+public class Subscription implements IdKeyComposer, Serializable {
 
     @QuerySqlField(orderedGroups={
-            @QuerySqlField.Group(name = "partition_topicfilterkey_idx", order = 0),
+            @QuerySqlField.Group(name = "partition_topicfilterkey_qos_idx", order = 0),
             @QuerySqlField.Group(name = "partition_clientid_idx", order = 0)
     })
     private String partition;
 
     @QuerySqlField(orderedGroups={
-            @QuerySqlField.Group(name = "partition_topicfilterkey_idx", order = 3)
+            @QuerySqlField.Group(name = "partition_topicfilterkey_qos_idx", order = 2)
     })
-    private String topicFilterKey;
+    private long topicFilterKey;
+
+    @QuerySqlField(orderedGroups={@QuerySqlField.Group(
+            name = "partition_topicfilterkey_qos_idx", order = 5)})
+    private int qos;
+
 
     @QuerySqlField(orderedGroups={
-            @QuerySqlField.Group(name = "partition_clientid_idx", order = 2)
+            @QuerySqlField.Group(name = "partition_clientid_idx", order = 3)
     })
     private String clientId;
 
-    public String getId() {
-        return id;
-    }
 
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public String getPartition() {
         return partition;
@@ -67,12 +63,20 @@ public class ClSubscription implements IdKeyComposer, Serializable {
         this.partition = partition;
     }
 
-    public String getTopicFilterKey() {
+    public long getTopicFilterKey() {
         return topicFilterKey;
     }
 
-    public void setTopicFilterKey(String topicFilterKey) {
+    public void setTopicFilterKey(long topicFilterKey) {
         this.topicFilterKey = topicFilterKey;
+    }
+
+    public int getQos() {
+        return qos;
+    }
+
+    public void setQos(int qos) {
+        this.qos = qos;
     }
 
     public String getClientId() {
@@ -86,16 +90,12 @@ public class ClSubscription implements IdKeyComposer, Serializable {
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
 
-        if(null == getId()){
-            throw new UnRetriableException(" id has to be set before you use the subscription ");
-        }
-
-        return getId();
+        return String.format("%s:%s-%d", getPartition(), getClientId(), getTopicFilterKey());
     }
 
 
     @Override
     public String toString() {
-        return getClass().getSimpleName()+"[ id="+getId()+", partition="+getPartition()+", clientId="+getClientId()+", topicFilterKey="+getTopicFilterKey()+"]";
+        return getClass().getSimpleName()+"[ partition="+getPartition()+", clientId="+getClientId()+", topicFilterKey="+getTopicFilterKey()+", qos="+getQos()+ "]";
     }
 }

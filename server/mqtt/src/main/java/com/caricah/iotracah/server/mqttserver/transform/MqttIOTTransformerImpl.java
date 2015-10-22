@@ -66,24 +66,24 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                 MqttPubAckMessage pubAckMessage = (MqttPubAckMessage) serverMessage;
 
                 MqttMessageIdVariableHeader msgIdVH = pubAckMessage.variableHeader();
-                return AcknowledgeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain(), true);
+                return AcknowledgeMessage.from(msgIdVH.messageId());
 
 
             case PUBREC:
 
                  msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
-                return PublishReceivedMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain());
+                return PublishReceivedMessage.from(msgIdVH.messageId());
 
             case PUBREL:
 
                 msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
-                return ReleaseMessage.from(msgIdVH.messageId(), fxH.isDup(),  fxH.isRetain(), true);
+                return ReleaseMessage.from(msgIdVH.messageId(), fxH.isDup());
 
             case PUBCOMP:
 
                 msgIdVH = (MqttMessageIdVariableHeader) serverMessage.variableHeader();
 
-                return CompleteMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.isRetain(), true);
+                return CompleteMessage.from(msgIdVH.messageId());
             case PINGREQ: case PINGRESP:
                 return Ping.from(fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain());
 

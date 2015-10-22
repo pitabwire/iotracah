@@ -26,6 +26,7 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -97,6 +98,18 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
         return new WillMessage(retain, qos, topic, payload);
     }
 
+    public PublishMessage toPublishMessage(){
+
+        byte[] willPayloadBytes = ((String) getPayload()).getBytes();
+        ByteBuffer willByteBuffer = ByteBuffer.wrap(willPayloadBytes);
+
+        //TODO: generate sequence for will message id
+        return PublishMessage.from(
+                getMessageId(), false, getQos(),
+                isRetain(), getTopic(),
+                willByteBuffer, true
+        );
+    }
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 

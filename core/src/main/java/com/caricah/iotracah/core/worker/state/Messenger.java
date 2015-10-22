@@ -25,7 +25,8 @@ import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.models.ClSubscription;
+import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.exceptions.RetriableException;
@@ -85,39 +86,27 @@ public class Messenger {
                  *  0x80 - Failure
                  */
 
-                SubscriptionFilter newSubscriptionFilter = new SubscriptionFilter();
-                newSubscriptionFilter.setTopicFilter(topicFilterQos.getKey());
-
-                int qos = null == topicFilterQos.getValue() ? 0 : topicFilterQos.getValue();
-
-                newSubscriptionFilter.setQos(qos);
-                newSubscriptionFilter.setPartition(client.getPartition());
 
 
                 Observable<SubscriptionFilter> subscriptionObservable
-                        = getDatastore().getSubscriptionFilter(
-                        newSubscriptionFilter.getPartition(),
-                        newSubscriptionFilter.getQos(),
-                        newSubscriptionFilter.getTopicFilter());
+                        = getDatastore().getOrCreateSubscriptionFilter(
+                        client.getPartition(),
+                        topicFilterQos.getKey());
 
-                subscriptionObservable.singleOrDefault(newSubscriptionFilter).subscribe(
+                subscriptionObservable.subscribe(
                         subscriptionFilter -> {
 
                             try {
 
-                                if (null == subscriptionFilter.getId()) {
-                                    //This is a new clSubscription filter we need to save it.
+                                int qos = null == topicFilterQos.getValue() ? 0 : topicFilterQos.getValue();
 
-                                    subscriptionFilter.setId(datastore.nextSubscriptionFilterId());
-                                    getDatastore().saveSubscriptionFilter(subscriptionFilter);
-                                }
 
-                                ClSubscription clSubscription = new ClSubscription();
-                                clSubscription.setId(datastore.nextSubscriptionId());
-                                clSubscription.setPartition(client.getPartition());
-                                clSubscription.setClientId(client.getClientId());
-                                clSubscription.setTopicFilterKey(  subscriptionFilter.getId());
-                                getDatastore().saveSubscription(clSubscription);
+                                Subscription subscription = new Subscription();
+                                subscription.setPartition(client.getPartition());
+                                subscription.setClientId(client.getClientId());
+                                subscription.setTopicFilterKey(subscriptionFilter.getId());
+                                subscription.setQos( qos );
+                                getDatastore().saveSubscription(subscription);
 
                                 observer.onNext(topicFilterQos);
 
@@ -126,63 +115,18 @@ public class Messenger {
                                 observer.onNext(topicFilterQos);
                             }
 
-                        });
+                        }, throwable -> log.error(" subscribe : problems releasing stored messages", throwable) );
             }
-
-
             observer.onCompleted();
 
         });
 
     }
 
-    /**
-     * getTopicBreakDown is a utility method expected to return
-     * the topic and all its associated lower level wildcards that match it.
-     *
-     * @param topic
-     * @return
-     */
-    private Set<String> getTopicBreakDown(String topic) {
-
-        Set<String> topicBreakDownSet = new HashSet<>();
-        topicBreakDownSet.add(topic);
-
-        String[] topicLevels = topic.split(Constant.PATH_SEPARATOR);
-        String activeMultiLevelTopicFilter = "";
-        for (int i = 0; i < topicLevels.length; i++) {
+    public void unSubscribe(Subscription subscription) {
 
 
-            if (topicLevels.length > i + 1) {
-                activeMultiLevelTopicFilter += topicLevels[i] + Constant.PATH_SEPARATOR;
-                topicBreakDownSet.add(activeMultiLevelTopicFilter + Constant.MULTI_LEVEL_WILDCARD);
-            }
-
-            String activeSingleLevelTopicFilter = "";
-
-            for (int j = 0; j < topicLevels.length; j++) {
-                if (j == i) {
-                    activeSingleLevelTopicFilter += Constant.SINGLE_LEVEL_WILDCARD;
-                } else {
-                    activeSingleLevelTopicFilter += topicLevels[j];
-                }
-
-                if (topicLevels.length > j + 1) {
-                    activeSingleLevelTopicFilter += Constant.PATH_SEPARATOR;
-                }
-            }
-
-            topicBreakDownSet.add(activeSingleLevelTopicFilter);
-
-        }
-        return topicBreakDownSet;
-    }
-
-
-    public void unSubscribe(ClSubscription clSubscription) {
-
-
-        getDatastore().removeSubscription(clSubscription);
+        getDatastore().removeSubscription(subscription);
 
         //TODO: Completely remove the subscriptionFilter if it has no subscribers.
 
@@ -193,53 +137,91 @@ public class Messenger {
 
         log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientId(), partition);
 
-        Set<String> topicBreakDown = getTopicBreakDown(publishMessage.getTopic());
-
-
         //Obtain a list of all the subscribed clients who will receive a message.
+        Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(partition, publishMessage.getTopic());
 
-                        Observable<ClSubscription> subscriptionObservable
-                                = getDatastore().getSubscription(partition, publishMessage.getQos(), topicBreakDown);
-                        subscriptionObservable.subscribe(
-                                subscription -> {
+        subscriptionFilterObservable.subscribe(
+                subscriptionFilter -> {
 
-                                    log.debug(" publish onNext : obtained a subscription {} to send message to", subscription);
+                    Observable<Subscription> subscriptionObservable
+                    = getDatastore().getSubscriptions(partition, subscriptionFilter.getId(), publishMessage.getQos() );
+            subscriptionObservable.subscribe(
+                    subscription -> {
 
-                                    Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
+                        log.debug(" publish onNext : obtained a subscription {} to send message to", subscription);
 
-                                    clientObservable.subscribe(client -> {
+                        Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
 
-                                        PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                                        clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+                        clientObservable.subscribe(client -> {
 
-
-                                        if (clonePublishMessage.getQos() > 0) {
-                                            //Save the message as we proceed.
-                                            getDatastore().saveMessage(clonePublishMessage);
-                                        }
-
-                                        //Actually push out the message.
-                                        //This message should be released to the connected client
-                                        PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
-                                        handler.setWorker(getWorker());
-
-                                        try {
-                                            handler.handle();
-                                        } catch (RetriableException | UnRetriableException e) {
-                                            log.error(" process : problems releasing stored messages", e);
-                                        }
-                                    });
+                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
 
 
-                                }, throwable -> log.error(" process : database problems", throwable));
+                            if (clonePublishMessage.getQos() > 0) {
+                                //Save the message as we proceed.
+                                getDatastore().saveMessage(clonePublishMessage);
+                            }
+
+                            //Actually push out the message.
+                            //This message should be released to the connected client
+                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
+                            handler.setWorker(getWorker());
+
+                            try {
+                                handler.handle();
+                            } catch (RetriableException | UnRetriableException e) {
+                                log.error(" publish : problems releasing stored messages", e);
+                            }
+                        });
+
+
+                    }, throwable -> log.error(" process : database problems", throwable));
+        }, throwable -> log.error(" publish : database problems", throwable) );
 
 
 
+        //Store the retained message.
 
+        if(publishMessage.isRetain()) {
+
+
+            /**
+             * 3.3.1.3 RETAIN
+             * Position: byte 1, bit 0.
+             * If the RETAIN flag is set to 1, in a PUBLISH Packet sent by a Client to a Server, the Server MUST store the Application Message and its QoS, so that it can be delivered to future subscribers whose subscriptions match its topic name [MQTT-3.3.1-5]. When a new subscription is established, the last retained message, if any, on each matching topic name MUST be sent to the subscriber [MQTT-3.3.1-6]. If the Server receives a QoS 0 message with the RETAIN flag set to 1 it MUST discard any message previously retained for that topic. It SHOULD store the new QoS 0 message as the new retained message for that topic, but MAY choose to discard it at any time - if this happens there will be no retained message for that topic [MQTT-3.3.1-7]. See Section 4.1 for more information on storing state.
+             * When sending a PUBLISH Packet to a Client the Server MUST set the RETAIN flag to 1 if a message is sent as a result of a new subscription being made by a Client [MQTT-3.3.1-8]. It MUST set the RETAIN flag to 0 when a PUBLISH Packet is sent to a Client because it matches an established subscription regardless of how the flag was set in the message it received [MQTT-3.3.1-9].
+             * A PUBLISH Packet with a RETAIN flag set to 1 and a payload containing zero bytes will be processed as normal by the Server and sent to Clients with a subscription matching the topic name. Additionally any existing retained message with the same topic name MUST be removed and any future subscribers for the topic will not receive a retained message [MQTT-3.3.1-10]. “As normal” means that the RETAIN flag is not set in the message received by existing Clients. A zero byte retained message MUST NOT be stored as a retained message on the Server [MQTT-3.3.1-11].
+             * If the RETAIN flag is 0, in a PUBLISH Packet sent by a Client to a Server, the Server MUST NOT store the message and MUST NOT remove or replace any existing retained message [MQTT-3.3.1-12].
+             * Non normative comment
+             * Retained messages are useful where publishers send state messages on an irregular basis. A new subscriber will receive the most recent state.
+             *
+             */
+
+            //Create a new subscription filter just incase it does not already exist.
+
+            Observable<SubscriptionFilter> retainedSubscriptionFilterObservable = getDatastore()
+                    .getOrCreateSubscriptionFilter(partition, publishMessage.getTopic());
+
+            retainedSubscriptionFilterObservable.subscribe(subscriptionFilter -> {
+
+                RetainedMessage newRetainedMessage = RetainedMessage.from(partition, subscriptionFilter.getId(), publishMessage);
+
+
+                //Save the retain message.
+                Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(partition, subscriptionFilter.getId());
+                retainedMessageObservable.subscribe(
+                        getDatastore()::removeRetainedMessage,
+                        throwable -> getDatastore().saveRetainedMessage(newRetainedMessage),
+                        () -> getDatastore().saveRetainedMessage(newRetainedMessage)
+
+                );
+
+
+            });
+
+        }
     }
-
-
-
 
 
 }

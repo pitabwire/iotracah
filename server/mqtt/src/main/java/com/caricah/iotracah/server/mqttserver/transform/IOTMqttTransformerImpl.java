@@ -63,7 +63,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
 
                 //We need to generate a PUBREC message to acknowledge reception of message.
                 PublishReceivedMessage pubrec = (PublishReceivedMessage) internalMessage;
-                MqttFixedHeader recFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, pubrec.isDup(), MqttQoS.valueOf(pubrec.getQos()), pubrec.isRetain(), 0);
+                MqttFixedHeader recFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, false, MqttQoS.valueOf(pubrec.getQos()), false, 0);
                 msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrec.getMessageId().intValue());
                 return MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
 
@@ -72,7 +72,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
 
                 //We need to generate a PUBREL message to release cached message.
                 ReleaseMessage pubrel = (ReleaseMessage) internalMessage;
-                MqttFixedHeader relFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, pubrel.isDup(), MqttQoS.valueOf(pubrel.getQos()), pubrel.isRetain(), 0);
+                MqttFixedHeader relFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, pubrel.isDup(), MqttQoS.valueOf(pubrel.getQos()),false, 0);
                 msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrel.getMessageId().intValue());
                 return MqttMessageFactory.newMessage(relFixedHeader, msgIdVariableHeader, null);
 
@@ -81,7 +81,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
 
                 //We need to generate a PUBCOMP message to acknowledge finalization of transmission of qos 2 message.
                 CompleteMessage destroyMessage = (CompleteMessage) internalMessage;
-                MqttFixedHeader compFixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, destroyMessage.isDup(), MqttQoS.valueOf(destroyMessage.getQos()), destroyMessage.isRetain(), 0);
+                MqttFixedHeader compFixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, false, MqttQoS.valueOf(destroyMessage.getQos()), false, 0);
                 msgIdVariableHeader = MqttMessageIdVariableHeader.from(destroyMessage.getMessageId().intValue());
                 return MqttMessageFactory.newMessage(compFixedHeader, msgIdVariableHeader, null);
 

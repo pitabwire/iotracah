@@ -69,7 +69,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
                                 client.internalPublishMessage(getMessenger(), publishMessage);
 
                                 //Initiate a publish complete.
-                                CompleteMessage destroyMessage = CompleteMessage.from(publishMessage.getMessageId(), publishMessage.isDup(), publishMessage.isRetain(), false);
+                                CompleteMessage destroyMessage = CompleteMessage.from(publishMessage.getMessageId());
                                 destroyMessage.copyBase(publishMessage);
                                 pushToServer(destroyMessage);
 

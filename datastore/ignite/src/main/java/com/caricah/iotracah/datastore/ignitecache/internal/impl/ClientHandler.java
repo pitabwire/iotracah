@@ -23,6 +23,7 @@ package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.IgniteAtomicSequence;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -33,6 +34,7 @@ public class ClientHandler extends AbstractHandler<Client> {
 
     public static final String CONFIG_IGNITECACHE_CLIENT_CACHE_NAME = "config.ignitecache.client.cache.name";
     public static final String CONFIG_IGNITECACHE_CLIENT_CACHE_NAME_VALUE_DEFAULT = "iotracah_client_cache";
+
 
 
     @Override

@@ -30,43 +30,26 @@ public final class CompleteMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "PUBCOMP";
 
-    private final boolean dup;
     private final int qos =0;
-    private final boolean retain;
-    private final boolean inBound;
 
 
-    public static CompleteMessage from(long messageId, boolean dup, boolean retain, boolean inBound) {
+    public static CompleteMessage from(long messageId) {
         if (messageId < 1) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
-        return new CompleteMessage(messageId, dup, retain, inBound);
+        return new CompleteMessage(messageId);
     }
 
-    private CompleteMessage(long messageId, boolean dup, boolean retain, boolean inBound) {
+    private CompleteMessage(long messageId) {
         setMessageType(MESSAGE_TYPE);
         setMessageId(messageId);
-        this.dup = dup;
-        this.retain = retain;
-        this.inBound = inBound;
     }
 
 
 
-    public boolean isDup() {
-        return dup;
-    }
 
     public int getQos() {
         return qos;
-    }
-
-    public boolean isRetain() {
-        return retain;
-    }
-
-    public boolean isInBound() {
-        return inBound;
     }
 
     @Override

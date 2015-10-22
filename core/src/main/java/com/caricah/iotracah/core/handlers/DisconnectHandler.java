@@ -25,13 +25,11 @@ import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.models.ClSubscription;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import rx.Observable;
-
-import java.nio.ByteBuffer;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -80,7 +78,7 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
         disconnectMessage = client.copyTransmissionData(disconnectMessage);
         pushToServer(disconnectMessage);
 
-            Observable<ClSubscription> subscriptionObservable = getDatastore().getSubscription(client);
+            Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(client);
 
             subscriptionObservable.subscribe(
                     subscription -> {
@@ -117,15 +115,7 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
 
                     if (null != willMessage && null != willMessage.getPayload()) {
 
-                        byte[] willPayloadBytes = ((String) willMessage.getPayload()).getBytes();
-                        ByteBuffer willByteBuffer = ByteBuffer.wrap(willPayloadBytes);
-
-                        //TODO: generate sequence for will message id
-                        PublishMessage willPublishMessage = PublishMessage.from(
-                                willMessage.getMessageId(), false, willMessage.getQos(),
-                                willMessage.isRetain(), willMessage.getTopic(),
-                                willByteBuffer, true
-                        );
+                        PublishMessage willPublishMessage = willMessage.toPublishMessage();
 
                         willPublishMessage.copyBase(willMessage);
 

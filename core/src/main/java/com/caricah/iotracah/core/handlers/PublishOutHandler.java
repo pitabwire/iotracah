@@ -103,7 +103,7 @@ public class PublishOutHandler extends RequestHandler<PublishMessage> {
                     log.info(" httpPushToUrl completed : external server responded with {}", responseBody);
                     if (200 == code) {
 
-                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId(), false, false, true);
+                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
                         ackMessage.copyBase(publishMessage);
 
                         PublishAcknowledgeHandler publishAcknowledgeHandler = new PublishAcknowledgeHandler(ackMessage);

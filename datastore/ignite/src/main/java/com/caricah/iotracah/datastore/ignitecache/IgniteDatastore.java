@@ -22,8 +22,9 @@ package com.caricah.iotracah.datastore.ignitecache;
 
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.models.ClSubscription;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
@@ -31,11 +32,8 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.security.realm.state.IOTAccount;
 import com.caricah.iotracah.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.IgniteAtomicSequence;
 import rx.Observable;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
 
@@ -45,11 +43,7 @@ import java.util.List;
  */
 public class IgniteDatastore extends Datastore {
 
-    private IgniteAtomicSequence clientIdSequence;
 
-    private IgniteAtomicSequence subscriptionIdSequence;
-
-    private IgniteAtomicSequence subscriptionFilterIdSequence;
 
     private final ClientHandler clientHandler = new ClientHandler();
 
@@ -61,33 +55,13 @@ public class IgniteDatastore extends Datastore {
 
     private final MessageHandler messageHandler = new MessageHandler();
 
+    private final RetainedMessageHandler retainedMessageHandler = new RetainedMessageHandler();
+
     private final AccountHandler accountHandler = new AccountHandler();
 
     private final RoleHandler roleHandler = new RoleHandler();
 
-    public IgniteAtomicSequence getClientIdSequence() {
-        return clientIdSequence;
-    }
 
-    public void setClientIdSequence(IgniteAtomicSequence clientIdSequence) {
-        this.clientIdSequence = clientIdSequence;
-    }
-
-    public IgniteAtomicSequence getSubscriptionIdSequence() {
-        return subscriptionIdSequence;
-    }
-
-    public void setSubscriptionIdSequence(IgniteAtomicSequence subscriptionIdSequence) {
-        this.subscriptionIdSequence = subscriptionIdSequence;
-    }
-
-    public IgniteAtomicSequence getSubscriptionFilterIdSequence() {
-        return subscriptionFilterIdSequence;
-    }
-
-    public void setSubscriptionFilterIdSequence(IgniteAtomicSequence subscriptionFilterIdSequence) {
-        this.subscriptionFilterIdSequence = subscriptionFilterIdSequence;
-    }
 
 
     /**
@@ -109,6 +83,8 @@ public class IgniteDatastore extends Datastore {
 
         messageHandler.configure(configuration);
 
+        retainedMessageHandler.configure(configuration);
+
         willHandler.configure(configuration);
 
         accountHandler.configure(configuration);
@@ -128,27 +104,12 @@ public class IgniteDatastore extends Datastore {
 
         clientHandler.initiate(Client.class, getIgnite());
         subscriptionFilterHandler.initiate(SubscriptionFilter.class, getIgnite());
-        subscriptionHandler.initiate(ClSubscription.class, getIgnite());
+        retainedMessageHandler.initiate(RetainedMessage.class, getIgnite());
+        subscriptionHandler.initiate(Subscription.class, getIgnite());
         messageHandler.initiate(PublishMessage.class, getIgnite());
         willHandler.initiate(WillMessage.class, getIgnite());
         accountHandler.initiate(IOTAccount.class, getIgnite());
         roleHandler.initiate(IOTRole.class, getIgnite());
-
-
-        long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
-        String nameOfSequenceForClientId = "iotracah-sequence-client-id";
-        IgniteAtomicSequence seq = getIgnite().atomicSequence(nameOfSequenceForClientId, currentTime, true);
-        setClientIdSequence(seq);
-
-
-        String nameOfSequenceForSubscriptionId = "iotracah-sequence-subscription-id";
-        IgniteAtomicSequence seq2 = getIgnite().atomicSequence(nameOfSequenceForSubscriptionId, currentTime, true);
-        setSubscriptionIdSequence(seq2);
-
-        String nameOfSequenceForSubscriptionFilterId = "iotracah-sequence-subscription-filter-id";
-        IgniteAtomicSequence seq3 = getIgnite().atomicSequence(nameOfSequenceForSubscriptionFilterId, currentTime, true);
-        setSubscriptionFilterIdSequence(seq3);
-
 
     }
 
@@ -200,16 +161,16 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
-    public Observable<SubscriptionFilter> getSubscriptionFilter(String partition, int qos, String topicFilter) {
+    public Observable<SubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic) {
 
-        String query = "partition = ? and qos = ? and topicFilter = ?";
-        Object[] params = {partition, qos, topicFilter};
-        return subscriptionFilterHandler.getByQuery(SubscriptionFilter.class, query, params);
+        return subscriptionFilterHandler.createTree(partition, getTopicNavigationRoute(topic));
 
     }
 
-
-
+    @Override
+    public Observable<SubscriptionFilter> getSubscriptionFilter(String partition, String topic) {
+        return subscriptionFilterHandler.getTopicFilterTree(partition, getTopicNavigationRoute(topic));
+    }
 
     @Override
     public void saveSubscriptionFilter(SubscriptionFilter subscriptionFilter) {
@@ -223,88 +184,36 @@ public class IgniteDatastore extends Datastore {
 
 
     @Override
-    public Observable<ClSubscription> getSubscription(Client client) {
+    public Observable<Subscription> getSubscriptions(Client client) {
         String query = "partition = ? and clientId = ?";
         Object[] params = {client.getPartition(), client.getClientId()};
-        return subscriptionHandler.getByQuery(ClSubscription.class, query, params);
+        return subscriptionHandler.getByQuery(Subscription.class, query, params);
 
     }
 
     @Override
-    public Observable<ClSubscription> getSubscription(Client client, Collection<String> topicFilterList) {
+    public Observable<Subscription> getSubscriptions(String partition, long topicFilterKey, int qos) {
 
-        return Observable.create(observer -> {
-
-            Observable<List> subscriptionFilterListObservable = subscriptionFilterHandler.getAsList(client.getPartition(), 0, topicFilterList);
-
-            subscriptionFilterListObservable.subscribe(
-
-                    subscriptionFilterList -> {
-
-//                        Observable<ClSubscription> subscriptionObservable = subscriptionHandler.getSubscription(client.getPartition(), subscriptionFilterList);
-//                        subscriptionObservable.subscribe(observer::onNext, observer::onError, observer::onCompleted);
-
-
-                    }, observer::onError
-            );
-
-        });
+        String query = "partition = ? and topicFilterKey = ? and qos >= ?";
+        Object[] params = {partition, topicFilterKey, qos };
+        return subscriptionHandler.getByQuery(Subscription.class, query, params);
 
     }
 
     @Override
-    public Observable<ClSubscription> getSubscription(String partition, int qos, Collection<String> topicFilterList) {
+    public void saveSubscription(Subscription subscription) {
 
-
-        return Observable.create(observer ->
-                     {
-
-                log.debug(" getSubscription : processing request to :  ");
-                log.debug(" getSubscription : ************************************ ***********************************************");
-                log.debug(" getSubscription : **** get subscriptions for {} {} {} ********* ", partition, qos, topicFilterList);
-                log.debug(" getSubscription : ************************************************************************************ ");
-
-                Observable<List> subscriptionFilterListObservable = subscriptionFilterHandler.getAsList(partition, qos, topicFilterList);
-
-                subscriptionFilterListObservable.subscribe(
-
-                        subscriptionFilterList -> {
-
-                            Object[] array = subscriptionFilterList.stream().map(o1 -> ((List) o1).get(0)).filter(id -> null != id).toArray(Object[]::new);
-
-                            if(null ==array || array.length <=0){
-                                observer.onCompleted();
-                            }else {
-
-
-                                Observable<ClSubscription> subscriptionObservable = subscriptionHandler.getSubscription(partition, array);
-                                subscriptionObservable.subscribe(observer::onNext, observer::onError, observer::onCompleted);
-                            }
-                        }, observer::onError);}
-
-        );
-
+      subscriptionHandler.save(subscription);
     }
 
     @Override
-    public void saveSubscription(ClSubscription clSubscription) {
-
-        log.debug(" saveSubscription : -----------------------------------------------------------");
-        log.debug(" saveSubscription : --------------- Obtained {} -----------", clSubscription);
-        log.debug(" saveSubscription : -----------------------------------------------------------");
-
-
-        subscriptionHandler.save(clSubscription);
-    }
-
-    @Override
-    public void removeSubscription(ClSubscription clSubscription) {
-        subscriptionHandler.remove(clSubscription);
+    public void removeSubscription(Subscription subscription) {
+        subscriptionHandler.remove(subscription);
     }
 
 
     @Override
-    public Observable<PublishMessage> getActiveMessages(Client client) {
+    public Observable<PublishMessage> getMessages(Client client) {
 
         String query = "partition = ? and clientId = ?";
         Object[] params = {client.getPartition(), client.getClientId()};
@@ -342,20 +251,26 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
+    public Observable<RetainedMessage> getRetainedMessage(String partition, long topicFilterId) {
+        return retainedMessageHandler.getByKey(RetainedMessage.createKey(partition, topicFilterId));
+    }
+
+    @Override
+    public void saveRetainedMessage(RetainedMessage retainedMessage) {
+        retainedMessageHandler.save(retainedMessage);
+    }
+
+    @Override
+    public void removeRetainedMessage(RetainedMessage retainedMessage) {
+        retainedMessageHandler.remove(retainedMessage);
+    }
+
+    @Override
     public String nextClientId() {
-        long nextSequence = getClientIdSequence().incrementAndGet();
+        long nextSequence = clientHandler.nextId();
         return String.format("iotracah-cl-id-%d", nextSequence);
     }
 
-    @Override
-    public String nextSubscriptionFilterId() {
-        return "" + getSubscriptionFilterIdSequence().incrementAndGet();
-    }
-
-    @Override
-    public String nextSubscriptionId() {
-        return "" + getSubscriptionIdSequence().incrementAndGet();
-    }
 
     @Override
     public IOTAccount getIOTAccount(String partition, String username) {

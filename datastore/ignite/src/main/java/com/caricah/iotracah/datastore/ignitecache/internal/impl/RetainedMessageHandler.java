@@ -20,31 +20,26 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
-import rx.Observable;
-
-import java.util.Arrays;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class SubscriptionHandler extends AbstractHandler<Subscription> {
+public class RetainedMessageHandler extends AbstractHandler<RetainedMessage> {
 
-    public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME = "config.ignitecache.subscription.cache.name";
-    public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME_VALUE_DEFAULT = "iotracah_client_subscription_cache";
+    public static final String CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME = "config.ignitecache.retained.message.cache.name";
+    public static final String CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME_VALUE_DEFAULT = "iotracah_retained_message_cache";
 
 
     @Override
     public void configure(Configuration configuration) {
 
-
-        String cacheName = configuration.getString(CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME, CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME_VALUE_DEFAULT);
+        String cacheName = configuration.getString(CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME, CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME_VALUE_DEFAULT);
         setCacheName(cacheName);
 
     }
-
 
 }

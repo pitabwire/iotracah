@@ -25,6 +25,7 @@ import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMode;
@@ -39,6 +40,8 @@ import rx.Observable;
 
 import javax.cache.Cache.Entry;
 import java.io.Serializable;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +55,9 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
     private String cacheName;
     private IgniteCache<Serializable, T> datastoreCache;
+
+    private IgniteAtomicSequence idSequence;
+
     private Class<T> classType;
 
     public String getCacheName() {
@@ -89,14 +95,23 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
         setDatastoreCache(clientIgniteCache);
 
-
         classType = t;
+
+
+        long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
+        String nameOfSequence = getCacheName()+"-sequence";
+        idSequence = ignite.atomicSequence(nameOfSequence, currentTime, true);
+
     }
 
     protected CacheConfiguration setIndexData(Class<T> t, CacheConfiguration clCfg) {
 
         clCfg.setIndexedTypes(String.class, t);
         return clCfg;
+    }
+
+    public long nextId(){
+        return idSequence.incrementAndGet();
     }
 
     public Observable<T> getByKey(Serializable key) {
@@ -272,4 +287,6 @@ public Observable<List>  getByQueryAsValueList(String query, Object[] params ) {
         }
         return builder.toString();
     }
+
+
 }
