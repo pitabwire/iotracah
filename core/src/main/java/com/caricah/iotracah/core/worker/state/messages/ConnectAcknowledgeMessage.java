@@ -77,6 +77,12 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
 
     @Override
     public String toString() {
-        return getClass().getName() + '[' + "Qos=" + getQos() + ", ReturnCode=" + getReturnCode() + ']';
+
+        return getClass().getName() + '['
+                + "messageId=" + getMessageId() +","
+                + "sessionId=" + getSessionId() +","
+                + "keepAlive=" + getKeepAliveTime() +","
+                + "returnCode=" + getReturnCode() +","
+                +  ']';
     }
 }

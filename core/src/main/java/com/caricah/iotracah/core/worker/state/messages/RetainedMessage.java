@@ -38,10 +38,14 @@ import java.util.Locale;
  */
 public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
 
-    @QuerySqlField(index = true)
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_topicfilterId_idx", order = 0)
+    })
     private String partition;
 
-    @QuerySqlField
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_topicfilterId_idx", order = 2)
+    })
     private long topicFilterId;
 
     @QuerySqlField
@@ -104,7 +108,7 @@ public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
     public static RetainedMessage from(String partition, long topicFilterId, PublishMessage publishMessage) {
 
         RetainedMessage retainedMessage = new RetainedMessage();
-
+        retainedMessage.setMessageId(publishMessage.getMessageId());
         retainedMessage.setPartition(partition);
         retainedMessage.setTopicFilterId(topicFilterId);
         retainedMessage.setQos(publishMessage.getQos());

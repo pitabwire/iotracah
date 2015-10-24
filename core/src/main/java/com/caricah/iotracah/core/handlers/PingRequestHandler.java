@@ -50,9 +50,10 @@ public class PingRequestHandler extends RequestHandler<Ping> {
                     try {
 
                         //TODO: deal with ping issues.
-
-
                         pushToServer(getMessage());
+
+                        getWorker().getSessionResetManager().process(client);
+
 
                     } catch (Exception e) {
                         log.error(" handle : ping handler experienced issues", e);

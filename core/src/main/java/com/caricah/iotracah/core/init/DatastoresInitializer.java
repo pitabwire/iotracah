@@ -130,7 +130,11 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
 
         //Assign our workers the active datastore.
-        getWorkerList().forEach(worker -> worker.setDatastore(getActiveDatastore()));
+        getWorkerList().forEach(worker -> {
+
+            worker.setDatastore(getActiveDatastore());
+            securityHandler.getSessionListenerList().add(worker);
+        });
 
 
         //Initialize security.

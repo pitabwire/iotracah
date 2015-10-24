@@ -31,6 +31,7 @@ import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import io.netty.handler.codec.mqtt.MqttQoS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -138,45 +139,49 @@ public class Messenger {
         log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientId(), partition);
 
         //Obtain a list of all the subscribed clients who will receive a message.
-        Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(partition, publishMessage.getTopic());
+        Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getMatchingSubscriptionFilter(partition, publishMessage.getTopic());
 
         subscriptionFilterObservable.subscribe(
                 subscriptionFilter -> {
 
                     Observable<Subscription> subscriptionObservable
                     = getDatastore().getSubscriptions(partition, subscriptionFilter.getId(), publishMessage.getQos() );
-            subscriptionObservable.subscribe(
-                    subscription -> {
+                    subscriptionObservable.distinct().subscribe(
+                            subscription -> {
 
-                        log.debug(" publish onNext : obtained a subscription {} to send message to", subscription);
+                                log.debug(" publish onNext : obtained a subscription {} to send message to", subscription);
 
-                        Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
+                                Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
 
-                        clientObservable.subscribe(client -> {
+                                clientObservable.subscribe(client -> {
 
-                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                            clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
+                                    PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                                    clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
 
+                                    if (clonePublishMessage.getQos() > MqttQoS.AT_MOST_ONCE.value()) {
 
-                            if (clonePublishMessage.getQos() > 0) {
-                                //Save the message as we proceed.
-                                getDatastore().saveMessage(clonePublishMessage);
-                            }
-
-                            //Actually push out the message.
-                            //This message should be released to the connected client
-                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
-                            handler.setWorker(getWorker());
-
-                            try {
-                                handler.handle();
-                            } catch (RetriableException | UnRetriableException e) {
-                                log.error(" publish : problems releasing stored messages", e);
-                            }
-                        });
+                                        //Save the message as we proceed.
+                                        getDatastore().saveMessage(clonePublishMessage);
 
 
-                    }, throwable -> log.error(" process : database problems", throwable));
+                                    }
+
+                                    if(client.isActive()) {
+                                        //Actually push out the message.
+                                        //This message should be released to the connected client
+                                        PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
+                                        handler.setWorker(getWorker());
+
+                                        try {
+                                            handler.handle();
+                                        } catch (RetriableException | UnRetriableException e) {
+                                            log.error(" publish : problems releasing stored messages", e);
+                                        }
+                                    }
+                                });
+
+
+                            }, throwable -> log.error(" process : database problems", throwable));
         }, throwable -> log.error(" publish : database problems", throwable) );
 
 
@@ -198,27 +203,29 @@ public class Messenger {
              *
              */
 
-            //Create a new subscription filter just incase it does not already exist.
-
-            Observable<SubscriptionFilter> retainedSubscriptionFilterObservable = getDatastore()
-                    .getOrCreateSubscriptionFilter(partition, publishMessage.getTopic());
-
-            retainedSubscriptionFilterObservable.subscribe(subscriptionFilter -> {
-
-                RetainedMessage newRetainedMessage = RetainedMessage.from(partition, subscriptionFilter.getId(), publishMessage);
 
 
-                //Save the retain message.
-                Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(partition, subscriptionFilter.getId());
-                retainedMessageObservable.subscribe(
-                        getDatastore()::removeRetainedMessage,
-                        throwable -> getDatastore().saveRetainedMessage(newRetainedMessage),
-                        () -> getDatastore().saveRetainedMessage(newRetainedMessage)
 
-                );
+                //Create a new subscription filter just incase it does not already exist.
+
+                Observable<SubscriptionFilter> retainedSubscriptionFilterObservable = getDatastore()
+                        .getOrCreateSubscriptionFilter(partition, publishMessage.getTopic());
+
+                retainedSubscriptionFilterObservable.subscribe(subscriptionFilter -> {
+
+                    RetainedMessage newRetainedMessage = RetainedMessage.from(partition, subscriptionFilter.getId(), publishMessage);
+
+                    if(((byte[]) publishMessage.getPayload()).length > 0) {
+
+                        //Save the retain message.
+                    getDatastore().saveRetainedMessage(newRetainedMessage);
+
+                }else{
+                        getDatastore().removeRetainedMessage(newRetainedMessage);
+                }
+                });
 
 
-            });
 
         }
     }

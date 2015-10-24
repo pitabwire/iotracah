@@ -43,7 +43,6 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -77,6 +76,13 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         this.datastoreCache = datastoreCache;
     }
 
+    public IgniteAtomicSequence getIdSequence() {
+        return idSequence;
+    }
+
+    public void setIdSequence(IgniteAtomicSequence idSequence) {
+        this.idSequence = idSequence;
+    }
 
     public abstract void configure(Configuration configuration);
 
@@ -95,13 +101,19 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
         setDatastoreCache(clientIgniteCache);
 
+
         classType = t;
 
+        String nameOfSequence = getCacheName()+"-sequence";
+        initializeSequence(nameOfSequence, ignite);
+
+    }
+
+    public void initializeSequence(String nameOfSequence , Ignite ignite) {
 
         long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
-        String nameOfSequence = getCacheName()+"-sequence";
-        idSequence = ignite.atomicSequence(nameOfSequence, currentTime, true);
-
+        IgniteAtomicSequence idSequence = ignite.atomicSequence(nameOfSequence, currentTime, true);
+        setIdSequence(idSequence);
     }
 
     protected CacheConfiguration setIndexData(Class<T> t, CacheConfiguration clCfg) {
@@ -205,7 +217,7 @@ public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
 
     }
 
-public Observable<T>  getByQueryAsValue(String query, Object[] params ) {
+public <L extends Serializable> Observable<L>  getByQueryAsValue(Class<L> l, String query, Object[] params ) {
 
         return Observable.create(observer -> {
 
@@ -220,7 +232,7 @@ public Observable<T>  getByQueryAsValue(String query, Object[] params ) {
 
                         for (List entry : queryResult) {
                             // callback with value
-                            observer.onNext((T) entry.get(0));
+                            observer.onNext((L) entry.get(0));
                         }
 
                     }
@@ -263,7 +275,7 @@ public Observable<List>  getByQueryAsValueList(String query, Object[] params ) {
             try {
                 getDatastoreCache().put(item.generateIdKey(), item);
             } catch (UnRetriableException e) {
-
+                log.error(" save : issues while saving item ", e);
             }
 
     }

@@ -127,7 +127,7 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
 
                 case "/DISCONNECT":
                     
-                    DisconnectMessage disconMessage = DisconnectMessage.from(true);
+                    DisconnectMessage disconMessage = DisconnectMessage.from(false);
                     disconMessage.setSessionId(json.getString("sessionId"));
                     disconMessage.setAuthKey(json.getString("authKey"));
 

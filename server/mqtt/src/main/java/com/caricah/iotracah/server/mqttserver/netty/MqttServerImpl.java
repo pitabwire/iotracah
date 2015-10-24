@@ -52,9 +52,6 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
     public static final int CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_CONNECTION_TIMEOUT = 10;
 
 
-
-
-
     public MqttServerImpl(Server<MqttMessage> internalServer) {
         super(internalServer);
     }
@@ -78,7 +75,7 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
         boolean sslEnabled = configuration.getBoolean(CONFIGURATION_SERVER_MQTT_SSL_IS_ENABLED, CONFIGURATION_VALUE_DEFAULT_SERVER_MQTT_SSL_IS_ENABLED);
         setSslEnabled(sslEnabled);
 
-        if(isSslEnabled()){
+        if (isSslEnabled()) {
 
             setSslHandler(new SSLHandler(configuration));
 
@@ -97,51 +94,32 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
 
     @Override
     protected ServerInitializer<MqttMessage> getServerInitializer(ServerImpl<MqttMessage> serverImpl, int connectionTimeout, SSLHandler sslHandler) {
-        return new MqttServerInitializer(serverImpl, connectionTimeout,sslHandler);
+        return new MqttServerInitializer(serverImpl, connectionTimeout, sslHandler);
     }
 
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
         switch (ioTMessage.getMessageType()) {
-            case  ConnectAcknowledgeMessage.MESSAGE_TYPE:
+            case ConnectAcknowledgeMessage.MESSAGE_TYPE:
 
-                ConnectAcknowledgeMessage conMessage =  (ConnectAcknowledgeMessage) ioTMessage ;
-
-
-
-                    /**
-                     * Use the connection acknowledgement message to store session id for persistance.
-                     */
-
-                    Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-                    if (null != channel) {
-
-                        if(MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
-
-                            Double keepAliveDisconnectiontime = conMessage.getKeepAliveTime() * 1.5;
-
-                            channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
+                ConnectAcknowledgeMessage conMessage = (ConnectAcknowledgeMessage) ioTMessage;
 
 
-                            boolean pipelineDoesNotContainidleStateHandler = channel.pipeline().context("idleStateHandler")==null;
-                            if(pipelineDoesNotContainidleStateHandler) {
-                                channel.pipeline().addFirst("idleStateHandler", new IdleStateHandler(0, 0, keepAliveDisconnectiontime.intValue()));
-                                channel.pipeline().addAfter("idleStateHandler", "idleEventHandler", new TimeoutHandler());
-                            }
-                        }else {
-                            closeClient((ChannelId)ioTMessage.getConnectionId());
-                        }
+                /**
+                 * Use the connection acknowledgement message to store session id for persistance.
+                 */
+
+                Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
+                if (null != channel) {
+
+                    if (MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
+
+                        channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
                     }else{
-
-                        //We just close such a connection.
-                        if(MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
-
-                            getInternalServer().dirtyDisconnect(ioTMessage.getConnectionId(), ioTMessage.getSessionId());
-
-                        }
-
-                        }
+                        closeClient((ChannelId) ioTMessage.getConnectionId());
+                    }
+                }
 
                 break;
             default:

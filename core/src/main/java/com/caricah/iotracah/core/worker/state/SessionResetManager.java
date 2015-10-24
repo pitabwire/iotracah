@@ -25,6 +25,7 @@ import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.PublishReceivedMessage;
 import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
@@ -65,75 +66,58 @@ public class SessionResetManager {
 
     public void process(Client client) {
 
+        log.debug(" process : Resetting a session for client {} ", client);
+
+
         Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(client);
 
-        publishMessageObservable.subscribe(new Subscriber<PublishMessage>() {
-            @Override
-            public void onCompleted() {
+        publishMessageObservable.subscribe(publishMessage -> {
 
-            }
+            publishMessage = client.copyTransmissionData(publishMessage);
+            //Update current session id for message.
 
-            @Override
-            public void onError(Throwable e) {
+                    if (publishMessage.isInBound()) {
 
-            }
-
-            @Override
-            public void onNext(PublishMessage publishMessage) {
-
-                if (publishMessage.isInBound()) {
-
-                    //We need to generate a PUBREC message to acknowledge message received.
-                    if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value()) {
+                        //We need to generate a PUBREC message to acknowledge message received.
+                        if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value()) {
 
 
-//                        MqttFixedHeader recFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, publishMessage.isDup(), MqttQoS.EXACTLY_ONCE, publishMessage.isRetain(), 0);
-//                        MqttMessageIdVariableHeader msgIdVariableHeader = MqttMessageIdVariableHeader.from(publishMessage.getMessageId());
-//                        MqttMessage message = MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
-//                        getChannel().write(message);
-
-                        AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
-                        acknowledgeMessage.copyBase(publishMessage);
-                        getWorker().pushToServer(acknowledgeMessage);
+                            PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(publishMessage.getMessageId());
+                            publishReceivedMessage.copyBase(publishMessage);
+                            getWorker().pushToServer(publishReceivedMessage);
 
 
-
-                    }
-
-                } else {
-
-                    if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.isReleased()) {
-
-                        //We need to generate a PUBREL message to allow transmission of qos 2 message.
-                        ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), true);
-                        releaseMessage.copyBase(publishMessage);
-                        getWorker().pushToServer(releaseMessage);
-
-
-
+                        }
 
                     } else {
 
-                        //This message should be released to the client
-                        PublishOutHandler handler = new PublishOutHandler(publishMessage, client.getProtocalData());
-                        handler.setWorker(getWorker());
+                        if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.isReleased()) {
 
-                        try {
-                            handler.handle();
-                        } catch (RetriableException | UnRetriableException e) {
-                            log.error(" process : problems releasing stored messages", e);
+                            //We need to generate a PUBREL message to allow transmission of qos 2 message.
+                            ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), true);
+                            releaseMessage.copyBase(publishMessage);
+                            getWorker().pushToServer(releaseMessage);
+
+
+                        } else {
+
+                            //This message should be released to the client
+                            PublishOutHandler handler = new PublishOutHandler(publishMessage, client.getProtocalData());
+                            handler.setWorker(getWorker());
+
+                            try {
+                                handler.handle();
+                            } catch (RetriableException | UnRetriableException e) {
+                                log.error(" process : problems releasing stored messages", e);
+                            }
+
                         }
-
                     }
-                }
 
-
-            }
         });
 
 
     }
-
 
 
 }

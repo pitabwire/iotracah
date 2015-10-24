@@ -24,8 +24,8 @@ import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
 import com.caricah.iotracah.exceptions.UnRetriableException;
@@ -34,8 +34,7 @@ import com.caricah.iotracah.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
 import rx.Observable;
 
-import java.util.Collection;
-import java.util.List;
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -142,12 +141,9 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
-    public Observable<WillMessage> getWill(String partition, String clientIdentifier) {
+    public Observable<WillMessage> getWill(Serializable willKey) {
 
-        String query = "partition = ? and clientId = ?";
-        Object[] params = {partition, clientIdentifier};
-
-        return willHandler.getByQuery(WillMessage.class, query, params);
+        return willHandler.getByKey(willKey);
     }
 
     @Override
@@ -161,6 +157,11 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
+    public Observable<SubscriptionFilter> getMatchingSubscriptionFilter(String partition, String topic) {
+        return subscriptionFilterHandler.matchTopicFilterTree(partition, getTopicNavigationRoute(topic));
+    }
+
+    @Override
     public Observable<SubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic) {
 
         return subscriptionFilterHandler.createTree(partition, getTopicNavigationRoute(topic));
@@ -170,11 +171,6 @@ public class IgniteDatastore extends Datastore {
     @Override
     public Observable<SubscriptionFilter> getSubscriptionFilter(String partition, String topic) {
         return subscriptionFilterHandler.getTopicFilterTree(partition, getTopicNavigationRoute(topic));
-    }
-
-    @Override
-    public void saveSubscriptionFilter(SubscriptionFilter subscriptionFilter) {
-        subscriptionFilterHandler.save(subscriptionFilter);
     }
 
     @Override
@@ -233,15 +229,7 @@ public class IgniteDatastore extends Datastore {
     @Override
     public Observable<Long> saveMessage(PublishMessage publishMessage) {
 
-        messageHandler.save(publishMessage);
-
-        return Observable.create(observer -> {
-            // callback with value
-            observer.onNext(publishMessage.getMessageId());
-            observer.onCompleted();
-
-
-        });
+       return messageHandler.saveWithIdCheck(publishMessage);
 
     }
 

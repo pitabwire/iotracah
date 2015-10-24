@@ -161,7 +161,8 @@ public class Client implements IdKeyComposer, Serializable {
 
 
     public Observable<WillMessage> getWill(Datastore datastore) {
-        return datastore.getWill(getPartition(), getClientId());
+        String willKey = WillMessage.getWillKey(getPartition(), getClientId());
+        return datastore.getWill(willKey);
     }
 
 

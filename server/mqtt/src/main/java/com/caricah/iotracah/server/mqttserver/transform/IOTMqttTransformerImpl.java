@@ -45,7 +45,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 //We generate a publish message.
                 MqttPublishVariableHeader respVariableHeader = new MqttPublishVariableHeader(pubMsg.getTopic(), pubMsg.getMessageId().intValue());
 
-                MqttFixedHeader respFixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, MqttQoS.valueOf(pubMsg.getQos()), false, 0);
+                MqttFixedHeader respFixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, pubMsg.isDup(), MqttQoS.valueOf(pubMsg.getQos()), pubMsg.isRetain(), 0);
                 ByteBuf content = Unpooled.wrappedBuffer((byte[]) pubMsg.getPayload());
 
                 return MqttMessageFactory.newMessage(respFixedHeader, respVariableHeader, content);
@@ -95,7 +95,8 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
             case ConnectAcknowledgeMessage.MESSAGE_TYPE:
 
                 ConnectAcknowledgeMessage connAck = (ConnectAcknowledgeMessage) internalMessage;
-                MqttFixedHeader connAckFixedHeader = new MqttFixedHeader(MqttMessageType.CONNACK,
+                MqttFixedHeader connAckFixedHeader = new MqttFixedHeader(
+                        MqttMessageType.CONNACK,
                         connAck.isDup(),
                         MqttQoS.valueOf(connAck.getQos()),
                         connAck.isRetain(), 0);

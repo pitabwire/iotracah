@@ -103,13 +103,24 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
         byte[] willPayloadBytes = ((String) getPayload()).getBytes();
         ByteBuffer willByteBuffer = ByteBuffer.wrap(willPayloadBytes);
 
+        long messageId = 1;
+        if(getQos() > 0 ){
+            messageId = PublishMessage.ID_TO_FORCE_GENERATION_ON_SAVE;
+        }
+
         //TODO: generate sequence for will message id
         return PublishMessage.from(
-                getMessageId(), false, getQos(),
+                messageId, false, getQos(),
                 isRetain(), getTopic(),
                 willByteBuffer, true
         );
     }
+
+    public static String getWillKey(String partition, String clientId){
+
+        return String.format("%s-%s", partition, clientId);
+    }
+
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
@@ -117,7 +128,7 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
             throw new UnRetriableException(" Client Id has to be non null");
         }
 
-        return String.format("%s-%s", getPartition(), getClientId());
+        return WillMessage.getWillKey(getPartition(), getClientId());
 
     }
 }

@@ -217,13 +217,14 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
     public void pushToClient(Serializable connectionId, T message){
 
-
-        log.info(" Server pushToClient : we got to now sending out {}", message);
+        log.debug(" pushToClient : Server pushToClient : we got to now sending out {}", message);
 
         Channel channel = getChannel((ChannelId) connectionId);
 
         if(null != channel && channel.isWritable()) {
             channel.writeAndFlush(message);
+        }else{
+            log.info(" pushToClient : channel to push message {} is not availble ", message);
         }
 
     }

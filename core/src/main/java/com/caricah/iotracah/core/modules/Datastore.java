@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
@@ -80,13 +81,13 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public abstract void saveClient(Client client);
     public abstract void removeClient(Client client);
 
-    public abstract Observable<WillMessage> getWill(String partition, String clientIdentifier);
+    public abstract Observable<WillMessage> getWill(Serializable willKey);
     public abstract void saveWill(WillMessage will);
     public abstract void removeWill(WillMessage will);
 
+    public abstract Observable<SubscriptionFilter> getMatchingSubscriptionFilter(String partition, String topic);
     public abstract Observable<SubscriptionFilter> getSubscriptionFilter(String partition, String topic);
     public abstract Observable<SubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic);
-    public abstract void saveSubscriptionFilter(SubscriptionFilter subscriptionFilter);
     public abstract void removeSubscriptionFilter(SubscriptionFilter subscriptionFilter);
 
 
@@ -157,4 +158,4 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     }
 
 
- }
+   }

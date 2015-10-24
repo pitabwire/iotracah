@@ -31,7 +31,6 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.util.Arrays;
-import java.util.Locale;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -40,31 +39,39 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     public static final String MESSAGE_TYPE = "PUBLISH";
 
-    @QuerySqlField()
-    private int qos;
+    public static final long ID_TO_FORCE_GENERATION_ON_SAVE = -517715;
 
-    @QuerySqlField()
-    private boolean retain;
 
-    @QuerySqlField()
-    private boolean dup;
 
-    @QuerySqlField()
-    private String topic;
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_clientid_msgid_inbound_idx", order = 0)
+    })
+    private String partition;
 
-    @QuerySqlField()
-    private boolean released;
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_clientid_msgid_inbound_idx", order = 2)
+    })
+    private String clientId;
 
-    @QuerySqlField()
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_clientid_msgid_inbound_idx", order = 6)
+    })
     private boolean inBound;
 
     @QuerySqlField(index = true)
-    private String partition;
+    private long id;
 
-    @QuerySqlField(index = true)
-    private String clientId;
+    private int qos;
 
-    @QuerySqlField()
+    private boolean retain;
+
+    private boolean dup;
+
+    private String topic;
+
+    private boolean released;
+
+
     private Serializable payload;
 
 
@@ -108,6 +115,14 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
         this.released = released;
     }
 
+    public long getId() {
+        return id;
+    }
+
+    public void setId(long id) {
+        this.id = id;
+    }
+
     public boolean isInBound() {
         return inBound;
     }
@@ -142,7 +157,7 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, ByteBuffer payloadBuffer, boolean inBound) {
 
-        if (messageId < 1  ) {
+        if (messageId < 1 && messageId != ID_TO_FORCE_GENERATION_ON_SAVE) {
 
 
             if(qos == 0 ){
@@ -175,18 +190,23 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if (null == getClientId() || getMessageId() <= 0) {
-            throw new UnRetriableException(" Messages are stored only if they have an owner and an Id");
+        if (null == getClientId() || getId() <= 0) {
+            throw new UnRetriableException(" Messages are stored only if they have an owner and a global Id");
         }
 
-        return String.format(Locale.US, "%s-%s-%d", getClientId(), isInBound() ? "i" : "o", getMessageId());
+        return getId();
     }
 
     public PublishMessage cloneMessage() {
 
         ByteBuffer byteBuffer = ByteBuffer.wrap((byte[])getPayload());
 
-        PublishMessage publishMessage = PublishMessage.from(getMessageId(), false, getQos(), isRetain(),  getTopic(), byteBuffer, false);
+        long messageId = getMessageId();
+        if(getQos() > 0 ){
+           messageId = ID_TO_FORCE_GENERATION_ON_SAVE;
+        }
+
+        PublishMessage publishMessage = PublishMessage.from(messageId, false, getQos(), false,  getTopic(), byteBuffer, false);
         publishMessage.setProtocal(getProtocal());
 
         return publishMessage;
@@ -221,4 +241,19 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
             );
         }
     }
+
+
+
+    @Override
+    public String toString() {
+        return getClass().getName() + '['
+                + "messageId=" + getMessageId() +","
+                + "partition=" + getPartition() +","
+                + "clientId=" + getClientId() +","
+                + "sessionId=" + getSessionId() +","
+                + "topic=" + getTopic() +","
+                + "qos=" + getQos() +","
+                +  ']';
+    }
+
 }

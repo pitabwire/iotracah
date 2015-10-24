@@ -23,18 +23,27 @@ package com.caricah.iotracah.core.worker.state.session;
 import com.caricah.iotracah.core.worker.state.models.IOTSession;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.query.QueryCursor;
+import org.apache.ignite.cache.query.SqlQuery;
 import org.apache.shiro.ShiroException;
-import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.session.mgt.eis.AbstractSessionDAO;
 import org.apache.shiro.session.mgt.eis.SessionIdGenerator;
 import org.apache.shiro.util.Destroyable;
 import org.apache.shiro.util.Initializable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.cache.Cache;
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -42,16 +51,17 @@ import java.util.Collections;
  */
 public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator, Initializable, Destroyable{
 
-    private final IgniteCache<Serializable, IOTSession> igniteCache;
+    private static final Logger log = LoggerFactory.getLogger(SessionDAO.class);
+    private final IgniteCache<Serializable, IOTSession> sessionsCache;
     private final IgniteAtomicSequence igniteAtomicSequence;
 
-    public SessionDAO(IgniteCache<Serializable, IOTSession> igniteCache, IgniteAtomicSequence igniteAtomicSequence){
-        this.igniteCache = igniteCache;
+    public SessionDAO(IgniteCache<Serializable, IOTSession> sessionsCache, IgniteAtomicSequence igniteAtomicSequence){
+        this.sessionsCache = sessionsCache;
         this.igniteAtomicSequence = igniteAtomicSequence;
     }
 
-    public IgniteCache<Serializable, IOTSession> getIgniteCache() {
-        return igniteCache;
+    public IgniteCache<Serializable, IOTSession> getSessionsCache() {
+        return sessionsCache;
     }
 
     public IgniteAtomicSequence getIgniteAtomicSequence() {
@@ -79,7 +89,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
     @Override
     public void destroy() throws Exception {
 
-        getIgniteCache().close();
+        getSessionsCache().close();
         getIgniteAtomicSequence().close();
     }
 
@@ -88,7 +98,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
         if (id == null) {
             throw new NullPointerException("id argument cannot be null.");
         }
-         getIgniteCache().put(id, new IOTSession(session));
+         getSessionsCache().put(id, new IOTSession(session));
         return  session;
     }
 
@@ -120,7 +130,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
     @Override
     protected Session doReadSession(Serializable sessionId) {
 
-        IOTSession iotSession = getIgniteCache().get(sessionId);
+        IOTSession iotSession = getSessionsCache().get(sessionId);
 
         if(null == iotSession){
             return null;
@@ -163,7 +173,7 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
         }
         Serializable id = session.getId();
         if (id != null) {
-            getIgniteCache().remove(id);
+            getSessionsCache().remove(id);
         }
     }
 
@@ -202,10 +212,37 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
 
 
 
+        try {
+
+            String query = " expiryTimestamp < ? LIMIT ?";
+
+            Instant instant = LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant();
+
+            Object[] params = { instant.toEpochMilli(), 100};
+
+            SqlQuery sql = new SqlQuery<Serializable, IOTSession>(IOTSession.class, query);
+            sql.setArgs(params);
+
+            // Find all messages belonging to a client.
+            QueryCursor<Cache.Entry<Serializable, IOTSession>> queryResult = getSessionsCache().query(sql);
 
 
+            // Find all messages belonging to a client.
 
-        return Collections.emptySet();
+            Set<Session> activeSessions = new HashSet<>();
+            queryResult.forEach(entry -> {
+
+                IOTSession iotSession = entry.getValue();
+
+                activeSessions.add(iotSession.toSession());
+
+            });
+            return activeSessions;
+        } catch (Exception e) {
+            log.error(" getActiveSessions : problems with active sessions collector ", e);
+            return Collections.emptySet();
+        }
+
     }
 
     /**

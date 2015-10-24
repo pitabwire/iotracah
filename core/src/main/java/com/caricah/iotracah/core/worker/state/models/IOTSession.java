@@ -25,6 +25,10 @@ import org.apache.ignite.cache.query.annotations.QuerySqlField;
 import org.apache.shiro.session.Session;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Date;
 
 /**
@@ -39,24 +43,30 @@ import java.util.Date;
 public class IOTSession implements Serializable {
 
 
-    @QuerySqlField()
-    private Date lastAccessTimestamp;
+    @QuerySqlField(index = true)
+    private long expiryTimestamp;
 
     private String sessionString;
 
+    public IOTSession() {
+    }
+
     public IOTSession(Session session) {
 
-        lastAccessTimestamp = session.getLastAccessTime();
 
-        sessionString = SerializableUtils.serialize(session);
+        long expiryTime = session.getLastAccessTime().getTime() + session.getTimeout();
+        setExpiryTimestamp(expiryTime);
+
+        setSessionString(SerializableUtils.serialize(session));
     }
 
-    public Date getLastAccessTimestamp() {
-        return lastAccessTimestamp;
+
+    public long getExpiryTimestamp() {
+        return expiryTimestamp;
     }
 
-    public void setLastAccessTimestamp(Date lastAccessTimestamp) {
-        this.lastAccessTimestamp = lastAccessTimestamp;
+    public void setExpiryTimestamp(long expiryTimestamp) {
+        this.expiryTimestamp = expiryTimestamp;
     }
 
     public String getSessionString() {

@@ -260,22 +260,28 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                             will = WillMessage.from(getMessage().isRetainWill(), getMessage().getWillQos(),
                                     getMessage().getWillTopic(), getMessage().getWillMessage());
-                            will.copyBase(getMessage());
-
-                            getDatastore().saveWill(will);
-                        } else {
-                            //We need to clear the existing will getMessage().
-                            will = WillMessage.from(false, 0, "", "");
                             will.setPartition(client.getPartition());
                             will.setClientId(client.getClientId());
                             will.copyBase(getMessage());
+
+                            getDatastore().saveWill(will);
+
+                            log.debug(" handle: message has will : {} ", will);
+
+
+                        } else {
+                            //We need to clear the existing will if any.
+                            will = WillMessage.from(false, 0, "", "");
+                            will.setPartition(client.getPartition());
+                            will.setClientId(client.getClientId());
                             getDatastore().removeWill(will);
                         }
 
 
                         //Perform a reset for our session.
-                        SessionResetManager resetManager = getWorker().getSessionResetManager();
-                        resetManager.process(client);
+                        getWorker()
+                                .getSessionResetManager()
+                                .process(client);
 
 
                     },
@@ -415,7 +421,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                             log.info(" openSubject : Authenticated client <{}> username {} with keep alive of {} seconds", client.getClientId(), userName, keepAliveDisconnectiontime);
 
                             Session session = activeUser.getSession();
-                            session.setTimeout(keepAliveDisconnectiontime.intValue());
+                            session.setTimeout(keepAliveDisconnectiontime.longValue());
                             session.setAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY, principals);
 
                             if (client.getProtocal().isNotPersistent()) {
@@ -432,6 +438,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                             client.setActive(true);
                             client.setCleanSession(cleanSession);
                             client.setSessionId(session.getId());
+                            client.setConnectionId(connectionID);
 
                             getDatastore().saveClient(client);
 

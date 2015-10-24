@@ -54,6 +54,9 @@ public class IOTSecurityManager extends SessionsSecurityManager {
         this.subjectFactory = new DefaultSubjectFactory();
     }
 
+
+
+
     /**
      * Returns the {@code SubjectFactory} responsible for creating {@link Subject} instances exposed to the application.
      *
@@ -125,7 +128,7 @@ public class IOTSecurityManager extends SessionsSecurityManager {
     public void logout(Subject subject) {
 
         if (subject == null) {
-            throw new IllegalArgumentException("Subject method argument cannot be null.");
+            throw new IllegalArgumentException("Subject argument argument cannot be null.");
         }
 
         PrincipalCollection principals = subject.getPrincipals();
@@ -287,7 +290,9 @@ public class IOTSecurityManager extends SessionsSecurityManager {
     protected void stopSession(Subject subject) {
         Session s = subject.getSession(false);
         if (s != null) {
-            s.stop();
+           s.stop();
         }
+
+
     }
 }

@@ -140,7 +140,7 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                return UnSubscribeMessage.from(msgIdVH.messageId(), fxH.isDup(), fxH.qosLevel().value(), fxH.isRetain(), unsubscribePayload.topics());
 
             case DISCONNECT:
-               return DisconnectMessage.from(true);
+               return DisconnectMessage.from(false);
 
 
             default:

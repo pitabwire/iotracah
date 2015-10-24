@@ -20,18 +20,25 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
+import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
+import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
+import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.shiro.session.SessionListener;
+import rx.Observable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/10/15
  */
-public abstract class Worker extends IOTBaseHandler {
+public abstract class Worker extends IOTBaseHandler implements SessionListener{
 
     public static final String CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED = "core.config.worker.annonymous.login.is.enabled";
     public static final boolean CORE_CONFIG_WORKER_ANNONYMOUS_LOGIN_ENABLED_DEFAULT_VALUE = true;
@@ -136,6 +143,46 @@ public abstract class Worker extends IOTBaseHandler {
     public void onNext(IOTMessage IOTMessage) {
 
     }
+
+
+    public void publishWill(Client client) {
+
+        log.debug(" publishWill : client : " + client.getClientId() + " may have lost connectivity.");
+
+        //Publish will before handling other
+
+        Observable<WillMessage> willMessageObservable = client.getWill(getDatastore());
+
+        willMessageObservable.subscribe(
+                willMessage -> {
+
+
+                    log.debug(" publishWill : -----------------------------------------------------");
+                    log.debug(" publishWill : -------  We have a will {} -------", willMessage);
+                    log.debug(" publishWill : -----------------------------------------------------");
+
+
+                    PublishMessage willPublishMessage = willMessage.toPublishMessage();
+                    willPublishMessage.copyBase(willMessage);
+                    client.copyTransmissionData(willPublishMessage);
+
+                    try {
+                        client.internalPublishMessage(getMessenger(), willPublishMessage);
+                    } catch (RetriableException e) {
+                        log.error(" publishWill : experienced issues publishing will.", e);
+                    }
+
+
+                }, throwable -> {
+                    if(!(throwable instanceof DoesNotExistException)){
+                        log.error(" dirtyDisconnect : problems getting will ", throwable);
+                    }
+                }
+        );
+
+
+    }
+
 
     /**
      * Internal method to handle all activities related to ensuring the worker routes

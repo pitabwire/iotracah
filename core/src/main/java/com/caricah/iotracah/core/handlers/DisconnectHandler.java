@@ -22,6 +22,7 @@ package com.caricah.iotracah.core.handlers;
 
 
 import com.caricah.iotracah.core.security.AuthorityRole;
+import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.WillMessage;
@@ -29,7 +30,10 @@ import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import org.apache.shiro.subject.Subject;
 import rx.Observable;
+
+import java.io.Serializable;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -56,85 +60,34 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
         permissionObservable.subscribe(
                 (client) -> {
 
-                    if (getMessage().isCleanDisconnect()) {
-                        cleanDisconnect(client);
-                    } else {
-                        dirtyDisconnect(client);
+
+
+                    if (getMessage().isDirtyDisconnect()) {
+                          getWorker().publishWill(client);
                     }
 
+                    logOutSession(client.getSessionId());
+
                 }, (throwable -> {
-                    log.warn(" handle : attempting to disconnect a disconnected person.");
+                    log.warn(" handle : attempting to disconnect errorfull person.", throwable);
                 }));
 
 
     }
 
 
-    public void cleanDisconnect(Client client) {
+    private void logOutSession(Serializable sessionId) {
+       try {
 
-        // Unsubscribe all
-        //Notify the server to remove this client from further sending in requests.
-        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-        disconnectMessage = client.copyTransmissionData(disconnectMessage);
-        pushToServer(disconnectMessage);
+           Subject subject = new Subject.Builder().sessionId(sessionId).buildSubject();
+           subject.logout();
 
-            Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(client);
-
-            subscriptionObservable.subscribe(
-                    subscription -> {
-                        getMessenger().unSubscribe(subscription);
-
-                    }, throwable -> {
-                        // and delete it from our db
-                        getDatastore().removeClient(client);
-
-                    }, () -> {
-                        // and delete it from our db
-                        getDatastore().removeClient(client);
-
-                    }
-            );
+       }catch (Exception e){
+           log.error(" logOutSession : problems during disconnection ", e);
+       }
 
     }
 
 
-    public void dirtyDisconnect(Client client) {
-
-        log.debug(" dirtyDisconnect : client : " + client.getClientId() + " may have lost connectivity.");
-
-        //Mark the client as inactive
-        //Publish will before handling other
-        client.setActive(false);
-
-        getDatastore().saveClient(client);
-
-        Observable<WillMessage> willMessageObservable = client.getWill(getDatastore());
-
-        willMessageObservable.subscribe(
-                willMessage -> {
-
-                    if (null != willMessage && null != willMessage.getPayload()) {
-
-                        PublishMessage willPublishMessage = willMessage.toPublishMessage();
-
-                        willPublishMessage.copyBase(willMessage);
-
-                        try {
-                            client.internalPublishMessage(getMessenger(), willPublishMessage);
-                        } catch (RetriableException e) {
-                            log.error(" dirtyDisconnect : experienced issues publishing will.", e);
-                        }
-                    }
-
-                }
-        );
-
-
-        if (client.isCleanSession()) {
-
-            cleanDisconnect(client);
-
-        }
-    }
 
 }

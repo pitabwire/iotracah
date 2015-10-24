@@ -36,8 +36,8 @@ import org.apache.ignite.cache.CacheMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.config.Ini;
-import org.apache.shiro.mgt.DefaultSecurityManager;
 import org.apache.shiro.mgt.SecurityManager;
+import org.apache.shiro.session.SessionListener;
 import org.apache.shiro.session.mgt.DefaultSessionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,8 @@ import java.io.File;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -74,12 +75,12 @@ public class DefaultSecurityHandler {
 
     private String cacheName;
     private String atomicSequenceName;
-    private IgniteCache<Serializable, IOTSession> datastoreCache;
+    private IgniteCache<Serializable, IOTSession> sessionsCache;
     private IgniteAtomicSequence atomicSequence;
 
     private IOTAccountDatastore iotAccountDatastore;
 
-    private IOTIniSecurityManagerFactory iniSecurityManagerFactory;
+    private Set<SessionListener> sessionListenerList = new HashSet<>();
 
     public DefaultSecurityHandler(){
         this.securityFileName = CONFIGURATION_VALUE_DEFAULT_SECURITY_FILE_NAME;
@@ -117,12 +118,12 @@ public class DefaultSecurityHandler {
         this.atomicSequenceName = atomicSequenceName;
     }
 
-    public IgniteCache<Serializable, IOTSession> getDatastoreCache() {
-        return datastoreCache;
+    public IgniteCache<Serializable, IOTSession> getSessionsCache() {
+        return sessionsCache;
     }
 
-    public void setDatastoreCache(IgniteCache<Serializable, IOTSession> datastoreCache) {
-        this.datastoreCache = datastoreCache;
+    public void setSessionsCache(IgniteCache<Serializable, IOTSession> sessionsCache) {
+        this.sessionsCache = sessionsCache;
     }
 
     public IgniteAtomicSequence getAtomicSequence() {
@@ -139,6 +140,10 @@ public class DefaultSecurityHandler {
 
     public void setIotAccountDatastore(IOTAccountDatastore iotAccountDatastore) {
         this.iotAccountDatastore = iotAccountDatastore;
+    }
+
+    public Set<SessionListener> getSessionListenerList() {
+        return sessionListenerList;
     }
 
     public String getSecurityIniPath() throws UnRetriableException{
@@ -185,7 +190,7 @@ public class DefaultSecurityHandler {
         Ini ini = new Ini();
         ini.loadFromPath(securityFilePath);
 
-        iniSecurityManagerFactory = new IOTIniSecurityManagerFactory(ini, getIotAccountDatastore());
+        IOTIniSecurityManagerFactory iniSecurityManagerFactory = new IOTIniSecurityManagerFactory(ini, getIotAccountDatastore());
 
         SecurityManager securityManager = iniSecurityManagerFactory.getInstance();
 
@@ -195,13 +200,19 @@ public class DefaultSecurityHandler {
             IOTSecurityManager iotSecurityManager = (IOTSecurityManager) securityManager;
             DefaultSessionManager sessionManager = (DefaultSessionManager) iotSecurityManager.getSessionManager();
 
+
             SecurityUtils.setSecurityManager(iotSecurityManager);
 
+
+
             //Create our sessions DAO
-            SessionDAO sessionDAO = new SessionDAO(getDatastoreCache(), getAtomicSequence());
+            SessionDAO sessionDAO = new SessionDAO(getSessionsCache(), getAtomicSequence());
             sessionDAO.init();
             sessionManager.setSessionDAO(sessionDAO);
-            sessionManager.setSessionValidationSchedulerEnabled(false);
+
+            sessionManager.setSessionListeners(getSessionListenerList());
+            sessionManager.setSessionValidationSchedulerEnabled(true);
+            sessionManager.setSessionValidationInterval(1000);
 
 
         }else {
@@ -219,11 +230,11 @@ public class DefaultSecurityHandler {
         clCfg.setName(getCacheName());
         clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
-        //clCfg.setIndexedTypes(Date.class, IOTSession.class);
+        clCfg.setIndexedTypes(String.class, IOTSession.class);
         ignite.createCache(clCfg);
 
         IgniteCache<Serializable, IOTSession> clientIgniteCache = ignite.cache(getCacheName());
-        setDatastoreCache(clientIgniteCache);
+        setSessionsCache(clientIgniteCache);
 
 
         long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);

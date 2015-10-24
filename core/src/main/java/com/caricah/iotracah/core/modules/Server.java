@@ -125,8 +125,7 @@ public abstract class Server<T> extends IOTBaseHandler {
 
     public void dirtyDisconnect(Serializable connectionId, Serializable sessionId) {
 
-        //TODO: performs a dirty disconnection for our message.
-        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
 
         internalPushToWorker(connectionId, sessionId, disconnectMessage);
 

@@ -57,14 +57,71 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
     }
 
 
-    public Observable<SubscriptionFilter> getTopicFilterTree(String partition, List<String> topicFilterTreeRoute) {
+    public Observable<SubscriptionFilter> matchTopicFilterTree(String partition, List<String> topicNavigationRoute) {
+
 
         return Observable.create(observer -> {
 
-            log.info(" getTopicFilterTree : **************************************************************");
-            log.info(" getTopicFilterTree :     Topic filter tree route {}   ", topicFilterTreeRoute);
-            log.info(" getTopicFilterTree : **************************************************************");
+            List<Long> collectingParentIdList = new ArrayList<>();
+            collectingParentIdList.add(0l);
 
+            ListIterator<String> pathIterator = topicNavigationRoute.listIterator();
+
+            try {
+
+                while (pathIterator.hasNext()) {
+
+                    String name = pathIterator.next();
+
+                    List<Long> parentIdList = new ArrayList<>(collectingParentIdList);
+                    collectingParentIdList.clear();
+
+                    for (Long parentId : parentIdList) {
+
+
+                            String  query = "partition = ? AND parentId = ? AND name IN (?, ?, ?) ";
+                            Object[]  params = new Object[]{partition, parentId, name, Constant.MULTI_LEVEL_WILDCARD, Constant.SINGLE_LEVEL_WILDCARD};
+
+                            getByQuery(SubscriptionFilter.class, query, params)
+                                    .toBlocking().forEach(subscriptionFilter -> {
+
+                                if (pathIterator.hasNext()) {
+
+                                    if (Constant.MULTI_LEVEL_WILDCARD.equals(subscriptionFilter.getName())) {
+                                        observer.onNext(subscriptionFilter);
+                                    } else {
+                                        collectingParentIdList.add(subscriptionFilter.getId());
+                                    }
+
+
+                                } else {
+                                    observer.onNext(subscriptionFilter);
+                                }
+
+                            });
+
+                        }
+                    }
+
+
+
+                observer.onCompleted();
+
+
+            } catch (Exception e) {
+                observer.onError(e);
+            }
+
+        });
+
+
+
+    }
+
+
+    public Observable<SubscriptionFilter> getTopicFilterTree(String partition, List<String> topicFilterTreeRoute) {
+
+        return Observable.create(observer -> {
 
             List<Long> collectingParentIdList = new ArrayList<>();
             collectingParentIdList.add(0l);
@@ -212,6 +269,5 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                 }
         );
     }
-
 
 }

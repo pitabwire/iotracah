@@ -187,4 +187,14 @@ public final class ConnectMessage extends IOTMessage {
         this.clientId = clientId;
     }
 
+
+    @Override
+    public String toString() {
+        return getClass().getName() + '['
+                + "messageId=" + getMessageId() +","
+                + "username=" + getUserName() +","
+                + "clientId=" + getClientId() +","
+                + "isCleanSession=" + isCleanSession() +","
+                +  ']';
+    }
 }

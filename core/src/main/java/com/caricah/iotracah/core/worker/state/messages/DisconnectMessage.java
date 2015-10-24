@@ -30,24 +30,24 @@ public final class DisconnectMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "DISCONNECT";
 
-    private final boolean cleanDisconnect;
+    private final boolean dirtyDisconnect;
 
-    public DisconnectMessage(boolean cleanDisconnect) {
+    public DisconnectMessage(boolean dirtyDisconnect) {
 
         setMessageType(MESSAGE_TYPE);
-        this.cleanDisconnect = cleanDisconnect;
+        this.dirtyDisconnect = dirtyDisconnect;
     }
 
 
 
-    public static DisconnectMessage from( boolean isCleanDisconnect) {
-        return new DisconnectMessage(isCleanDisconnect);
+    public static DisconnectMessage from( boolean dirtyDisconnect) {
+        return new DisconnectMessage(dirtyDisconnect);
 
 
     }
 
-    public boolean isCleanDisconnect() {
-        return cleanDisconnect;
+    public boolean isDirtyDisconnect() {
+        return dirtyDisconnect;
     }
 
 }

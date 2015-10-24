@@ -177,7 +177,7 @@ public abstract class RequestHandler<T extends IOTMessage> {
         log.warn(" disconnectDueToError : System experienced the error ", e);
 
         //Notify the server to remove this client from further sending in requests.
-        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
         disconnectMessage.copyBase(getMessage());
 
         DisconnectHandler handler = new DisconnectHandler(disconnectMessage);

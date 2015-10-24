@@ -21,18 +21,31 @@
 package com.caricah.iotracah.core.worker;
 
 import com.caricah.iotracah.core.handlers.*;
+import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
+import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.core.worker.state.models.Subscription;
 import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.security.IOTSecurityManager;
+import com.caricah.iotracah.security.realm.auth.IdConstruct;
 import com.mashape.unirest.http.Unirest;
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.lang.StringUtils;
+import org.apache.shiro.authz.Permission;
+import org.apache.shiro.authz.UnauthenticatedException;
+import org.apache.shiro.session.Session;
+import org.apache.shiro.subject.PrincipalCollection;
+import rx.Observable;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -219,5 +232,96 @@ public class DefaultWorker extends Worker {
         return requestHandler;
     }
 
+
+    @Override
+    public void onStart(Session session) {
+
+    }
+
+    @Override
+    public void onStop(Session session) {
+        postSessionCleanUp(session, false);
+    }
+
+    @Override
+    public void onExpiration(Session session) {
+
+
+        log.debug(" onExpiration : -----------------------------------------------------");
+        log.debug(" onExpiration : -------  We have an expired session {} -------", session);
+        log.debug(" onExpiration : -----------------------------------------------------");
+
+
+        postSessionCleanUp(session, true);
+    }
+
+
+
+    private void postSessionCleanUp(Session session, boolean isExpiry){
+
+        PrincipalCollection principales = (PrincipalCollection) session.getAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY);
+        IdConstruct construct = (IdConstruct) principales.getPrimaryPrincipal();
+
+        String partition = construct.getPartition();
+        String session_client_id = construct.getClientId();
+
+        Observable<Client> clientObservable = getDatastore().getClient(partition, session_client_id);
+
+        clientObservable.subscribe(client -> {
+
+            if(isExpiry){
+                log.debug(" postSessionCleanUp : ---------------- We are to publish a will man for {}", client);
+                publishWill(client);
+            }
+
+
+            //Notify the server to remove this client from further sending in requests.
+            DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+            disconnectMessage = client.copyTransmissionData(disconnectMessage);
+            pushToServer(disconnectMessage);
+
+
+            // Unsubscribe all
+
+            if(client.isCleanSession()) {
+                Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(client);
+
+                subscriptionObservable.subscribe(
+                        subscription ->
+                                getMessenger().unSubscribe(subscription)
+
+                        , throwable -> log.error(" postSessionCleanUp : problems while unsubscribing", throwable)
+
+                        , () -> {
+
+                            Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(client);
+                            publishMessageObservable.subscribe(
+                                    getDatastore()::removeMessage,
+                                    throwable ->{
+                                        log.error(" postSessionCleanUp : problems while unsubscribing", throwable);
+                                        // any way still delete it from our db
+                                        getDatastore().removeClient(client);
+                                    },
+                                    () -> {
+                                        // and delete it from our db
+                                        getDatastore().removeClient(client);
+                                    });
+
+                        }
+                );
+            }else{
+                //Mark the client as inactive
+                client.setActive(false);
+                client.setSessionId(null);
+                getDatastore().saveClient(client);
+
+            }
+
+
+
+        }, throwable -> log.error(" postSessionCleanUp : problems obtaining user for session {}", session));
+
+
+    }
 
 }
