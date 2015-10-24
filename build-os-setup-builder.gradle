@@ -20,22 +20,11 @@ import org.apache.tools.ant.filters.ReplaceTokens
  *
  */
 
-task processScripts(type: Copy) {
-
-    packaging.put("build.temporary.scripts.assembly.dir", "$buildDir/tmp/script")
-
-    from "distribution/src/packaging/scripts/"
-    into packaging."build.temporary.scripts.assembly.dir"
-    fileMode = 0755
-    filter(ReplaceTokens, tokens: packaging)
-
-}
 
 
 setupBuilder {
     vendor = 'caricah'
-    application = "internet of tracah"
-    baseName = project.name
+    application = project.name
     version = project.version
     description = packaging."packaging.project.description"
     licenseFile = 'distribution/copyright'
@@ -63,19 +52,20 @@ msi {
 
 deb {
 
+    doFirst {
+        packaging.load(new FileInputStream("distribution/deb/packaging.properties"))
+        tasks.processScripts.execute()
+    }
+
+
     section 'web'
     depends 'default-jre | default-jdk | openjdk-8-jdk | openjdk-8-jre'
     homepage 'http://io.tracah.com'
     maintainerEmail 'bwire@caricah.com'
-    preinst []
-    //changes 'distribution/deb/changelog.Debian'
-
-    from('distribution/deb/') {
-
-        include 'changelog.Debian.gz'
-        fileMode = 0644
-        into '../doc/iotracah/'
-    }
+    preinst = packaging."build.temporary.scripts.assembly.dir"+"/preinst"
+    postinst = packaging."build.temporary.scripts.assembly.dir"+"/postinst"
+    prerm = packaging."build.temporary.scripts.assembly.dir"+"/prerm"
+    postrm = packaging."build.temporary.scripts.assembly.dir"+"/postrm"
 
     from('distribution/deb/lintian/') {
 
@@ -87,6 +77,11 @@ deb {
 
 
 rpm {
+
+    doFirst {
+        packaging.load(new FileInputStream("distribution/deb/packaging.properties"))
+        tasks.processScripts.execute()
+    }
 
     section 'web'
     depends 'default-jre | default-jdk | openjdk-8-jdk | openjdk-8-jre'

@@ -209,9 +209,6 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
     @Override
     public Collection<Session> getActiveSessions() {
 
-
-
-
         try {
 
             String query = " expiryTimestamp < ? LIMIT ?";

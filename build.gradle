@@ -22,7 +22,7 @@
 plugins {
     id "nebula.os-package" version "2.2.6"
     id 'edu.sc.seis.launch4j' version '1.5.1'
-//    id "de.inetsoftware.setupbuilder" version "1.4.7"
+    id "de.inetsoftware.setupbuilder" version "1.4.7"
 
 }
 
@@ -99,7 +99,7 @@ packaging.setProperty("project.name",project.name)
 packaging.setProperty("project.version",project.version)
 packaging.load(new FileInputStream("distribution/src/packaging/packaging.properties"))
 
-//apply from: 'build-os-setup-builder.gradle'
+apply from: 'build-os-setup-builder.gradle'
 apply from: 'build-os-linux.gradle'
 apply from: 'build-os-windows.gradle'
 
