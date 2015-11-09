@@ -97,7 +97,7 @@ export IOT_HEAP_SIZE
 export IOT_HEAP_NEWSIZE
 export IOT_DIRECT_SIZE
 export IOT_JAVA_OPTS
-export ES_GC_LOG_FILE
+export IOT_GC_LOG_FILE
 export JAVA_HOME
 
 # Check DAEMON exists

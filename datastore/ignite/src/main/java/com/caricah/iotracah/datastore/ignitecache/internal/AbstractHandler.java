@@ -28,7 +28,11 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
 import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.eviction.EvictableEntry;
+import org.apache.ignite.cache.eviction.EvictionPolicy;
+import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.cache.query.SqlQuery;
@@ -95,6 +99,12 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         clCfg.setCacheMode(CacheMode.PARTITIONED);
 
         clCfg = setIndexData(t, clCfg);
+        clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
+
+        LruEvictionPolicy lruEvictionPolicy = new LruEvictionPolicy(5170000);
+        clCfg.setEvictionPolicy(lruEvictionPolicy);
+
+        clCfg.setSwapEnabled(true);
 
         ignite.createCache(clCfg);
         IgniteCache clientIgniteCache = ignite.cache(getCacheName()).withAsync();

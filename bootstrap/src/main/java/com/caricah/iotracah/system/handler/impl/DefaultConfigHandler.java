@@ -49,7 +49,7 @@ public class DefaultConfigHandler implements ConfigHandler {
     public DefaultConfigHandler(){
 
         //Try to use the system set property.
-        this( System.getProperty("iotracah.default.path.conf") );
+        this( System.getProperty("iotracah.default.path.conf", DEFAULT_CONFIG_DIRECTORY ) );
 
     }
     public DefaultConfigHandler(String configurationDirectory){
@@ -80,9 +80,8 @@ public class DefaultConfigHandler implements ConfigHandler {
         File configFile = new File(directory+File.separator+configFileName);
         if(configFile.exists()){
 
-                log.debug(" getConfigurationFileInDirectory : matched file {} in config directory.", configFileName);
-
-                return configFile.toPath();
+            log.debug(" getConfigurationFileInDirectory : matched file {} in config directory {}.", configFileName, directory);
+            return configFile.toPath();
 
         }
         return null;

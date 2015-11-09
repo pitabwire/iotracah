@@ -32,7 +32,9 @@ import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
 import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.config.Ini;
@@ -231,7 +233,14 @@ public class DefaultSecurityHandler {
         clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
         clCfg.setIndexedTypes(String.class, IOTSession.class);
+        clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
+
+        LruEvictionPolicy lruEvictionPolicy = new LruEvictionPolicy(5170000);
+        clCfg.setEvictionPolicy(lruEvictionPolicy);
+
+        clCfg.setSwapEnabled(true);
         ignite.createCache(clCfg);
+
 
         IgniteCache<Serializable, IOTSession> clientIgniteCache = ignite.cache(getCacheName());
         setSessionsCache(clientIgniteCache);

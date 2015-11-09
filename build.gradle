@@ -21,18 +21,18 @@
 
 plugins {
     id "nebula.os-package" version "2.2.6"
-    id 'edu.sc.seis.launch4j' version '1.5.1'
-    id "de.inetsoftware.setupbuilder" version "1.4.7"
 
 }
 
 
 apply plugin: 'application'
 apply plugin: 'java'
+apply plugin: "nebula.os-package"
+apply plugin: "distribution"
 
 mainClassName = 'com.caricah.iotracah.main.runner.IOTracah'
 
-version '1.0-SNAPSHOT'
+version '1.0.SNAPSHOT'
 
 jar {
     manifest {
@@ -92,17 +92,7 @@ allprojects {
     }
 }
 
-
-ext.packaging = new Properties()
-packaging.setProperty("project.build.finalName","$project.name-$project.version")
-packaging.setProperty("project.name",project.name)
-packaging.setProperty("project.version",project.version)
-packaging.load(new FileInputStream("distribution/src/packaging/packaging.properties"))
-
-apply from: 'build-os-setup-builder.gradle'
-apply from: 'build-os-linux.gradle'
-apply from: 'build-os-windows.gradle'
-
+apply from: 'package-utils.gradle'
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.7' //version required

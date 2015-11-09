@@ -55,23 +55,20 @@ esac
 
 if [ "x$IS_UPGRADE" != "xtrue" ]; then
     if command -v systemctl >/dev/null; then
-        echo "### NOT starting on installation, please execute the following statements to configure iotracah service to start automatically using systemd"
-        echo " sudo systemctl daemon-reload"
-        echo " sudo systemctl enable iotracah.service"
-        echo "### You can start iotracah service by executing"
-        echo " sudo systemctl start iotracah.service"
+        echo "### Configuring and installing iotracah service to start automatically on installation via systemd"
+        systemctl daemon-reload
+        systemctl enable iotracah.service
+        systemctl start iotracah.service
 
     elif command -v chkconfig >/dev/null; then
-        echo "### NOT starting on installation, please execute the following statements to configure iotracah service to start automatically using chkconfig"
-        echo " sudo chkconfig --add iotracah"
-        echo "### You can start iotracah service by executing"
-        echo " sudo service iotracah start"
+        echo "### Configuring and installing iotracah service to start automatically on installation via chkconfig"
+        chkconfig --add iotracah
+        service iotracah start
 
     elif command -v update-rc.d >/dev/null; then
-        echo "### NOT starting on installation, please execute the following statements to configure iotracah service to start automatically using chkconfig"
-        echo " sudo update-rc.d iotracah defaults 95 10"
-        echo "### You can start iotracah service by executing"
-        echo " sudo /etc/init.d/iotracah start"
+        echo "### Configuring and installing iotracah service to start automatically on installation via update-rc.d"
+        update-rc.d iotracah defaults 95 10
+        /etc/init.d/iotracah start
     fi
 elif [ "$RESTART_ON_UPGRADE" = "true" ]; then
 

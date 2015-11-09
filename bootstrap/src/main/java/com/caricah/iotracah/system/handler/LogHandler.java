@@ -23,6 +23,8 @@ package com.caricah.iotracah.system.handler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
+import java.io.File;
+
 /**
  *
  * The log handler allows the system to configure the logging system.
@@ -37,6 +39,8 @@ public interface LogHandler {
 
     String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY = "system.config.logging.log.config.directory";
     String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
+
+    String DEFAULT_CONFIG_DIRECTORY = ".."+ File.separator+"conf";
 
 
 

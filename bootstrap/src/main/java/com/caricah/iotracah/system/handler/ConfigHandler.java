@@ -23,6 +23,8 @@ package com.caricah.iotracah.system.handler;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
+import java.io.File;
+
 /**
  * Standard way that implementations providing configurations
  * Work. The system will supplies whatever configurations it already has and
@@ -36,7 +38,9 @@ import org.apache.commons.configuration.Configuration;
 public interface ConfigHandler {
 
 
-    public static final String SYSTEM_CONFIG_CONFIGURATION_FILE_NAME_DEFAULT_VALUE = "iotracah.properties";
+    String SYSTEM_CONFIG_CONFIGURATION_FILE_NAME_DEFAULT_VALUE = "iotracah.properties";
+
+    String DEFAULT_CONFIG_DIRECTORY = ".."+ File.separator+"conf";
 
     /**
      *

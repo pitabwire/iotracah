@@ -46,13 +46,13 @@ public class DefaultLogHandler implements LogHandler {
 
 
             String logsConfigFile = SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE;
-            String logsConfigDirectory = System.getProperty("iotracah.default.path.conf");
+            String logsConfigDirectory = System.getProperty("iotracah.default.path.conf", DEFAULT_CONFIG_DIRECTORY);
 
             if (null != configuration) {
                 logsConfigFile = configuration.getString(SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE, SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE);
                 logsConfigDirectory = configuration.getString(SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY, logsConfigDirectory);
-
             }
+
             String logsConfigFilePath = logsConfigDirectory + File.separator + logsConfigFile;
 
         log.debug(" configure : path to logging configs is {} .", logsConfigFilePath);

@@ -1,0 +1,162 @@
+/*
+ *
+ * Copyright (c) 2015 Caricah <info@caricah.com>.
+ *
+ * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License. You may obtain a copy
+ *  of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software distributed under
+ *  the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS
+ *  OF ANY  KIND, either express or implied.  See the License for the specific language
+ *  governing permissions and limitations under the License.
+ *
+ *
+ *
+ *
+ */
+
+import org.apache.tools.ant.filters.*
+
+def rpm_packaging = new Properties()
+
+
+task processRpmScripts(type: Copy) {
+
+    rpm_packaging.setProperty("project.build.finalName","$project.name-$project.version")
+    rpm_packaging.setProperty("project.name",project.name)
+    rpm_packaging.setProperty("project.version",project.version)
+    rpm_packaging.load(new FileInputStream("distribution/src/packaging/packaging.properties"))
+    rpm_packaging.load(new FileInputStream("distribution/rpm/packaging.properties"))
+
+    rpm_packaging.put("build.temporary.scripts.assembly.dir", "$buildDir/tmp/script")
+
+    from "distribution/src/packaging/scripts/"
+    into rpm_packaging."build.temporary.scripts.assembly.dir"
+    fileMode = 0755
+    filter(ReplaceTokens, tokens: rpm_packaging)
+
+}
+
+
+
+buildRpm {
+
+
+    packageName 'iotracah'
+    os LINUX
+    maintainer 'Bwire J. Peter <info@caricah.com>'
+    priority 'optional'
+    url 'http://io.tracah.com'
+    requires('adduser')
+    permissionGroup 'root'
+    user 'root'
+    license 'Apache License'
+    packageGroup 'Applications/Productivity'
+    release getRevision()
+
+    packageDescription rpm_packaging."packaging.project.description"
+    summary rpm_packaging."packaging.project.summary"
+
+    into (rpm_packaging."packaging.iotracah.home.dir") {
+
+        from(jar.outputs.files) {
+            into 'lib'
+            fileMode = 0644
+        }
+
+        from(configurations.runtime) {
+            into 'lib'
+            fileMode = 0644
+        }
+
+        from('./'){
+            include 'LICENSE.txt'
+            fileMode = 0644
+            fileType LICENSE
+        }
+
+        from('./'){
+            include 'NOTICE.txt'
+            fileMode = 0644
+            fileType DOC
+        }
+
+        from('./'){
+            include 'README.md'
+            fileMode = 0644
+            fileType DOC
+        }
+
+
+        from('distribution/src/resources/bin') {
+
+            into 'bin'
+            fileMode 0755
+            exclude '*.bat'
+            exclude '*.exe'
+
+            filter(ReplaceTokens, tokens: rpm_packaging)
+        }
+
+        into(rpm_packaging."packaging.iotracah.conf.dir"){
+            from('distribution/src/resources/config') {
+                fileType CONFIG | NOREPLACE
+                filter(ReplaceTokens, tokens: rpm_packaging)
+                fileMode = 0644
+            }
+        }
+
+        //Add systemd service.
+        into(rpm_packaging."packaging.iotracah.systemd.dir"){
+            from('distribution/src/packaging/systemd/') {
+                include('iotracah.service')
+                filter(ReplaceTokens, tokens: rpm_packaging)
+                fileMode = 0644
+            }
+        }
+
+        //Add systemd/sysctl.d configuration file.
+        into(rpm_packaging."packaging.iotracah.systemd.sysctl.dir"){
+            from('distribution/src/packaging/systemd/sysctl') {
+                include('iotracah.conf')
+                filter(ReplaceTokens, tokens: rpm_packaging)
+                fileMode = 0644
+            }
+        }
+
+        //Adds systemd/tmpfiles.d configuration file.
+        into(rpm_packaging."packaging.iotracah.tmpfilesd.dir"){
+            from('distribution/src/packaging/systemd/') {
+                include('tmp_iotracah.conf')
+                rename('tmp_iotracah.conf', 'iotracah.conf')
+                filter(ReplaceTokens, tokens: rpm_packaging)
+                fileMode = 0644
+            }
+        }
+
+
+    }
+
+    preInstall file(rpm_packaging."build.temporary.scripts.assembly.dir"+"/preinst")
+    postInstall file(rpm_packaging."build.temporary.scripts.assembly.dir"+"/postinst")
+    preUninstall file(rpm_packaging."build.temporary.scripts.assembly.dir"+"/prerm")
+    postUninstall file(rpm_packaging."build.temporary.scripts.assembly.dir"+"/postrm")
+
+    configurationFile(
+            rpm_packaging."packaging.iotracah.conf.dir"+'/iotracah.properties\n' +
+            rpm_packaging."packaging.iotracah.conf.dir"+'/log4j.properties\n' +
+            rpm_packaging."packaging.iotracah.conf.dir"+'/security.ini\n' +
+            rpm_packaging."packaging.iotracah.int.d.dir"+'/iotracah')
+
+    from('distribution/rpm/init.d/'){
+        into rpm_packaging."packaging.iotracah.int.d.dir"
+        include 'iotracah'
+        fileMode = 0755
+        filter(ReplaceTokens, tokens: rpm_packaging)
+    }
+}.dependsOn processRpmScripts
+
+
