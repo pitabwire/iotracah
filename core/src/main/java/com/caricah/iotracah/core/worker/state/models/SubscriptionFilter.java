@@ -24,26 +24,24 @@ import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
-import java.io.Serializable;
+import java.io.*;
+import java.util.Objects;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 6/30/15
  */
-public class SubscriptionFilter implements Serializable, IdKeyComposer {
+public class SubscriptionFilter implements IdKeyComposer, Externalizable {
 
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_parentid_name_idx", order = 0)
     })
     private String partition;
 
-    @QuerySqlField(index = true)
-    private long id;
-
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_parentid_name_idx", order = 2)
     })
-    private long parentId;
+    private String parentId;
 
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_parentid_name_idx", order = 3)
@@ -61,19 +59,11 @@ public class SubscriptionFilter implements Serializable, IdKeyComposer {
         this.partition = partition;
     }
 
-    public long getId() {
-        return id;
-    }
-
-    public void setId(long id) {
-        this.id = id;
-    }
-
-    public long getParentId() {
+    public String getParentId() {
         return parentId;
     }
 
-    public void setParentId(long parentId) {
+    public void setParentId(String parentId) {
         this.parentId = parentId;
     }
 
@@ -96,16 +86,33 @@ public class SubscriptionFilter implements Serializable, IdKeyComposer {
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
 
-        if(0 == getId()){
-            throw new UnRetriableException(" id has to be set before you use the subscription filter");
+        if(Objects.isNull(getName()) || Objects.isNull(getParentId()) ){
+            throw new UnRetriableException(" parent id and name have to be set before you use the subscription filter");
         }
 
-        return getId();
+        return getParentId()+":"+getName();
     }
 
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " [ " + " partition = " + getPartition() + "," + " parent = " + getParentId() + "," + " FullTree = " + getFullTreeName() + "," + " ]";
+        return getClass().getSimpleName() + " [ " + " partition = " + getPartition() + ", parent = " + getParentId() + ", name = " + getName() + ", FullTree = " + getFullTreeName() + "," + " ]";
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getParentId());
+        objectOutput.writeObject(getName());
+        objectOutput.writeObject(getFullTreeName());
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        setPartition((String) objectInput.readObject());
+        setParentId((String) objectInput.readObject());
+        setName((String) objectInput.readObject());
+        setFullTreeName((String) objectInput.readObject());
     }
 }

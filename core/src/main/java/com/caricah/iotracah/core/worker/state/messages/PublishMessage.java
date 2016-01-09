@@ -25,9 +25,7 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.util.Arrays;
@@ -256,4 +254,40 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
                 +  ']';
     }
 
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+        objectOutput.writeObject(getClientId());
+        objectOutput.writeLong(getId());
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getPayload());
+        objectOutput.writeInt(getQos());
+        objectOutput.writeObject(getTopic());
+        objectOutput.writeBoolean(isDup());
+        objectOutput.writeBoolean(isInBound());
+        objectOutput.writeBoolean(isReleased());
+        objectOutput.writeBoolean(isRetain());
+
+        super.writeExternal(objectOutput);
+
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setClientId((String) objectInput.readObject());
+        setId(objectInput.readLong());
+        setPartition((String) objectInput.readObject());
+        setPayload((Serializable) objectInput.readObject());
+        setQos(objectInput.readInt());
+        setTopic((String) objectInput.readObject());
+        setDup(objectInput.readBoolean());
+        setInBound(objectInput.readBoolean());
+        setReleased(objectInput.readBoolean());
+        setRetain(objectInput.readBoolean());
+
+        super.readExternal(objectInput);
+    }
 }

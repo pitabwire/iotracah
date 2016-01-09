@@ -1,0 +1,267 @@
+swagger: '2.0'
+info:
+  version: 0.0.0
+  title: 'iotracah'
+  description: |
+    A distributed, fault tolerant mqtt v3.1/v3.1.1 broker for the cloud.
+    
+    iotracah delivers the following:
+    
+        - An mqtt v3.1.1 compliant broker
+        - 100% distributed from the core
+        - Highly fault tolerant
+        - Highly scalable 
+        - Of course its also open source 
+        
+      
+      
+  termsOfService: http://io.tracah.com/terms/
+  contact:
+    name: iotracah support team
+    url: http://io.tracah.com/support
+    email: info@caricah.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+schemes: ['http', 'https']
+consumes: ['application/json']
+produces: ['application/json']
+definitions:
+  Connect:
+    type: object
+    properties:
+      username:
+        type: string
+        description: unique identifier for a client, usually it contains partition data and hyphen appended specific user data. So one may decide to set a username for servers, another for monitoring users and another for client devices accessing their service. 
+      password:
+        description: Secret key tied to a particular user in the username field. 
+        type: string
+      clientId:
+        description: A unique identifier according to the mqtt spec that uniquely identifies a client's state. Since http clients can only open dirty  sessions, the client id must be specified. 
+        type: string
+      keepAliveTime:
+        description: The time iotracah allows clients to be inactive before disconnection. The default if not specified is `0` meaning the client is assigned the maximum possible time to disconnect when inactive.
+        type: integer
+  
+  
+  ConnectAck:
+    type: object
+    properties:
+      sessionId:
+        description: A unique identifier for the session created upon successfull athentication. Successive interactions are expected to contain this string.
+        type: string
+      authKey:
+        description: A dynamic secret that adds an extra layer of security to ensure only clients that created the session are the ones that use the session. Successive interactions are expected to contain this string.
+        type: string
+      message:
+        description: A short string displaying the state of the connect request.
+        type: string
+
+  DisConnect:
+    type: object
+    properties:
+      sessionId:
+        description: Identifier for the active session returned during the connect acknowledgment phase.
+        type: string
+      authKey:
+        description: Secret tied to the session for security. Returned during connect acknowledgment phase.
+        type: string
+
+  DisConnectAck:
+    type: object
+    properties:
+      sessionId:
+        type: string
+      message:
+        type: string
+
+  TopicQos:
+    type: object
+    properties:
+      topic: 
+        type: string
+      qos:
+        type: integer
+
+  Publish:
+    type: object
+    properties:
+      sessionId:
+        description: Identifier for the active session returned during the connect acknowledgment phase.
+        type: string
+      authKey:
+        description: Secret tied to the session for security. Returned during connect acknowledgment phase.
+        type: string
+      topic:
+        description: The filter used to route appropriate messages to clients.
+        type: string
+      payload:
+        description: Application message sent by the client or server to accomplish a communication task.
+        type: string
+      messageId:
+        description: Unique identifier for application messages under transit.
+        type: integer
+      dup:
+        description: A parameter to show whether the message is being retried or not.
+        type: boolean
+      retain:
+        description: A parameter to instruct iotracah to retain this message on the subscription tree.
+        type: boolean
+      
+      
+              
+  PublishAck:
+    type: object
+    properties:
+      messageId:
+        description: Unique identifier for application messages under transit.
+        type: integer
+      qos:
+        description: Quality of service message processed.
+        type: integer
+      message:
+        description: Simple prose on state of message processing.
+        type: string
+
+  Subscribe:
+    type: object
+    properties:
+      sessionId:
+        description: Identifier for the active session returned during the connect acknowledgment phase.
+        type: string
+      authKey:
+        description: Secret tied to the session for security. Returned during connect acknowledgment phase.
+        type: string
+      recipientUrl:
+        description: The url that will receive messages matching topics being subscribed to.
+        type: string
+      topicQosList:
+        description: List of topics the their corresponding quality of services. 
+        type: array
+        items: 
+          $ref: '#/definitions/TopicQos'
+              
+  SubscribeAck:
+    type: object
+    properties:
+      message:
+        description: Short information showing state of subscription
+        type: string
+      grantedQos:
+        description: List of qos granted to the corresponding items in the subsciption phase.
+        type: array
+        items:
+          type: integer
+      
+  UnSubscribe:
+    type: object
+    properties:
+      sessionId:
+        description: Identifier for the active session returned during the connect acknowledgment phase.
+        type: string
+      authKey:
+        description: Secret tied to the session for security. Returned during connect acknowledgment phase.
+        type: string
+      topicList:
+        description: List of topics the client should unsubscribe from.
+        type: array
+        items: 
+          type: string
+              
+  
+  UnSubscribeAck:
+    type: object
+    properties:
+      message:
+        description: Short text describing the status of the subscription
+        type: string
+
+paths:
+  '/connect':
+    post:
+      description: |
+        Clients express intent to interact with iotracah by sending this initial request. Upon successfull authentication by the server,  appropriate parameters required by the clients for successive interactions can be found in the response. These include `sessionId` and `authKey`. The message parameter in the json response shows a description of what happened.
+      parameters:
+        - name: payload
+          in: body
+          description: Payload used by the client to authenticate and register interest in interacting with server.
+          schema:
+            $ref: '#/definitions/Connect'
+      responses:
+        '200':
+          description: Response or outcome of the connect processing.
+          schema:
+            $ref: '#/definitions/ConnectAck'
+
+  '/disconnect':
+    post:
+      description: |
+        Connected clients can stop their interaction with iotracah at will. There are two scenarios on which iotracah stops a connected client. 
+          
+            - Client sends a disconnect packet
+            - Client is inactive beyond their maximum allowed keepalive time. 
+            
+            
+      parameters:
+        - name: payload
+          in: body
+          description: Payload used by the client to disconnect from the server.
+          schema:
+            $ref: '#/definitions/DisConnect'
+      responses:
+        '200':
+          description: Response or outcome of the disconnect processing.
+          schema:
+            $ref: '#/definitions/DisConnectAck'
+          
+  '/publish':
+    post:
+      description: |
+        A client sends this packet/payload to publish a message to a topic within iotracah. iotracah in turn  takes the responsibility of publishing it to the appropriate subscribers. The quality of service specified by the client allows it to send extra handshake messages just to ensure the message was actually received on the other end. However for http clients that use this api, they can only send qos 1 messages. It does not make sense to use qos 0 while we think its not necessary to support qos 2 for api users. 
+        
+      parameters:
+        - name: payload
+          in: body
+          description: Payload client uses to send application messages.   
+          schema:
+            $ref: '#/definitions/Publish'
+      responses:
+        '200':
+          description: Successful reception of message by iotracah
+          schema:
+            $ref: '#/definitions/PublishAck'
+                     
+  '/subscribe':
+    post:
+      description: |
+        A client  registers its interest to receive messages published on a topic by subscribing with the `topic name` and highest `quality of service` to receive messages. iotracah has the liberty to grant the requested quality of service or lower. However normally it should grant the requested qos provided the client has the correct authorization. The subscribing client needs to further provide a url that iotracah can send matching messages to it. The client can subscribe to one or more topics.
+        
+      parameters:
+        - name: payload
+          in: body
+          description: Payload client uses to register interest in receiving messages matching topic. The client sets the url to receive messages on too. 
+          schema:
+            $ref: '#/definitions/Subscribe'
+      responses:
+        '200':
+          description: Successful response
+          schema:
+            $ref: '#/definitions/SubscribeAck'
+            
+  '/unsubscribe':
+    post:
+      description: |
+        Client deregisters their interest in receiving messages matching a topic by sending this packet. The unsubscription can be for one or more topic. Successfull unsubscription is when iotracah manages to remove all specified interests of the client on iotracah's subscription matrix. The subscription tree remains with all the branches after removal of client's interest. If the client has deregistered all its subscriptions it does not stop the connection. Since it can still send publish messages or later perform other subscriptions.
+        
+      parameters:
+        - name: payload
+          in: body
+          description: Payload client uses to deregister interest in receiving messages matching a list of topics. 
+          schema:
+            $ref: '#/definitions/UnSubscribe'
+      responses:
+        '200':
+          description: Successful unsubscription response
+          schema:
+            $ref: '#/definitions/UnSubscribeAck'
+                         

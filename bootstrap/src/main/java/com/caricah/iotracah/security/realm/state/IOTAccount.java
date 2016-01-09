@@ -32,7 +32,7 @@ import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.util.ByteSource;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
@@ -42,7 +42,7 @@ import java.util.Set;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
-public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComposer, Serializable {
+public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComposer, Externalizable {
 
 
     /*--------------------------------------------
@@ -165,6 +165,11 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
     @Override
     public ByteSource getCredentialsSalt() {
         return this.credentialsSalt;
+    }
+
+
+    public void setCredentialsSalt(ByteSource credentialsSalt) {
+        this.credentialsSalt = credentialsSalt;
     }
 
     /**
@@ -361,5 +366,27 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
 
     public static String createCacheKey(String partition, String username){
         return String.format("%s-%s",partition, username);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+            objectOutput.writeObject(getPrincipals());
+            objectOutput.writeObject(getCredentials());
+            objectOutput.writeObject(getCredentialsSalt());
+            objectOutput.writeBoolean(isLocked());
+            objectOutput.writeBoolean(isCredentialsExpired());
+            objectOutput.writeObject(getRoles());
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        principals = (PrincipalCollection) objectInput.readObject();
+        setCredentials(objectInput.readObject());
+        setCredentialsSalt((ByteSource) objectInput.readObject());
+        setLocked(objectInput.readBoolean());
+        setCredentialsExpired(objectInput.readBoolean());
+        setRoles((Set<String>) objectInput.readObject());
     }
 }

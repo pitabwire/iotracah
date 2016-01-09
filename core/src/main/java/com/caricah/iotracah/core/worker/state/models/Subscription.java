@@ -24,13 +24,13 @@ import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
-import java.io.Serializable;
+import java.io.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/20/15
  */
-public class Subscription implements IdKeyComposer, Serializable {
+public class Subscription implements IdKeyComposer, Externalizable {
 
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_topicfilterkey_qos_idx", order = 0),
@@ -41,7 +41,7 @@ public class Subscription implements IdKeyComposer, Serializable {
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_topicfilterkey_qos_idx", order = 2)
     })
-    private long topicFilterKey;
+    private String topicFilterKey;
 
     @QuerySqlField(orderedGroups={@QuerySqlField.Group(
             name = "partition_topicfilterkey_qos_idx", order = 5)})
@@ -63,11 +63,11 @@ public class Subscription implements IdKeyComposer, Serializable {
         this.partition = partition;
     }
 
-    public long getTopicFilterKey() {
+    public String getTopicFilterKey() {
         return topicFilterKey;
     }
 
-    public void setTopicFilterKey(long topicFilterKey) {
+    public void setTopicFilterKey(String topicFilterKey) {
         this.topicFilterKey = topicFilterKey;
     }
 
@@ -90,12 +90,30 @@ public class Subscription implements IdKeyComposer, Serializable {
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
 
-        return String.format("%s:%s-%d", getPartition(), getClientId(), getTopicFilterKey());
+        return String.format("%s:%s-%s", getPartition(), getClientId(), getTopicFilterKey());
     }
 
 
     @Override
     public String toString() {
         return getClass().getSimpleName()+"[ partition="+getPartition()+", clientId="+getClientId()+", topicFilterKey="+getTopicFilterKey()+", qos="+getQos()+ "]";
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getClientId());
+        objectOutput.writeInt(getQos());
+        objectOutput.writeObject(getTopicFilterKey());
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setPartition((String) objectInput.readObject());
+        setClientId((String) objectInput.readObject());
+        setQos(objectInput.readInt());
+        setTopicFilterKey((String)objectInput.readObject());
     }
 }

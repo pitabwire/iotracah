@@ -25,13 +25,12 @@ import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -46,7 +45,7 @@ public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
     @QuerySqlField(orderedGroups={
             @QuerySqlField.Group(name = "partition_topicfilterId_idx", order = 2)
     })
-    private long topicFilterId;
+    private String topicFilterId;
 
     @QuerySqlField
     private int qos;
@@ -81,11 +80,11 @@ public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
         this.partition = partition;
     }
 
-    public long getTopicFilterId() {
+    public String getTopicFilterId() {
         return topicFilterId;
     }
 
-    public void setTopicFilterId(long topicFilterId) {
+    public void setTopicFilterId(String topicFilterId) {
         this.topicFilterId = topicFilterId;
     }
 
@@ -101,11 +100,9 @@ public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
 
         ByteBuffer byteBuffer = ByteBuffer.wrap((byte[]) getPayload());
 
-        int messageId = (int)(getTopicFilterId() % (Short.MAX_VALUE * 2));
-
-        return  PublishMessage.from(messageId, false, getQos(), false, getTopic(), byteBuffer, false);
+        return  PublishMessage.from(PublishMessage.ID_TO_FORCE_GENERATION_ON_SAVE, false, getQos(), false, getTopic(), byteBuffer, false);
     }
-    public static RetainedMessage from(String partition, long topicFilterId, PublishMessage publishMessage) {
+    public static RetainedMessage from(String partition, String topicFilterId, PublishMessage publishMessage) {
 
         RetainedMessage retainedMessage = new RetainedMessage();
         retainedMessage.setMessageId(publishMessage.getMessageId());
@@ -118,17 +115,44 @@ public final class RetainedMessage extends IOTMessage implements IdKeyComposer {
         return retainedMessage;
     }
 
-    public static String createKey(String partition, long topicFilterId){
-        return String.format("%s-%d", partition, topicFilterId );
+    public static String createKey(String partition, String topicFilterId){
+        return String.format("%s-%s", partition, topicFilterId );
     }
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if (getTopicFilterId() <= 0 && getMessageId() <= 0) {
+        if (Objects.isNull(getTopicFilterId()) && getMessageId() <= 0) {
             throw new UnRetriableException(" Retained messages are stored only if they have a topic filter id and an Id");
         }
 
         return RetainedMessage.createKey(getPartition(), getTopicFilterId());
     }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getPayload());
+        objectOutput.writeInt(getQos());
+        objectOutput.writeObject(getTopic());
+        objectOutput.writeObject(getTopicFilterId());
+
+        super.writeExternal(objectOutput);
+
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setPartition((String) objectInput.readObject());
+        setPayload((Serializable) objectInput.readObject());
+        setQos(objectInput.readInt());
+        setTopic((String) objectInput.readObject());
+        setTopicFilterId((String) objectInput.readObject());
+
+        super.readExternal(objectInput);
+    }
+
 
 }

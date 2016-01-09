@@ -32,7 +32,7 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 import rx.Observable;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -40,7 +40,7 @@ import java.util.UUID;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class Client implements IdKeyComposer, Serializable {
+public class Client implements IdKeyComposer, Externalizable {
 
     @QuerySqlField(orderedGroups={@QuerySqlField.Group(
             name = "partition_clientid_idx", order = 0)})
@@ -193,5 +193,36 @@ public class Client implements IdKeyComposer, Serializable {
 
 
         return iotMessage;
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+        objectOutput.writeObject(getClientId());
+        objectOutput.writeObject(getConnectedCluster());
+        objectOutput.writeObject(getConnectedNode());
+        objectOutput.writeObject(getConnectionId());
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getProtocal());
+        objectOutput.writeObject(getProtocalData());
+        objectOutput.writeObject(getSessionId());
+        objectOutput.writeBoolean(isActive());
+        objectOutput.writeBoolean(isCleanSession());
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setClientId((String) objectInput.readObject());
+        setConnectedCluster((String) objectInput.readObject());
+        setConnectedNode((UUID) objectInput.readObject());
+        setConnectionId((Serializable) objectInput.readObject());
+        setPartition((String) objectInput.readObject());
+        setProtocal((Protocal) objectInput.readObject());
+        setProtocalData((String) objectInput.readObject());
+        setSessionId((Serializable) objectInput.readObject());
+        setActive(objectInput.readBoolean());
+        setCleanSession(objectInput.readBoolean());
+
     }
 }

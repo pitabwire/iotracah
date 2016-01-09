@@ -21,6 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.core.handlers.protocal.http.PushHandler;
 import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
@@ -44,8 +45,6 @@ import java.nio.charset.Charset;
  */
 public class PublishOutHandler extends RequestHandler<PublishMessage> {
 
-    private static final Charset UTF8 = Charset.forName("UTF-8");
-
     private String protocalData;
 
     public PublishOutHandler(PublishMessage message, String protocalData) {
@@ -67,7 +66,8 @@ public class PublishOutHandler extends RequestHandler<PublishMessage> {
             switch (getMessage().getProtocal()) {
 
                 case HTTP:
-                    httpPushToUrl(protocalData, getMessage());
+                    PushHandler httpPushHandler = new PushHandler();
+                    httpPushHandler.pushToUrl(protocalData, getMessage());
                     break;
                 default:
                     log.error(" handle : outbound message {} using none implemented protocal");
@@ -75,54 +75,5 @@ public class PublishOutHandler extends RequestHandler<PublishMessage> {
         }
     }
 
-    private void httpPushToUrl(String url, PublishMessage publishMessage) {
 
-
-       ByteBuffer payloadBuffer = ByteBuffer.wrap((byte[]) publishMessage.getPayload());
-
-        String payload = UTF8.decode(payloadBuffer).toString();
-
-
-        MultipartBody httpMessage = Unirest.post(url)
-                .header("accept", "application/json")
-                .field("topic", publishMessage.getTopic())
-                .field("message", payload);
-
-        if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
-
-            httpMessage.asJsonAsync(new Callback<JsonNode>() {
-
-                public void failed(UnirestException e) {
-                    log.info(" httpPushToUrl failed : problems calling service", e);
-                }
-
-                public void completed(HttpResponse<JsonNode> response) {
-                    int code = response.getStatus();
-
-                    JsonNode responseBody = response.getBody();
-                    log.info(" httpPushToUrl completed : external server responded with {}", responseBody);
-                    if (200 == code) {
-
-                        AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
-                        ackMessage.copyBase(publishMessage);
-
-                        PublishAcknowledgeHandler publishAcknowledgeHandler = new PublishAcknowledgeHandler(ackMessage);
-                        try {
-                            publishAcknowledgeHandler.handle();
-                        } catch (RetriableException | UnRetriableException e) {
-                            log.warn(" httpPushToUrl completed : problem closing connection. ");
-                        }
-                    }
-                }
-
-                public void cancelled() {
-                    log.info(" httpPushToUrl cancelled : request cancelled.");
-                }
-
-            });
-        } else {
-            httpMessage.asJsonAsync();
-        }
-
-    }
 }

@@ -27,8 +27,10 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.util.CharsetUtil;
+import org.apache.http.nio.util.HeapByteBufferAllocator;
 import org.json.JSONObject;
 
 import java.io.Serializable;
@@ -54,6 +56,7 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
      */
     @Override
     protected void messageReceived(ChannelHandlerContext ctx, MqttMessage msg) throws Exception {
+
 
         log.debug(" messageReceived : received the message {}", msg);
 

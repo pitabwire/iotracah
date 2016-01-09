@@ -110,43 +110,52 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
 
 
                                         int count = 0;
-                                        for(Map.Entry<String, Integer> entry : getMessage().getTopicFilterList()){
-                                            if(grantedQos.get(count++) != 0x80  ){
+                                        for(Map.Entry<String, Integer> entry : getMessage().getTopicFilterList())
+                                            if (grantedQos.get(count++) != 0x80) {
                                                 Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(client.getPartition(), entry.getKey());
                                                 subscriptionFilterObservable.subscribe(
                                                         subscriptionFilter -> {
 
-                                                            Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(client.getPartition(), subscriptionFilter.getId());
-                                                            retainedMessageObservable.subscribe(retainedMessage -> {
+                                                            try {
 
-                                                                PublishMessage publishMessage = retainedMessage.toPublishMessage();
-                                                                publishMessage.setPartition(client.getPartition());
-                                                                publishMessage.setClientId(client.getClientId());
-                                                                publishMessage.copyBase(getMessage());
-
-                                                                if (publishMessage.getQos() > 0) {
-
-                                                                    publishMessage.setReleased(false);
-
-                                                                    //Save the message as we proceed.
-                                                                    getDatastore().saveMessage(publishMessage);
-                                                                }
-
-                                                                PublishOutHandler publishOutHandler = new PublishOutHandler(publishMessage,client.getProtocalData());
-                                                                publishOutHandler.setWorker(getWorker());
-                                                                try {
-                                                                    publishOutHandler.handle();
-                                                                } catch (RetriableException | UnRetriableException e) {
-                                                                    log.error(" handle : problems publishing ", e);
-                                                                 }
+                                                                Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(client.getPartition(), (String) subscriptionFilter.generateIdKey());
+                                                                retainedMessageObservable.subscribe(retainedMessage -> {
 
 
-                                                            }, throwable -> {});
+                                                                    PublishMessage publishMessage = retainedMessage.toPublishMessage();
+                                                                    publishMessage.setPartition(client.getPartition());
+                                                                    publishMessage.setClientId(client.getClientId());
+                                                                    publishMessage.copyBase(getMessage());
+
+                                                                    if (publishMessage.getQos() > 0) {
+
+                                                                        publishMessage.setReleased(false);
+
+                                                                        //Save the message as we proceed.
+                                                                        getDatastore().saveMessage(publishMessage);
+                                                                    }
+
+                                                                    PublishOutHandler publishOutHandler = new PublishOutHandler(publishMessage, client.getProtocalData());
+                                                                    publishOutHandler.setWorker(getWorker());
+                                                                    try {
+                                                                        publishOutHandler.handle();
+
+                                                                        log.info(" handle : we got to release a retained message.");
+
+                                                                    } catch (RetriableException | UnRetriableException e) {
+                                                                        log.error(" handle : problems publishing ", e);
+                                                                    }
+
+
+                                                                }, throwable -> {});
+
+                                                            } catch (UnRetriableException e) {
+                                                                log.error("  handle : problems obtaining subscription filter key", e);
+                                                            }
                                                         }
                                                 );
 
                                             }
-                                        }
 
                                     });
                         }, this::disconnectDueToError);

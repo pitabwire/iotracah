@@ -24,12 +24,13 @@ import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.server.netty.*;
+import com.caricah.iotracah.server.netty.SSLHandler;
+import com.caricah.iotracah.server.netty.ServerImpl;
+import com.caricah.iotracah.server.netty.ServerInitializer;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelId;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttMessage;
-import io.netty.handler.timeout.IdleStateHandler;
 import org.apache.commons.configuration.Configuration;
 
 /**

@@ -45,11 +45,11 @@ public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
         this.serverImpl = serverImpl;
     }
 
-    public ServerImpl getServerImpl() {
+    public ServerImpl<T> getServerImpl() {
         return serverImpl;
     }
 
-    public Server getInternalServer() {
+    public Server<T> getInternalServer() {
         return getServerImpl().getInternalServer();
     }
 

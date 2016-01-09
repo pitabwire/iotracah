@@ -25,6 +25,9 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -35,15 +38,19 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
 
     public static final String MESSAGE_TYPE = "WILL";
 
-    @QuerySqlField(index = true)
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_clientid_idx", order = 0)
+    })
     private String partition;
 
-    @QuerySqlField(index = true)
+    @QuerySqlField(orderedGroups={
+            @QuerySqlField.Group(name = "partition_clientid_idx", order = 1)
+    })
     private String clientId;
 
-    private final boolean retain;
-    private final int qos;
-    private final String topic;
+    private boolean retain;
+    private int qos;
+    private String topic;
     private Serializable payload;
 
 
@@ -51,13 +58,24 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
         return retain;
     }
 
+    public void setRetain(boolean retain) {
+        this.retain = retain;
+    }
 
     public int getQos() {
         return qos;
     }
 
+    public void setQos(int qos) {
+        this.qos = qos;
+    }
+
     public String getTopic() {
         return topic;
+    }
+
+    public void setTopic(String topic) {
+        this.topic = topic;
     }
 
     public String getPartition() {
@@ -84,6 +102,9 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
         this.payload = payload;
     }
 
+
+    private WillMessage() {
+    }
 
     private WillMessage(boolean retain, int qos, String topic, String payload) {
 
@@ -131,4 +152,34 @@ public final class WillMessage extends IOTMessage implements IdKeyComposer{
         return WillMessage.getWillKey(getPartition(), getClientId());
 
     }
+
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+        objectOutput.writeObject(getClientId());
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getPayload());
+        objectOutput.writeInt(getQos());
+        objectOutput.writeObject(getTopic());
+        objectOutput.writeBoolean(isRetain());
+
+        super.writeExternal(objectOutput);
+
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setClientId((String) objectInput.readObject());
+        setPartition((String) objectInput.readObject());
+        setPayload((Serializable) objectInput.readObject());
+        setQos(objectInput.readInt());
+        setTopic((String) objectInput.readObject());
+        setRetain(objectInput.readBoolean());
+
+        super.readExternal(objectInput);
+    }
+
 }

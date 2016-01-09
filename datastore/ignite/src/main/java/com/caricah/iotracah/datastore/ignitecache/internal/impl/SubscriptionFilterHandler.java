@@ -23,6 +23,7 @@ package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 import com.caricah.iotracah.core.worker.state.Constant;
 import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
+import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.configuration.CacheConfiguration;
 import rx.Observable;
@@ -51,19 +52,12 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
     }
 
-    @Override
-    protected CacheConfiguration setIndexData(Class<SubscriptionFilter> t, CacheConfiguration clCfg) {
-        return clCfg.setIndexedTypes(Long.class, t);
-    }
-
-
     public Observable<SubscriptionFilter> matchTopicFilterTree(String partition, List<String> topicNavigationRoute) {
-
 
         return Observable.create(observer -> {
 
-            List<Long> collectingParentIdList = new ArrayList<>();
-            collectingParentIdList.add(0l);
+            List<String> collectingParentIdList = new ArrayList<>();
+            collectingParentIdList.add(getPartitionAsInitialParentId(partition));
 
             ListIterator<String> pathIterator = topicNavigationRoute.listIterator();
 
@@ -73,36 +67,38 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
                     String name = pathIterator.next();
 
-                    List<Long> parentIdList = new ArrayList<>(collectingParentIdList);
+                    List<String> parentIdList = new ArrayList<>(collectingParentIdList);
                     collectingParentIdList.clear();
 
-                    for (Long parentId : parentIdList) {
+                    for (String parentId : parentIdList) {
 
+                        String query = "partition = ? AND parentId = ? AND name IN (?, ?, ?) ";
+                        Object[] params = new Object[]{partition, parentId, name, Constant.MULTI_LEVEL_WILDCARD, Constant.SINGLE_LEVEL_WILDCARD};
 
-                            String  query = "partition = ? AND parentId = ? AND name IN (?, ?, ?) ";
-                            Object[]  params = new Object[]{partition, parentId, name, Constant.MULTI_LEVEL_WILDCARD, Constant.SINGLE_LEVEL_WILDCARD};
+                        getByQuery(SubscriptionFilter.class, query, params)
+                                .toBlocking().forEach(subscriptionFilter -> {
 
-                            getByQuery(SubscriptionFilter.class, query, params)
-                                    .toBlocking().forEach(subscriptionFilter -> {
+                            if (pathIterator.hasNext()) {
 
-                                if (pathIterator.hasNext()) {
-
-                                    if (Constant.MULTI_LEVEL_WILDCARD.equals(subscriptionFilter.getName())) {
-                                        observer.onNext(subscriptionFilter);
-                                    } else {
-                                        collectingParentIdList.add(subscriptionFilter.getId());
-                                    }
-
-
-                                } else {
+                                if (Constant.MULTI_LEVEL_WILDCARD.equals(subscriptionFilter.getName())) {
                                     observer.onNext(subscriptionFilter);
+                                } else {
+
+
+                                    try {
+                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
+                                    } catch (UnRetriableException e) {
+                                        log.error(" matchTopicFilterTree : error getting subscription filter id", e);
+                                    }
                                 }
 
-                            });
 
-                        }
+                            } else {
+                                observer.onNext(subscriptionFilter);
+                            }
+                        });
                     }
-
+                }
 
 
                 observer.onCompleted();
@@ -115,7 +111,6 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
         });
 
 
-
     }
 
 
@@ -123,8 +118,8 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
         return Observable.create(observer -> {
 
-            List<Long> collectingParentIdList = new ArrayList<>();
-            collectingParentIdList.add(0l);
+            List<String> collectingParentIdList = new ArrayList<>();
+            collectingParentIdList.add(getPartitionAsInitialParentId(partition));
 
             ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
 
@@ -134,15 +129,15 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
                     String name = pathIterator.next();
 
-                    List<Long> parentIdList = new ArrayList<>(collectingParentIdList);
+                    List<String> parentIdList = new ArrayList<>(collectingParentIdList);
                     collectingParentIdList.clear();
 
-                    for (Long parentId : parentIdList) {
+                    for (String parentId : parentIdList) {
 
-                      if( Constant.MULTI_LEVEL_WILDCARD.equals(name)) {
+                        if (Constant.MULTI_LEVEL_WILDCARD.equals(name)) {
 
-                          getMultiLevelWildCard(observer, partition, parentId);
-                      }else if (Constant.SINGLE_LEVEL_WILDCARD.equals(name)) {
+                            getMultiLevelWildCard(observer, partition, parentId);
+                        } else if (Constant.SINGLE_LEVEL_WILDCARD.equals(name)) {
 
                             String query = "partition = ? AND parentId = ? ";
                             Object[] params = {partition, parentId};
@@ -151,31 +146,37 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                                     .toBlocking().forEach(subscriptionFilter -> {
 
                                 if (pathIterator.hasNext()) {
-                                    collectingParentIdList.add(subscriptionFilter.getId());
+                                    try {
+                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
+                                    } catch (UnRetriableException e) {
+                                        log.error(" getTopicFilterTree : error getting subscription filter id", e);
+                                    }
                                 } else {
                                     observer.onNext(subscriptionFilter);
                                 }
 
                             });
 
-                        }else{
+                        } else {
 
 
+                            String query = "partition = ? AND parentId = ? AND name = ? ";
+                            Object[] params = new Object[]{partition, parentId, name};
 
+                            getByQuery(SubscriptionFilter.class, query, params)
+                                    .toBlocking().forEach(subscriptionFilter -> {
 
-                          String  query = "partition = ? AND parentId = ? AND name = ? ";
-                            Object[]  params = new Object[]{partition, parentId, name};
-
-                                getByQuery(SubscriptionFilter.class, query, params)
-                                        .toBlocking().forEach(subscriptionFilter -> {
-
-                                    if (pathIterator.hasNext()) {
-                                        collectingParentIdList.add(subscriptionFilter.getId());
-                                    } else {
-                                        observer.onNext(subscriptionFilter);
+                                if (pathIterator.hasNext()) {
+                                    try {
+                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
+                                    } catch (UnRetriableException e) {
+                                        log.error(" getTopicFilterTree : error getting subscription filter id", e);
                                     }
+                                } else {
+                                    observer.onNext(subscriptionFilter);
+                                }
 
-                                });
+                            });
 
                         }
                     }
@@ -193,7 +194,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
     }
 
-    private void getMultiLevelWildCard(Subscriber<? super SubscriptionFilter> observer, String partition, Long parentId) {
+    private void getMultiLevelWildCard(Subscriber<? super SubscriptionFilter> observer, String partition, String parentId) {
 
         String query = "partition = ? AND parentId = ? ";
         Object[] params = {partition, parentId};
@@ -203,7 +204,11 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
             observer.onNext(subscriptionFilter);
 
-            getMultiLevelWildCard(observer, partition, subscriptionFilter.getId());
+            try {
+                getMultiLevelWildCard(observer, partition, (String) subscriptionFilter.generateIdKey());
+            } catch (UnRetriableException e) {
+                log.error(" getMultiLevelWildCard : problem generating id", e);
+            }
 
         });
 
@@ -220,7 +225,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                         SubscriptionFilter activeSubscriptionFilter = null;
 
                         ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
-                        long parentId = 0l;
+                        String parentId = getPartitionAsInitialParentId(partition);
 
                         while (pathIterator.hasNext()) {
 
@@ -245,20 +250,19 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                                 internalSubscriptionFilter.setParentId(parentId);
                                 internalSubscriptionFilter.setFullTreeName(currentTreeName);
                                 internalSubscriptionFilter.setName(name);
-                                internalSubscriptionFilter.setId(nextId());
                                 save(internalSubscriptionFilter);
 
-                            }
+                                }
 
 
                             if (!pathIterator.hasNext()) {
                                 activeSubscriptionFilter = internalSubscriptionFilter;
                             } else {
-                                parentId = internalSubscriptionFilter.getId();
+                                parentId = (String) internalSubscriptionFilter.generateIdKey();
                             }
                         }
 
-                        if (null != activeSubscriptionFilter) {
+                        if (Objects.nonNull( activeSubscriptionFilter)) {
                             observer.onNext(activeSubscriptionFilter);
                         }
                         observer.onCompleted();
@@ -270,4 +274,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
         );
     }
 
+    public String getPartitionAsInitialParentId(String partition) {
+        return "p[" + partition + "]";
+    }
 }

@@ -28,6 +28,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.mqtt.MqttDecoder;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.codec.mqtt.MqttMessage;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -45,12 +46,12 @@ public class MqttServerInitializer extends ServerInitializer<MqttMessage> {
     }
 
     @Override
-    protected void customizePipeline(ChannelPipeline pipeline) {
+    protected void customizePipeline(EventExecutorGroup eventExecutorGroup, ChannelPipeline pipeline) {
         pipeline.addLast("decoder", new MqttDecoder());
         pipeline.addLast("encoder", new MqttEncoder());
 
         // we finally have the chance to add some business logic.
-        pipeline.addLast( new MqttServerHandler((MqttServerImpl) getServerImpl()));
+        pipeline.addLast(eventExecutorGroup, "iotracah-mqtt",  new MqttServerHandler((MqttServerImpl) getServerImpl()));
     }
 
 

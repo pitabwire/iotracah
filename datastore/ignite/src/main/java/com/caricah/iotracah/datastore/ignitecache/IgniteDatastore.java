@@ -188,7 +188,7 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
-    public Observable<Subscription> getSubscriptions(String partition, long topicFilterKey, int qos) {
+    public Observable<Subscription> getSubscriptions(String partition, String topicFilterKey, int qos) {
 
         String query = "partition = ? and topicFilterKey = ? and qos >= ?";
         Object[] params = {partition, topicFilterKey, qos };
@@ -239,7 +239,7 @@ public class IgniteDatastore extends Datastore {
     }
 
     @Override
-    public Observable<RetainedMessage> getRetainedMessage(String partition, long topicFilterId) {
+    public Observable<RetainedMessage> getRetainedMessage(String partition, String topicFilterId) {
         return retainedMessageHandler.getByKey(RetainedMessage.createKey(partition, topicFilterId));
     }
 

@@ -92,7 +92,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
 
     public abstract Observable<Subscription> getSubscriptions(Client client);
-    public abstract Observable<Subscription> getSubscriptions(String partition, long topicFilterKey, int qos);
+    public abstract Observable<Subscription> getSubscriptions(String partition, String topicFilterKey, int qos);
     public abstract void saveSubscription(Subscription subscription);
     public abstract void removeSubscription(Subscription subscription);
 
@@ -106,7 +106,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     public abstract void removeMessage(PublishMessage publishMessage);
 
-    public abstract Observable<RetainedMessage> getRetainedMessage(String partition, long topicFilterId) ;
+    public abstract Observable<RetainedMessage> getRetainedMessage(String partition, String topicFilterId) ;
 
     public abstract void saveRetainedMessage(RetainedMessage publishMessage);
 

@@ -277,7 +277,6 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                             getDatastore().removeWill(will);
                         }
 
-
                         //Perform a reset for our session.
                         getWorker()
                                 .getSessionResetManager()

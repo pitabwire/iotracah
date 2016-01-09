@@ -27,6 +27,7 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.FullHttpMessage;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -46,13 +47,13 @@ public class HttpServerInitializer extends ServerInitializer<FullHttpMessage> {
     }
 
     @Override
-    protected void customizePipeline(ChannelPipeline pipeline) {
+    protected void customizePipeline(EventExecutorGroup eventExecutorGroup, ChannelPipeline pipeline) {
 
         pipeline.addLast("server", new HttpServerCodec());
         pipeline.addLast("aggregator", new HttpObjectAggregator(1048576));
 
         // we finally have the chance to add some business logic.
-        pipeline.addLast( new HttpServerHandler((HttpServerImpl) getServerImpl()));
+        pipeline.addLast(eventExecutorGroup, "iotracah-http", new HttpServerHandler((HttpServerImpl) getServerImpl()));
 
     }
 

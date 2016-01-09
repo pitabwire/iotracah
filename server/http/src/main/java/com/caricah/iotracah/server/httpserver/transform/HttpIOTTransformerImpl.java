@@ -66,23 +66,24 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
 
                     boolean isAnnonymousConnect = (!json.has("username") && !json.has("password"));
 
+                    int keepAliveTime = json.has("keepAliveTime")? json.getInt("keepAliveTime"): 0;
                    
                     return ConnectMessage.from(
                             false, 1, false,
                             "MQTT", 4, false, isAnnonymousConnect, json.getString("clientId"),
                             json.has("username")?json.getString("username"):"",
                             json.has("password")?json.getString("password"):"",
-                                    0, "");
+                                   keepAliveTime , "");
 
                 case "/PUBLISH":
 
                     ByteBuffer byteBuffer = ByteBuffer.wrap(json.getString("payload").getBytes());
 
-                            PublishMessage publishMessage = PublishMessage.from(json.getLong("messageId"), json.getBoolean("dup"), json.getInt("qos"),
-                                    json.getBoolean("retain"), json.getString("topic"), byteBuffer, true);
+                            PublishMessage publishMessage = PublishMessage.from(
+                                    json.getLong("messageId"), json.getBoolean("dup"),
+                                    1, json.getBoolean("retain"), json.getString("topic"), byteBuffer, true);
 
                     publishMessage.setSessionId(json.getString("sessionId"));
-                    publishMessage.setPartition(json.getString("partition"));
                     publishMessage.setAuthKey(json.getString("authKey"));
                     return publishMessage;
 
@@ -97,8 +98,8 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                     for(int i=0; i< jsonTopicQosList.length(); i++) {
                         JSONObject topicQos = jsonTopicQosList.getJSONObject(i);
 
-                        String topic = (String) topicQos.keys().next();
-                        int qos = topicQos.getInt(topic);
+                        String topic = topicQos.getString("topic");
+                        int qos = topicQos.getInt("qos");
 
                         Map.Entry<String, Integer> entry =
                                 new AbstractMap.SimpleEntry<>(topic, qos);
@@ -114,10 +115,9 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                 case "/UNSUBSCRIBE":
 
                     List<String> topicList = new ArrayList<>();
-                    JSONArray jsonTopicList = json.getJSONArray("topicQosList");
+                    JSONArray jsonTopicList = json.getJSONArray("topicList");
                     for(int i=0; i< jsonTopicList.length(); i++) {
                         String topic = jsonTopicList.getString(i);
-
                         topicList.add(topic);
                     }
 

@@ -325,7 +325,7 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 //Optimize marshaller
                 OptimizedMarshaller optimizedMarshaller = new OptimizedMarshaller();
-//                optimizedMarshaller.setRequireSerializable(false);
+                optimizedMarshaller.setRequireSerializable(false);
                 cfg.setMarshaller(optimizedMarshaller);
 
                 Ignition.start(cfg);
@@ -387,10 +387,8 @@ public abstract class ServersInitializer implements SystemInitializer {
             setExecutorService(obtainExcecutor(observableOnSubscriber));
 
             Scheduler scheduler = Schedulers.from(getExecutorService());
-            //Scheduler scheduler = Schedulers.from(Executors.newCachedThreadPool());
-            //Scheduler scheduler = Schedulers.io();
         return observable
-                    .onBackpressureBuffer()
+                   // .onBackpressureBuffer()
                     .subscribeOn(scheduler)
                     .subscribe(subscriber);
 

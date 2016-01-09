@@ -24,7 +24,7 @@ import com.caricah.iotracah.core.worker.state.session.SerializableUtils;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 import org.apache.shiro.session.Session;
 
-import java.io.Serializable;
+import java.io.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -40,7 +40,7 @@ import java.util.Date;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/9/15
  */
-public class IOTSession implements Serializable {
+public class IOTSession implements Externalizable {
 
 
     @QuerySqlField(index = true)
@@ -79,5 +79,18 @@ public class IOTSession implements Serializable {
 
     public Session toSession() {
         return SerializableUtils.deserialize(getSessionString());
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        objectOutput.writeLong(getExpiryTimestamp());
+        objectOutput.writeObject(getSessionString());
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+        setExpiryTimestamp(objectInput.readLong());
+        setSessionString((String) objectInput.readObject());
     }
 }

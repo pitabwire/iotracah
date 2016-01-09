@@ -25,6 +25,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.SslHandler;
+import io.netty.util.concurrent.DefaultEventExecutorGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -36,11 +38,14 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
     private final int connectionTimeout;
     private final SSLHandler sslHandler;
     private final ServerImpl serverImpl;
+    private EventExecutorGroup iotEventExecutorGroup;
 
     public ServerInitializer(ServerImpl serverImpl,  int connectionTimeout, SSLHandler sslHandler) {
         this.serverImpl = serverImpl;
         this.sslHandler = sslHandler;
         this.connectionTimeout = connectionTimeout;
+        this.iotEventExecutorGroup = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors());
+
     }
 
     public ServerInitializer(ServerImpl serverImpl, int connectionTimeout) {
@@ -51,6 +56,10 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
     public ServerImpl<T> getServerImpl() {
         return serverImpl;
+    }
+
+    public EventExecutorGroup getIotEventExecutorGroup() {
+        return iotEventExecutorGroup;
     }
 
 
@@ -83,11 +92,11 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
         }
 
 
-        customizePipeline(pipeline);
+        customizePipeline(getIotEventExecutorGroup(), pipeline);
 
     }
 
-    protected abstract void customizePipeline(ChannelPipeline pipeline);
+    protected abstract void customizePipeline(EventExecutorGroup eventExecutorGroup, ChannelPipeline pipeline);
 
 
 

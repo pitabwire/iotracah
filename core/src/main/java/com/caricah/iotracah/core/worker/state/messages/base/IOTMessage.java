@@ -22,14 +22,14 @@ package com.caricah.iotracah.core.worker.state.messages.base;
 
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.UUID;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 6/1/15
  */
-public class IOTMessage implements Serializable {
+public class IOTMessage implements Externalizable {
 
     private UUID nodeId;
     private String cluster;
@@ -126,5 +126,33 @@ public class IOTMessage implements Serializable {
     @Override
     public String toString() {
         return getClass().getName() + '[' + "messageId=" + getMessageId() + ']';
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        objectOutput.writeObject(getAuthKey());
+        objectOutput.writeObject(getCluster());
+        objectOutput.writeObject(getConnectionId());
+        objectOutput.writeLong(getMessageId());
+        objectOutput.writeObject(getMessageType());
+        objectOutput.writeObject(getNodeId());
+        objectOutput.writeObject(getProtocal());
+        objectOutput.writeObject(getSessionId());
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setAuthKey((String) objectInput.readObject());
+        setCluster((String) objectInput.readObject());
+        setConnectionId((Serializable) objectInput.readObject());
+        setMessageId(objectInput.readLong());
+        setMessageType((String) objectInput.readObject());
+        setNodeId((UUID) objectInput.readObject());
+        setProtocal((Protocal) objectInput.readObject());
+        setSessionId((Serializable) objectInput.readObject());
+
+
+
     }
 }

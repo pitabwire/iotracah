@@ -24,7 +24,7 @@ import com.caricah.iotracah.data.IdKeyComposer;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.shiro.authz.Permission;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -33,7 +33,7 @@ import java.util.Set;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
-public class IOTRole implements IdKeyComposer, Serializable {
+public class IOTRole implements IdKeyComposer, Externalizable {
 
     protected String partition = "";
     protected String name = null;
@@ -138,5 +138,21 @@ public class IOTRole implements IdKeyComposer, Serializable {
 
     public static String createCacheKey(String partition, String rolename){
         return String.format("%s-%s",partition, rolename);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getName());
+        objectOutput.writeObject(getPermissions());
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+        setPartition((String) objectInput.readObject());
+        setName((String) objectInput.readObject());
+        setPermissions((Set<Permission>)objectInput.readObject());
     }
 }

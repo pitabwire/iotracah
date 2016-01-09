@@ -71,7 +71,6 @@ public class IOTHttpTransformerImpl implements IOTMqttTransformer<FullHttpMessag
 
             case UnSubscribeAcknowledgeMessage.MESSAGE_TYPE:
                 UnSubscribeAcknowledgeMessage unSubAck = (UnSubscribeAcknowledgeMessage) internalMessage;
-
                 json.put("message", "unsubscribed" );
 
                 break;
