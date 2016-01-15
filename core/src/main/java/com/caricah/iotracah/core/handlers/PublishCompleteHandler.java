@@ -35,16 +35,12 @@ import rx.Observable;
 public class PublishCompleteHandler extends RequestHandler<CompleteMessage> {
 
 
-    public PublishCompleteHandler(CompleteMessage message) {
-        super( message);
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(CompleteMessage completeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(completeMessage.getSessionId(),
+                completeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
@@ -53,11 +49,11 @@ public class PublishCompleteHandler extends RequestHandler<CompleteMessage> {
                     //Now deal with removing the message from the database.
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
                             client.getPartition(), client.getClientId(),
-                            getMessage().getMessageId(), false);
+                            completeMessage.getMessageId(), false);
 
                     messageObservable.subscribe(getDatastore()::removeMessage);
 
-                }, this::disconnectDueToError);
+                }, throwable ->  disconnectDueToError(throwable, completeMessage));
 
     }
 

@@ -42,10 +42,6 @@ import java.util.Set;
  */
 public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
 
-    public SubscribeHandler(SubscribeMessage message) {
-        super(message);
-    }
-
     /**
      * The SUBSCRIBE Packet is sent from the Client to the Server to create one or more
      * Subscriptions. Each SubscriptionFilter registers a Client’s interest in one or more Topics.
@@ -58,9 +54,9 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
      * @throws UnRetriableException
      */
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(SubscribeMessage subscribeMessage) throws RetriableException, UnRetriableException {
 
-        log.debug(" handle : begining to handle a subscription {}.", getMessage());
+        log.debug(" handle : begining to handle a subscription {}.", subscribeMessage);
 
            /**
              * First we obtain the client responsible for this connection.
@@ -74,33 +70,33 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                  */
 
                     List<String> topics = new ArrayList<>();
-                    getMessage().getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
+                    subscribeMessage.getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
 
-                        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                                getMessage().getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
+                        Observable<Client> permissionObservable = checkPermission(subscribeMessage.getSessionId(),
+                                subscribeMessage.getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
 
                         permissionObservable.subscribe(
                                 (client)->{
 
                                     //We have all the security to proceed.
-                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client, getMessage().getTopicFilterList());
+                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client, subscribeMessage.getTopicFilterList());
 
                             subscribeObservable.subscribe(
                                     (entry) -> grantedQos.add(entry.getValue()),
-                                    this::disconnectDueToError,
+                                    throwable1 ->  disconnectDueToError(throwable1, subscribeMessage),
                                     () -> {
 
                                         /**
                                          * Save subscription payload
                                          */
-                                        if(getMessage().getProtocal().isNotPersistent()){
-                                            client.setProtocalData(getMessage().getReceptionUrl());
+                                        if(subscribeMessage.getProtocal().isNotPersistent()){
+                                            client.setProtocalData(subscribeMessage.getReceptionUrl());
                                             getDatastore().saveClient(client);
                                         }
 
                                         SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(
-                                                getMessage().getMessageId(), grantedQos);
-                                        subAckMessage.copyBase(getMessage());
+                                                subscribeMessage.getMessageId(), grantedQos);
+                                        subAckMessage.copyBase(subscribeMessage);
                                         pushToServer(subAckMessage);
 
 
@@ -110,7 +106,7 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
 
 
                                         int count = 0;
-                                        for(Map.Entry<String, Integer> entry : getMessage().getTopicFilterList())
+                                        for(Map.Entry<String, Integer> entry : subscribeMessage.getTopicFilterList())
                                             if (grantedQos.get(count++) != 0x80) {
                                                 Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(client.getPartition(), entry.getKey());
                                                 subscriptionFilterObservable.subscribe(
@@ -125,20 +121,19 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                                                     PublishMessage publishMessage = retainedMessage.toPublishMessage();
                                                                     publishMessage.setPartition(client.getPartition());
                                                                     publishMessage.setClientId(client.getClientId());
-                                                                    publishMessage.copyBase(getMessage());
+                                                                    publishMessage.copyBase(subscribeMessage);
 
                                                                     if (publishMessage.getQos() > 0) {
-
                                                                         publishMessage.setReleased(false);
-
                                                                         //Save the message as we proceed.
                                                                         getDatastore().saveMessage(publishMessage);
                                                                     }
 
-                                                                    PublishOutHandler publishOutHandler = new PublishOutHandler(publishMessage, client.getProtocalData());
-                                                                    publishOutHandler.setWorker(getWorker());
+
                                                                     try {
-                                                                        publishOutHandler.handle();
+
+                                                                        publishMessage.setProtocalData( client.getProtocalData());
+                                                                        getWorker().getHandler(PublishOutHandler.class).handle(publishMessage);
 
                                                                         log.info(" handle : we got to release a retained message.");
 
@@ -158,7 +153,7 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                             }
 
                                     });
-                        }, this::disconnectDueToError);
+                        }, throwable2 -> disconnectDueToError(throwable2, subscribeMessage));
 
 
     }

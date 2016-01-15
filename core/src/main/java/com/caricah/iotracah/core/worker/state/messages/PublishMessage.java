@@ -72,6 +72,7 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     private Serializable payload;
 
+    private String protocalData;
 
     public int getQos() {
         return qos;
@@ -151,6 +152,14 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     public void setPayload(Serializable payload) {
         this.payload = payload;
+    }
+
+    public String getProtocalData() {
+        return protocalData;
+    }
+
+    public void setProtocalData(String protocalData) {
+        this.protocalData = protocalData;
     }
 
     public static PublishMessage from( long messageId, boolean dup, int qos, boolean retain, String topic, ByteBuffer payloadBuffer, boolean inBound) {
@@ -244,7 +253,7 @@ public final class PublishMessage extends IOTMessage implements IdKeyComposer {
 
     @Override
     public String toString() {
-        return getClass().getName() + '['
+        return getClass().getSimpleName() + '['
                 + "messageId=" + getMessageId() +","
                 + "partition=" + getPartition() +","
                 + "clientId=" + getClientId() +","

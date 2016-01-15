@@ -34,6 +34,7 @@ import rx.Observable;
 
 import java.io.*;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -169,12 +170,21 @@ public class Client implements IdKeyComposer, Externalizable {
     @Override
     public Serializable generateIdKey() throws UnRetriableException{
 
-        if(null == getClientId()){
+        if(Objects.isNull(getClientId())){
             throw new UnRetriableException(" Client Id has to be non null");
         }
 
-        return String.format("%s-%s", getPartition(), getClientId());
+        return createIdKey(getPartition(), getClientId());
     }
+
+
+    public static Serializable createIdKey(String partition, String clientId) {
+
+        return "["+ partition+"]"+ clientId;
+
+    }
+
+
 
     public <T extends IOTMessage> T copyTransmissionData(T iotMessage) {
 

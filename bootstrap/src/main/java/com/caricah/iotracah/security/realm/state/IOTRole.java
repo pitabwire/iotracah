@@ -137,7 +137,7 @@ public class IOTRole implements IdKeyComposer, Externalizable {
     }
 
     public static String createCacheKey(String partition, String rolename){
-        return String.format("%s-%s",partition, rolename);
+        return partition + "-" + rolename;
     }
 
     @Override

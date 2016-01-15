@@ -23,13 +23,16 @@ package com.caricah.iotracah.server.mqttserver.netty;
 import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.mqtt.MqttEncoder;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import io.netty.util.CharsetUtil;
+import io.netty.util.ReferenceCountUtil;
 import org.apache.http.nio.util.HeapByteBufferAllocator;
 import org.json.JSONObject;
 
@@ -64,7 +67,6 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
         Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
         getInternalServer().pushToWorker(connectionId, sessionId, msg);
-
     }
 
 

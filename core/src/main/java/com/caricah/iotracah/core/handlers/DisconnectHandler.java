@@ -41,12 +41,8 @@ import java.io.Serializable;
 public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
 
 
-    public DisconnectHandler(DisconnectMessage message) {
-        super(message);
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(DisconnectMessage disconnectMessage) throws RetriableException, UnRetriableException {
 
 
         /**
@@ -54,15 +50,15 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
          * then close the network connection.
          */
 
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(disconnectMessage.getSessionId(),
+                disconnectMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
                 (client) -> {
 
 
 
-                    if (getMessage().isDirtyDisconnect()) {
+                    if (disconnectMessage.isDirtyDisconnect()) {
                           getWorker().publishWill(client);
                     }
 

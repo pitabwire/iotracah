@@ -35,18 +35,13 @@ import rx.Observable;
 public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessage> {
 
 
-    public PublishReceivedHandler(PublishReceivedMessage message) {
-        super(message);
-
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(PublishReceivedMessage publishReceivedMessage) throws RetriableException, UnRetriableException {
 
 
 //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(publishReceivedMessage.getSessionId(),
+                publishReceivedMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
@@ -54,7 +49,7 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
 
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
                             client.getPartition(), client.getClientId(),
-                            getMessage().getMessageId(), false);
+                            publishReceivedMessage.getMessageId(), false);
 
                     messageObservable.subscribe(publishMessage -> {
 
@@ -69,14 +64,14 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
                             //Generate a PUBREL message.
 
                             ReleaseMessage releaseMessage = ReleaseMessage.from(messageId, false);
-                            releaseMessage.copyBase(getMessage());
+                            releaseMessage.copyBase(publishReceivedMessage);
                             pushToServer(releaseMessage);
 
                         });
 
                     });
 
-                }, this::disconnectDueToError);
+                }, throwable -> disconnectDueToError(throwable, publishReceivedMessage));
     }
 
 

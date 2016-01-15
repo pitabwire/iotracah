@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Caricah <info@caricah.com>.
+ * Copyright (c) 2016 Caricah <info@caricah.com>.
  *
  * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
@@ -20,32 +20,36 @@
 
 package com.caricah.iotracah.core.worker;
 
-import com.caricah.iotracah.core.handlers.*;
+import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
+import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.core.worker.state.messages.*;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.modules.Worker;
-import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.caricah.iotracah.core.worker.state.models.Client;
 import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.security.IOTSecurityManager;
 import com.caricah.iotracah.security.realm.auth.IdConstruct;
 import com.mashape.unirest.http.Unirest;
+import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
+import io.netty.handler.codec.mqtt.MqttQoS;
 import org.apache.commons.configuration.Configuration;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.subject.PrincipalCollection;
 import rx.Observable;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/15/15
  */
-public class DefaultWorker extends Worker {
+public class DumbWorker extends Worker {
+
+
+    private HashMap<String, Set<Serializable>> subscriptions = new HashMap<>();
 
 
     /**
@@ -91,22 +95,6 @@ public class DefaultWorker extends Worker {
     @Override
     public void initiate() throws UnRetriableException {
 
-
-        addHandler(new ConnectionHandler());
-        addHandler(new DisconnectHandler());
-        addHandler(new PingRequestHandler());
-        addHandler(new PublishAcknowledgeHandler());
-        addHandler(new PublishCompleteHandler());
-        addHandler(new PublishInHandler());
-        addHandler(new PublishOutHandler());
-        addHandler(new PublishReceivedHandler());
-        addHandler(new PublishReleaseHandler());
-        addHandler(new SubscribeHandler());
-        addHandler(new UnSubscribeHandler());
-
-
-
-
         //Initiate the session reset manager.
         SessionResetManager sessionResetManager = new SessionResetManager();
         sessionResetManager.setWorker(this);
@@ -151,85 +139,120 @@ public class DefaultWorker extends Worker {
             log.info(" onNext : received {}", iotMessage);
             try {
 
-                  handleReceivedMessage(iotMessage);
+
+                IOTMessage response = null;
+
+
+                switch (iotMessage.getMessageType()) {
+                    case ConnectMessage.MESSAGE_TYPE:
+                        ConnectMessage connectMessage = (ConnectMessage) iotMessage;
+                        response = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+
+                        break;
+                    case SubscribeMessage.MESSAGE_TYPE:
+
+
+                                                SubscribeMessage subscribeMessage = (SubscribeMessage) iotMessage;
+
+                        List<Integer> grantedQos = new ArrayList<>();
+                        subscribeMessage.getTopicFilterList().forEach(topic ->
+                        {
+
+                            Set<Serializable> channelIds = subscriptions.get(topic.getKey());
+
+                            if(Objects.isNull(channelIds)){
+                                channelIds = new HashSet<>();
+                            }
+
+                            channelIds.add(subscribeMessage.getConnectionId());
+                            subscriptions.put(topic.getKey(), channelIds);
+
+                            grantedQos.add(topic.getValue());
+
+                        });
+
+                        response =  SubscribeAcknowledgeMessage.from(
+                            subscribeMessage.getMessageId(), grantedQos);
+
+
+                        break;
+                    case UnSubscribeMessage.MESSAGE_TYPE:
+                        UnSubscribeMessage unSubscribeMessage = (UnSubscribeMessage) iotMessage;
+                        response = UnSubscribeAcknowledgeMessage.from(unSubscribeMessage.getMessageId());
+
+                        break;
+                    case Ping.MESSAGE_TYPE:
+                        response = iotMessage;
+                        break;
+                    case PublishMessage.MESSAGE_TYPE:
+
+
+
+                        PublishMessage publishMessage = (PublishMessage) iotMessage;
+
+
+                        Set<Serializable> channelIds = subscriptions.get(publishMessage.getTopic());
+
+                        channelIds.forEach(id ->{
+
+                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+
+                            clonePublishMessage.copyBase(iotMessage);
+                            clonePublishMessage.setConnectionId(id);
+                            pushToServer(clonePublishMessage);
+                        });
+
+
+
+
+                         if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
+
+                            break;
+
+                        }else if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
+
+                            response  = AcknowledgeMessage.from(
+                                    publishMessage.getMessageId());
+                            break;
+
+
+                        }
+
+
+                    case PublishReceivedMessage.MESSAGE_TYPE:
+                    case ReleaseMessage.MESSAGE_TYPE:
+                    case CompleteMessage.MESSAGE_TYPE:
+                    case DisconnectMessage.MESSAGE_TYPE:
+                    case AcknowledgeMessage.MESSAGE_TYPE:
+                    default:
+                        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
+                        disconnectMessage.copyBase(iotMessage);
+
+                        throw new ShutdownException(disconnectMessage);
+
+                }
+
+                if(Objects.nonNull(response)){
+
+                    response.copyBase(iotMessage);
+                    pushToServer(response);
+                }
+
 
             } catch (ShutdownException e) {
 
                 IOTMessage response = e.getResponse();
-                if (null != response) {
+                if (Objects.nonNull(response)) {
                     pushToServer(response);
                 }
 
-                try {
-                    DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-                    disconnectMessage.copyBase(iotMessage);
 
-                    getHandler(DisconnectHandler.class).handle(disconnectMessage);
-
-                } catch (RetriableException | UnRetriableException finalEx) {
-                    log.error(" onNext : Problems disconnecting.", finalEx);
-                }
 
             } catch (Exception e) {
                 log.error(" onNext : Serious error that requires attention ", e);
             }
 
     }
-
-    private void handleReceivedMessage(IOTMessage iotMessage) throws UnRetriableException, RetriableException {
-
-
-        switch (iotMessage.getMessageType()) {
-            case ConnectMessage.MESSAGE_TYPE:
-
-                ConnectMessage connectMessage = (ConnectMessage) iotMessage;
-                if (connectMessage.isAnnonymousSession() && isAnnonymousLoginEnabled()) {
-                    connectMessage.setUserName(getAnnonymousLoginUsername());
-                    connectMessage.setPassword(getAnnonymousLoginPassword());
-                }
-
-                if (connectMessage.getKeepAliveTime() <= 0) {
-                    connectMessage.setKeepAliveTime(getKeepAliveInSeconds());
-                }
-
-                getHandler(ConnectionHandler.class).handle(connectMessage);
-
-                break;
-            case SubscribeMessage.MESSAGE_TYPE:
-                getHandler(SubscribeHandler.class).handle((SubscribeMessage) iotMessage);
-                break;
-            case UnSubscribeMessage.MESSAGE_TYPE:
-                getHandler(UnSubscribeHandler.class).handle((UnSubscribeMessage) iotMessage);
-                break;
-            case Ping.MESSAGE_TYPE:
-                getHandler( PingRequestHandler.class).handle((Ping) iotMessage);
-                break;
-            case PublishMessage.MESSAGE_TYPE:
-                getHandler(PublishInHandler.class).handle((PublishMessage) iotMessage);
-
-                break;
-            case PublishReceivedMessage.MESSAGE_TYPE:
-                getHandler(PublishReceivedHandler.class).handle((PublishReceivedMessage) iotMessage);
-
-                break;
-            case ReleaseMessage.MESSAGE_TYPE:
-                getHandler(PublishReleaseHandler.class).handle((ReleaseMessage) iotMessage);
-                break;
-            case CompleteMessage.MESSAGE_TYPE:
-                getHandler(PublishCompleteHandler.class).handle((CompleteMessage) iotMessage);
-                break;
-            case DisconnectMessage.MESSAGE_TYPE:
-                getHandler(DisconnectHandler.class).handle((DisconnectMessage) iotMessage);
-                break;
-            case AcknowledgeMessage.MESSAGE_TYPE:
-                getHandler(PublishAcknowledgeHandler.class).handle((AcknowledgeMessage) iotMessage);
-                break;
-            default:
-                throw new ShutdownException("Unknown messages being propergated");
-
-        }
-
-        }
 
 
     @Override

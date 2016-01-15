@@ -24,7 +24,10 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.system.handler.LogHandler;
 import com.caricah.iotracah.system.ResourceFileUtil;
 import org.apache.commons.configuration.Configuration;
-import org.apache.log4j.PropertyConfigurator;
+
+import org.apache.logging.log4j.core.config.ConfigurationFactory;
+import org.apache.logging.log4j.core.config.ConfigurationSource;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,8 +70,7 @@ public class DefaultLogHandler implements LogHandler {
 
         log.debug(" configure : File with logging configs is {} .", logConfigurationFile);
 
-
-        PropertyConfigurator.configure(logConfigurationFile.getAbsolutePath());
+        Configurator.initialize(null, logConfigurationFile.getAbsolutePath());
 
     }
 

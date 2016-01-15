@@ -102,11 +102,10 @@ public class SessionResetManager {
                         } else {
 
                             //This message should be released to the client
-                            PublishOutHandler handler = new PublishOutHandler(publishMessage, client.getProtocalData());
-                            handler.setWorker(getWorker());
+                            publishMessage.setProtocalData(client.getProtocalData());
 
                             try {
-                                handler.handle();
+                                getWorker().getHandler(PublishOutHandler.class).handle(publishMessage);
                             } catch (RetriableException | UnRetriableException e) {
                                 log.error(" process : problems releasing stored messages", e);
                             }

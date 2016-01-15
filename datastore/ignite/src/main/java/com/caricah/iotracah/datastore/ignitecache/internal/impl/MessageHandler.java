@@ -43,7 +43,6 @@ public class MessageHandler extends AbstractHandler<PublishMessage> {
     public static final String CONFIG_IGNITECACHE_MESSAGE_CACHE_NAME = "config.ignitecache.message.cache.name";
     public static final String CONFIG_IGNITECACHE_MESSAGE_CACHE_NAME_VALUE_DEFAULT = "iotracah_message_cache";
 
-
     @Override
     public void configure(Configuration configuration) {
 

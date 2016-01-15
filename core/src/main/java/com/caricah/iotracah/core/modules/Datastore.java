@@ -34,6 +34,7 @@ import org.apache.ignite.Ignite;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
+import rx.Scheduler;
 import rx.Subscriber;
 
 import java.io.Serializable;
@@ -58,6 +59,8 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     private ExecutorService executorService;
 
+    private Scheduler datastoreScheduler;
+
     protected Ignite getIgnite() {
         return ignite;
     }
@@ -70,10 +73,11 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
         return executorService;
     }
 
-    public void setExecutorService(ExecutorService executorService) {
-        this.executorService = executorService;
+    public void setDatastoreScheduler(Scheduler datastoreScheduler) {
+        this.datastoreScheduler = datastoreScheduler;
     }
 
+    public abstract Observable<Client> getClient(String partition, String clientIdentifier, Client defaultClient);
 
     public abstract Observable<Client> getClient(String partition, String clientIdentifier);
 

@@ -33,15 +33,11 @@ import rx.Observable;
  */
 public class PingRequestHandler extends RequestHandler<Ping> {
 
-   public PingRequestHandler(Ping message) {
-    super(message);
-   }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(Ping ping) throws RetriableException, UnRetriableException {
 
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(ping.getSessionId(),
+                ping.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
@@ -50,7 +46,7 @@ public class PingRequestHandler extends RequestHandler<Ping> {
                     try {
 
                         //TODO: deal with ping issues.
-                        pushToServer(getMessage());
+                        pushToServer(ping);
 
                         getWorker().getSessionResetManager().process(client);
 
@@ -61,7 +57,7 @@ public class PingRequestHandler extends RequestHandler<Ping> {
                     }
 
 
-                }, this::disconnectDueToError);
+                }, throwable -> disconnectDueToError(throwable, ping));
 
     }
 }

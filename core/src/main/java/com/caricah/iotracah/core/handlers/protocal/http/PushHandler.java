@@ -47,7 +47,7 @@ public class PushHandler {
     private static final Charset UTF8 = Charset.forName("UTF-8");
     private static final Logger log = LoggerFactory.getLogger(PushHandler.class);
 
-    public void pushToUrl(String url, PublishMessage publishMessage) {
+    public void pushToUrl(PublishMessage publishMessage, OnPushSuccessListener onPushSuccessListener) {
 
 
         ByteBuffer payloadBuffer = ByteBuffer.wrap((byte[]) publishMessage.getPayload());
@@ -55,7 +55,7 @@ public class PushHandler {
         String payload = UTF8.decode(payloadBuffer).toString();
 
 
-        MultipartBody httpMessage = Unirest.post(url)
+        MultipartBody httpMessage = Unirest.post(publishMessage.getProtocalData())
                 .header("accept", "application/json")
                 .field("topic", publishMessage.getTopic())
                 .field("message", payload);
@@ -78,12 +78,8 @@ public class PushHandler {
                         AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
                         ackMessage.copyBase(publishMessage);
 
-                        PublishAcknowledgeHandler publishAcknowledgeHandler = new PublishAcknowledgeHandler(ackMessage);
-                        try {
-                            publishAcknowledgeHandler.handle();
-                        } catch (RetriableException | UnRetriableException e) {
-                            log.warn(" httpPushToUrl completed : problem closing connection. ");
-                        }
+                        onPushSuccessListener.success(ackMessage);
+
                     }
                 }
 

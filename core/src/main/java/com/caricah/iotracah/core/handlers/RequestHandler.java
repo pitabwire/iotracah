@@ -58,17 +58,7 @@ public abstract class RequestHandler<T extends IOTMessage> {
 
     protected static final String SESSION_AUTH_KEY = "auth_key";
 
-    private final T message;
-
     private Worker worker;
-
-    public RequestHandler(T message){
-        this.message = message;
-    }
-
-    public T getMessage() {
-        return message;
-    }
 
     public Worker getWorker() {
         return worker;
@@ -98,6 +88,7 @@ public abstract class RequestHandler<T extends IOTMessage> {
         return checkPermission(sessionId, authKey, role, Arrays.asList(topicList));
 
     }
+
     public Observable<Client> checkPermission(Serializable sessionId, String authKey, AuthorityRole role, List<String>  topicList) {
 
         return Observable.create(observable ->{
@@ -173,18 +164,15 @@ public abstract class RequestHandler<T extends IOTMessage> {
     }
 
 
-    public void disconnectDueToError(Throwable e){
+    public void disconnectDueToError(Throwable e, T message){
         log.warn(" disconnectDueToError : System experienced the error ", e);
 
         //Notify the server to remove this client from further sending in requests.
         DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-        disconnectMessage.copyBase(getMessage());
-
-        DisconnectHandler handler = new DisconnectHandler(disconnectMessage);
-        handler.setWorker(getWorker());
+        disconnectMessage.copyBase(message);
 
         try {
-            handler.handle();
+           getWorker().getHandler(DisconnectHandler.class).handle(disconnectMessage);
         } catch (RetriableException | UnRetriableException ex) {
             log.error(" disconnectDueToError : issues disconnecting.", ex);
         }
@@ -204,5 +192,5 @@ public abstract class RequestHandler<T extends IOTMessage> {
 
     }
 
-    public abstract void handle() throws RetriableException, UnRetriableException;
+    public abstract void handle(T message) throws RetriableException, UnRetriableException;
 }

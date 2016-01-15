@@ -44,7 +44,10 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
         this.serverImpl = serverImpl;
         this.sslHandler = sslHandler;
         this.connectionTimeout = connectionTimeout;
-        this.iotEventExecutorGroup = new DefaultEventExecutorGroup(Runtime.getRuntime().availableProcessors());
+
+        int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()*2;
+
+        this.iotEventExecutorGroup = new DefaultEventExecutorGroup( countOfAvailableProcessors , getServerImpl().getExecutorService());
 
     }
 
@@ -90,6 +93,7 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
             pipeline.addLast("ssl", new SslHandler(getSslHandler().getSSLEngine()));
         }
+
 
 
         customizePipeline(getIotEventExecutorGroup(), pipeline);

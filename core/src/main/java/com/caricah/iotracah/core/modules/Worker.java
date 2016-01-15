@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.core.modules;
 
+import com.caricah.iotracah.core.handlers.RequestHandler;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
@@ -33,6 +34,9 @@ import com.caricah.iotracah.exceptions.RetriableException;
 import com.caricah.iotracah.system.BaseSystemHandler;
 import org.apache.shiro.session.SessionListener;
 import rx.Observable;
+
+import java.util.HashMap;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -68,6 +72,8 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     private ServerRouter serverRouter;
 
     private SessionResetManager sessionResetManager;
+
+    private static final HashMap<Class, RequestHandler> handlers = new HashMap<>();
 
     public Datastore getDatastore() {
         return datastore;
@@ -133,6 +139,14 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     }
 
 
+    public <T extends RequestHandler> T getHandler(Class<T> t){
+        return (T) handlers.get(t);
+    }
+
+    protected void addHandler(RequestHandler handler){
+        handler.setWorker(this);
+        handlers.put(handler.getClass(), handler);
+    }
 
     /**
      * Sole receiver of all messages from the servers.
@@ -192,7 +206,7 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
      */
     public final void pushToServer(IOTMessage iotMessage){
 
-        log.info(" pushToServer : sending to client {}", iotMessage);
+        log.debug(" pushToServer : sending to client {}", iotMessage);
 
         getServerRouter().route(iotMessage.getCluster(), iotMessage.getNodeId(), iotMessage);
 

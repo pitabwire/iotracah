@@ -37,10 +37,6 @@ import rx.Observable;
  */
 public class PublishInHandler extends RequestHandler<PublishMessage> {
 
-    public PublishInHandler(PublishMessage message) {
-        super(message);
-    }
-
 
     /**
      * A PUBLISH Control Packet is sent from a Client to a Server or from Server to a Client
@@ -50,7 +46,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
      * @throws UnRetriableException
      */
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(PublishMessage publishMessage) throws RetriableException, UnRetriableException {
 
         log.debug(" handle : client attempting to publish a message.");
 
@@ -68,14 +64,14 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
          * Topic Names and Topic Filters are UTF-8 encoded strings, they MUST NOT encode to more than 65535 bytes [MQTT-4.7.3-3]. See Section 1.5.3
          *
          */
-        String topic = getMessage().getTopic();
+        String topic = publishMessage.getTopic();
         if (null == topic ||
                 topic.isEmpty() ||
                 topic.contains(Constant.MULTI_LEVEL_WILDCARD) ||
                 topic.contains(Constant.SINGLE_LEVEL_WILDCARD) ||
                 topic.contains(Constant.SYS_PREFIX)
                 ) {
-            log.info(" handle : Invalid topic " + getMessage().getTopic());
+            log.info(" handle : Invalid topic " + publishMessage.getTopic());
             throw new ShutdownException(" Invalid topic name");
         }
 
@@ -84,7 +80,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
          * Before publishing we should get the current session and validate it.
          */
         Observable<Client> permissionObservable = checkPermission(
-                getMessage().getSessionId(), getMessage().getAuthKey(),
+                publishMessage.getSessionId(), publishMessage.getAuthKey(),
                 AuthorityRole.PUBLISH, topic);
 
         permissionObservable.subscribe(
@@ -92,8 +88,8 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
 
                     try {
 
-                        getMessage().setPartition(client.getPartition());
-                        getMessage().setClientId(client.getClientId());
+                        publishMessage.setPartition(client.getPartition());
+                        publishMessage.setClientId(client.getClientId());
 
                         /**
                          * Message processing is based on 4.3 Quality of Service levels and protocol flows
@@ -103,9 +99,9 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          *  4.3.1 QoS 0: At most once delivery
                          *  Accepts ownership of the message when it receives the PUBLISH packet.
                          */
-                        if (MqttQoS.AT_MOST_ONCE.value() == getMessage().getQos()) {
+                        if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
 
-                            client.internalPublishMessage(getMessenger(), getMessage());
+                            client.internalPublishMessage(getMessenger(), publishMessage);
                         }
 
 
@@ -115,16 +111,16 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          * MUST respond with a PUBACK Packet containing the Packet Identifier from the incoming PUBLISH Packet, having accepted ownership of the Application Message
                          * After it has sent a PUBACK Packet the Receiver MUST treat any incoming PUBLISH packet that contains the same Packet Identifier as being a new publication, irrespective of the setting of its DUP flag.
                          */
-                        if (MqttQoS.AT_LEAST_ONCE.value() == getMessage().getQos()) {
+                        if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
 
-                            client.internalPublishMessage(getMessenger(), getMessage());
+                            client.internalPublishMessage(getMessenger(), publishMessage);
 
 
                             //We need to generate a puback message to close this conversation.
 
                             AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(
-                                    getMessage().getMessageId());
-                            acknowledgeMessage.copyBase(getMessage());
+                                    publishMessage.getMessageId());
+                            acknowledgeMessage.copyBase(publishMessage);
 
                             pushToServer(acknowledgeMessage);
 
@@ -141,17 +137,17 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          *
                          */
 
-                        if (MqttQoS.EXACTLY_ONCE.value() == getMessage().getQos()) {
+                        if (MqttQoS.EXACTLY_ONCE.value() == publishMessage.getQos()) {
 
 
-                            queueQos2Message(getMessage());
+                            queueQos2Message(publishMessage);
                         }
 
                     } catch (UnRetriableException | RetriableException e) {
-                        disconnectDueToError(e);
+                        disconnectDueToError(e, publishMessage);
                     }
 
-                }, this::disconnectDueToError
+                }, throwable -> disconnectDueToError(throwable, publishMessage)
 
         );
 

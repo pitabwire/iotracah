@@ -173,11 +173,11 @@ public class Messenger {
                                         if (client.isActive()) {
                                             //Actually push out the message.
                                             //This message should be released to the connected client
-                                            PublishOutHandler handler = new PublishOutHandler(clonePublishMessage, client.getProtocalData());
-                                            handler.setWorker(getWorker());
+                                            PublishOutHandler handler = getWorker().getHandler(PublishOutHandler.class);
 
                                             try {
-                                                handler.handle();
+                                                clonePublishMessage.setProtocalData(client.getProtocalData());
+                                                handler.handle(clonePublishMessage);
                                             } catch (RetriableException | UnRetriableException e) {
                                                 log.error(" publish : problems releasing stored messages", e);
                                             }

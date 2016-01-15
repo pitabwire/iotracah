@@ -34,16 +34,12 @@ import rx.Observable;
  */
 public class PublishAcknowledgeHandler extends RequestHandler<AcknowledgeMessage> {
 
-    public PublishAcknowledgeHandler(AcknowledgeMessage message) {
-        super(message);
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(AcknowledgeMessage acknowledgeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(acknowledgeMessage.getSessionId(),
+                acknowledgeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
@@ -52,12 +48,12 @@ public class PublishAcknowledgeHandler extends RequestHandler<AcknowledgeMessage
                     //Handle acknowledging of message.
 
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                client.getPartition(), client.getClientId(),
-                getMessage().getMessageId(), false);
+                            client.getPartition(), client.getClientId(),
+                            acknowledgeMessage.getMessageId(), false);
 
-        messageObservable.subscribe(getDatastore()::removeMessage);
+                    messageObservable.subscribe(getDatastore()::removeMessage);
 
-                }, this::disconnectDueToError);
+                }, throwable -> disconnectDueToError(throwable, acknowledgeMessage));
 
     }
 }

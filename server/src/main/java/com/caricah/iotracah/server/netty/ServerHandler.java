@@ -81,6 +81,10 @@ public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
     }
 
 
+    @Override
+    public void channelReadComplete(ChannelHandlerContext ctx) {
+        ctx.flush();
+    }
 
 
 }

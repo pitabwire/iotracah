@@ -22,10 +22,14 @@ package com.caricah.iotracah.runner;
 
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.runner.impl.DefaultRunner;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.apache.log4j.PatternLayout;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.ConsoleAppender;
+import org.apache.logging.log4j.core.config.AbstractConfiguration;
+import org.apache.logging.log4j.core.config.AppenderRef;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 
 /**
  *
@@ -38,6 +42,7 @@ import org.apache.log4j.PatternLayout;
  */
 public class IOTracah extends DefaultRunner {
 
+
     private static Runner defaultRunner;
 
     public static Runner defaultRunner(){
@@ -48,14 +53,18 @@ public class IOTracah extends DefaultRunner {
     }
     public static void main(String[] args) throws UnRetriableException{
 
-        ConsoleAppender console = new ConsoleAppender(); //create appender
-        //configure the appender
-        String PATTERN = "%d %p [ %c] %m%n";
-        console.setLayout(new PatternLayout(PATTERN));
-        console.setThreshold(Level.ALL);
-        console.activateOptions();
-        //add appender to any Logger (here is root)
-        Logger.getRootLogger().addAppender(console);
+
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        AbstractConfiguration config = (AbstractConfiguration) ctx.getConfiguration();
+        ConsoleAppender appender = ConsoleAppender.createDefaultAppenderForLayout(PatternLayout.createDefaultLayout());
+        appender.start();
+        config.addAppender(appender);
+        AppenderRef[] refs = new AppenderRef[] { AppenderRef.createAppenderRef(appender.getName(), null, null) };
+        LoggerConfig loggerConfig = LoggerConfig.createLogger("false", Level.WARN, LogManager.ROOT_LOGGER_NAME, "true", refs, null, config, null);
+        loggerConfig.addAppender(appender, null, null);
+        config.addLogger(LogManager.ROOT_LOGGER_NAME, loggerConfig);
+        ctx.updateLoggers();
+
 
         Runner runner = defaultRunner();
         runner.init();

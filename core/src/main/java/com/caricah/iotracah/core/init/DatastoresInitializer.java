@@ -26,6 +26,7 @@ import com.caricah.iotracah.system.BaseSystemHandler;
 import com.caricah.iotracah.core.security.DefaultSecurityHandler;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.cluster.ClusterGroup;
+import rx.schedulers.Schedulers;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -115,7 +116,8 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
                     ClusterGroup datastoreCluster = getIgnite().cluster().forAttribute("ROLE", getExecutorDatastoreName());
                     ExecutorService executorService = getIgnite().executorService(datastoreCluster);
-                    datastore.setExecutorService(executorService);
+
+                datastore.setDatastoreScheduler(Schedulers.from(executorService));
 
 
 

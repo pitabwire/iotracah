@@ -25,7 +25,7 @@ import org.apache.shiro.authz.permission.InvalidPermissionStringException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -106,9 +106,9 @@ import java.util.regex.Pattern;
  * @version 1.0 10/4/15
  * @since 0.9
  */
-public class IOTPermission implements Permission, Serializable {
+public class IOTPermission implements Permission, Externalizable {
 
-    protected final Logger log = LoggerFactory.getLogger(IOTPermission.class);
+    protected static final Logger log = LoggerFactory.getLogger(IOTPermission.class);
     /*--------------------------------------------
      |             C O N S T A N T S             |
      ============================================*/
@@ -167,6 +167,8 @@ public class IOTPermission implements Permission, Serializable {
     public void setClientId(String clientId) {
         this.clientId = clientId;
     }
+
+    private IOTPermission(){}
 
     public IOTPermission(String wildcardString) {
         this(wildcardString, DEFAULT_CASE_SENSITIVE);
@@ -367,4 +369,25 @@ public class IOTPermission implements Permission, Serializable {
         return parts.hashCode();
     }
 
+    @Override
+    public void writeExternal(ObjectOutput objectOutput) throws IOException {
+
+        objectOutput.writeObject(getParts());
+        objectOutput.writeObject(getType());
+        objectOutput.writeObject(getPartition());
+        objectOutput.writeObject(getUsername());
+        objectOutput.writeObject(getClientId());
+
+    }
+
+    @Override
+    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
+
+       parts = (List<String>) objectInput.readObject();
+        setType((String) objectInput.readObject());
+        setPartition((String) objectInput.readObject());
+        setUsername((String) objectInput.readObject());
+        setClientId((String) objectInput.readObject());
+
+    }
 }

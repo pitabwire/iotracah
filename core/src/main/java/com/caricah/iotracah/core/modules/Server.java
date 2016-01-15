@@ -25,8 +25,13 @@ import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
 import com.caricah.iotracah.system.BaseSystemHandler;
+import org.apache.ignite.IgniteCompute;
+import rx.Scheduler;
+import rx.functions.Action0;
+import rx.util.async.Async;
 
 import java.io.Serializable;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -34,6 +39,20 @@ import java.io.Serializable;
  */
 public abstract class Server<T> extends IOTBaseHandler {
 
+
+    /**
+     * Private machine to make computations asynchronous
+     * so everyone can live happily.
+     */
+    private ExecutorService executorService;
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+    }
 
     /**
      * Declaration by the server implementation if its connections are persistant

@@ -95,9 +95,6 @@ public class SessionDAO extends AbstractSessionDAO implements SessionIdGenerator
 
 
     protected Session storeSession(Serializable id, Session session) {
-        if (id == null) {
-            throw new NullPointerException("id argument cannot be null.");
-        }
          getSessionsCache().put(id, new IOTSession(session));
         return  session;
     }

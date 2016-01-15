@@ -34,16 +34,12 @@ import rx.Observable;
  */
 public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
 
-    public PublishReleaseHandler(ReleaseMessage message) {
-        super(message);
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(ReleaseMessage releaseMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.CONNECT);
+        Observable<Client> permissionObservable = checkPermission(releaseMessage.getSessionId(),
+                releaseMessage.getAuthKey(), AuthorityRole.CONNECT);
         permissionObservable.subscribe(
 
                 (client) -> {
@@ -56,7 +52,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
 
 
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                            client.getPartition(), client.getClientId(), getMessage().getMessageId(), true);
+                            client.getPartition(), client.getClientId(), releaseMessage.getMessageId(), true);
 
                     messageObservable.subscribe(publishMessage -> {
 
@@ -82,7 +78,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
                             }
                         });
                     });
-                }, this::disconnectDueToError);
+                }, throwable -> disconnectDueToError(throwable, releaseMessage));
     }
 
 

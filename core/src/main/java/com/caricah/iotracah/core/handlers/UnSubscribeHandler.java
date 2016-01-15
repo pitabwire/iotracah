@@ -35,12 +35,8 @@ import rx.Observable;
  */
 public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
 
-    public UnSubscribeHandler(UnSubscribeMessage message) {
-        super(message);
-    }
-
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(UnSubscribeMessage unSubscribeMessage) throws RetriableException, UnRetriableException {
 
 
         /**
@@ -54,9 +50,9 @@ public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
          * Before unsubscribing we should get the current session and validate it.
          */
 
-        Observable<Client> permittedObservable = checkPermission(getMessage().getSessionId(),
-                getMessage().getAuthKey(), AuthorityRole.SUBSCRIBE,
-                getMessage().getTopicFilterList());
+        Observable<Client> permittedObservable = checkPermission(unSubscribeMessage.getSessionId(),
+                unSubscribeMessage.getAuthKey(), AuthorityRole.SUBSCRIBE,
+                unSubscribeMessage.getTopicFilterList());
 
         permittedObservable.subscribe(client -> {
 
@@ -76,12 +72,12 @@ public class UnSubscribeHandler extends RequestHandler<UnSubscribeMessage> {
             );
 
 
-            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(getMessage().getMessageId());
-            unSubscribeAcknowledgeMessage.copyBase(getMessage());
+            UnSubscribeAcknowledgeMessage unSubscribeAcknowledgeMessage = UnSubscribeAcknowledgeMessage.from(unSubscribeMessage.getMessageId());
+            unSubscribeAcknowledgeMessage.copyBase(unSubscribeMessage);
             pushToServer(unSubscribeAcknowledgeMessage);
 
 
-        }, this::disconnectDueToError);
+        }, throwable1 -> disconnectDueToError(throwable1, unSubscribeMessage ));
 
     }
 

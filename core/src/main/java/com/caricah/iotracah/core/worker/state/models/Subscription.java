@@ -90,7 +90,7 @@ public class Subscription implements IdKeyComposer, Externalizable {
     @Override
     public Serializable generateIdKey() throws UnRetriableException {
 
-        return String.format("%s:%s-%s", getPartition(), getClientId(), getTopicFilterKey());
+        return "p["+getPartition()+"]"+ getClientId()+"-"+ getTopicFilterKey();
     }
 
 

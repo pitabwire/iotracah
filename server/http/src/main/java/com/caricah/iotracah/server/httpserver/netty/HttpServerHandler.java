@@ -25,6 +25,7 @@ import com.caricah.iotracah.server.netty.ServerImpl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
@@ -63,8 +64,6 @@ public class HttpServerHandler extends ServerHandler<FullHttpMessage> {
         getInternalServer().pushToWorker(connectionId, null, msg);
 
     }
-
-
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {

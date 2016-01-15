@@ -56,10 +56,11 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
         return Observable.create(observer -> {
 
-            List<String> collectingParentIdList = new ArrayList<>();
-            collectingParentIdList.add(getPartitionAsInitialParentId(partition));
+            Set<Serializable> topicFilterKeys = new HashSet<>();
 
             ListIterator<String> pathIterator = topicNavigationRoute.listIterator();
+
+            List<String> growingTitles = new ArrayList<>();
 
             try {
 
@@ -67,38 +68,45 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
                     String name = pathIterator.next();
 
-                    List<String> parentIdList = new ArrayList<>(collectingParentIdList);
-                    collectingParentIdList.clear();
+                    List<String> slWildCardList = new ArrayList<>(growingTitles);
 
-                    for (String parentId : parentIdList) {
+                    if(pathIterator.hasNext()){
+                        //We deal with wildcard.
+                        slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
 
-                        String query = "partition = ? AND parentId = ? AND name IN (?, ?, ?) ";
-                        Object[] params = new Object[]{partition, parentId, name, Constant.MULTI_LEVEL_WILDCARD, Constant.SINGLE_LEVEL_WILDCARD};
-
-                        getByQuery(SubscriptionFilter.class, query, params)
-                                .toBlocking().forEach(subscriptionFilter -> {
-
-                            if (pathIterator.hasNext()) {
-
-                                if (Constant.MULTI_LEVEL_WILDCARD.equals(subscriptionFilter.getName())) {
-                                    observer.onNext(subscriptionFilter);
-                                } else {
-
-
-                                    try {
-                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
-                                    } catch (UnRetriableException e) {
-                                        log.error(" matchTopicFilterTree : error getting subscription filter id", e);
-                                    }
-                                }
-
-
-                            } else {
-                                observer.onNext(subscriptionFilter);
-                            }
-                        });
+                    }else{
+                        //we deal with full topic
+                        slWildCardList.add(name);
                     }
+
+                    List<String> reverseSlWildCardList = new ArrayList<>(slWildCardList);
+
+                    growingTitles.add(name);
+
+                    int sizeOfTopic = slWildCardList.size();
+                    if(sizeOfTopic > 1) {
+                        sizeOfTopic -= 1;
+
+                        for (int i = 0; i < sizeOfTopic; i++) {
+
+                            if (i >= 0) {
+                                slWildCardList.set(i, Constant.MULTI_LEVEL_WILDCARD);
+                                reverseSlWildCardList.set(sizeOfTopic - i, Constant.MULTI_LEVEL_WILDCARD);
+
+                                topicFilterKeys.add( SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+
+                            }
+                        }
+                    }
+
+
                 }
+
+                topicFilterKeys.add( SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+                getBySet(topicFilterKeys).toBlocking().forEach(observer::onNext);
 
 
                 observer.onCompleted();
@@ -119,7 +127,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
         return Observable.create(observer -> {
 
             List<String> collectingParentIdList = new ArrayList<>();
-            collectingParentIdList.add(getPartitionAsInitialParentId(partition));
+            collectingParentIdList.add(SubscriptionFilter.getPartitionAsInitialParentId(partition));
 
             ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
 
@@ -217,7 +225,6 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
     public Observable<SubscriptionFilter> createTree(String partition, List<String> topicFilterTreeRoute) {
 
-
         return Observable.create(observer -> {
 
                     try {
@@ -225,7 +232,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                         SubscriptionFilter activeSubscriptionFilter = null;
 
                         ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
-                        String parentId = getPartitionAsInitialParentId(partition);
+                        String parentId = SubscriptionFilter.getPartitionAsInitialParentId(partition);
 
                         while (pathIterator.hasNext()) {
 
@@ -274,7 +281,5 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
         );
     }
 
-    public String getPartitionAsInitialParentId(String partition) {
-        return "p[" + partition + "]";
-    }
+
 }

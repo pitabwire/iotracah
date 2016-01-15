@@ -35,6 +35,8 @@ import org.apache.commons.configuration.Configuration;
 import rx.Observable;
 
 import java.io.Serializable;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -124,10 +126,13 @@ public class IgniteDatastore extends Datastore {
     @Override
     public Observable<Client> getClient(String partition, String clientIdentifier) {
 
-        String query = "partition = ? and clientId = ?";
-        Object[] params = {partition, clientIdentifier};
+        return clientHandler.getByKey(Client.createIdKey(partition, clientIdentifier));
+    }
 
-        return clientHandler.getByQuery(Client.class, query, params);
+    @Override
+    public Observable<Client> getClient(String partition, String clientIdentifier, Client defaultClient) {
+
+        return clientHandler.getByKeyWithDefault(Client.createIdKey(partition, clientIdentifier), defaultClient);
     }
 
     @Override
@@ -164,7 +169,26 @@ public class IgniteDatastore extends Datastore {
     @Override
     public Observable<SubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic) {
 
-        return subscriptionFilterHandler.createTree(partition, getTopicNavigationRoute(topic));
+        return Observable.create(observer -> {
+
+            List<String> topicNavigationRoute = getTopicNavigationRoute(topic);
+
+            SubscriptionFilter subscriptionFilter =  subscriptionFilterHandler
+                    .getByKeyWithDefault(SubscriptionFilter
+                            .quickCheckIdKey(partition, topicNavigationRoute), null).toBlocking().single();
+
+                    if(Objects.isNull(subscriptionFilter)){
+
+                                 subscriptionFilter = subscriptionFilterHandler.createTree(
+                            partition, topicNavigationRoute).toBlocking().single();
+                    }
+
+
+                observer.onNext(subscriptionFilter);
+                observer.onCompleted();
+
+        });
+
 
     }
 

@@ -53,7 +53,7 @@ public class HttpServerInitializer extends ServerInitializer<FullHttpMessage> {
         pipeline.addLast("aggregator", new HttpObjectAggregator(1048576));
 
         // we finally have the chance to add some business logic.
-        pipeline.addLast(eventExecutorGroup, "iotracah-http", new HttpServerHandler((HttpServerImpl) getServerImpl()));
+        pipeline.addLast(eventExecutorGroup, "iotracah-http", new HttpServerHandler((HttpServerImpl) getServerImpl()) );
 
     }
 

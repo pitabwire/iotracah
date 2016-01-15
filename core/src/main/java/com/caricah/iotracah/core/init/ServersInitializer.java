@@ -37,11 +37,14 @@ import org.apache.ignite.IgniteMessaging;
 import org.apache.ignite.Ignition;
 import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.configuration.TransactionConfiguration;
 import org.apache.ignite.logger.slf4j.Slf4jLogger;
 import org.apache.ignite.marshaller.jdk.JdkMarshaller;
 import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.transactions.TransactionConcurrency;
+import org.apache.ignite.transactions.TransactionIsolation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -52,6 +55,7 @@ import rx.schedulers.Schedulers;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * <code>WorkersInitializer</code> Handler for initializing base worker
@@ -102,6 +106,7 @@ public abstract class ServersInitializer implements SystemInitializer {
     private List<Subscription> rxSubscriptionList = new ArrayList<>();
 
     private ExecutorService executorService;
+
 
     public boolean isServerEngineEnabled() {
         return serverEngineEnabled;
@@ -186,6 +191,7 @@ public abstract class ServersInitializer implements SystemInitializer {
         this.executorService = executorService;
     }
 
+
     public void startServers() throws UnRetriableException {
 
         if (isServerEngineEnabled() && getServerList().isEmpty()) {
@@ -199,6 +205,8 @@ public abstract class ServersInitializer implements SystemInitializer {
 
             //Link server observable to .
             subscribeObserverToAnObservable(server, getServerRouter());
+
+            server.setExecutorService(getExecutorService());
 
             //Actually just start our server guy.
             server.initiate();
@@ -325,8 +333,20 @@ public abstract class ServersInitializer implements SystemInitializer {
 
                 //Optimize marshaller
                 OptimizedMarshaller optimizedMarshaller = new OptimizedMarshaller();
-                optimizedMarshaller.setRequireSerializable(false);
+                optimizedMarshaller.setRequireSerializable(true);
                 cfg.setMarshaller(optimizedMarshaller);
+
+
+
+
+                TransactionConfiguration transactionConfiguration = new TransactionConfiguration();
+                transactionConfiguration.setDefaultTxConcurrency(TransactionConcurrency.PESSIMISTIC);
+                transactionConfiguration.setDefaultTxIsolation(TransactionIsolation.READ_COMMITTED);
+                transactionConfiguration.setDefaultTxTimeout(30000);
+                cfg.setTransactionConfiguration(transactionConfiguration);
+
+                cfg.setMetricsLogFrequency(0);
+                cfg.setMetricsUpdateFrequency(15000);
 
                 Ignition.start(cfg);
 
@@ -387,8 +407,9 @@ public abstract class ServersInitializer implements SystemInitializer {
             setExecutorService(obtainExcecutor(observableOnSubscriber));
 
             Scheduler scheduler = Schedulers.from(getExecutorService());
+
         return observable
-                   // .onBackpressureBuffer()
+                    //.onBackpressureBuffer()
                     .subscribeOn(scheduler)
                     .subscribe(subscriber);
 

@@ -27,8 +27,12 @@ fi
 # stop-the-world GC pauses during resize, and so that we can lock the
 # heap in memory on startup to prevent any of it from being swapped
 # out.
+#JAVA_OPTS="$JAVA_OPTS -agentpath:/data/Software/JAVA/yjp-2015-build-15084/bin/linux-x86-64/libyjpagent.so"
 JAVA_OPTS="$JAVA_OPTS -Xms${IOT_MIN_MEM}"
 JAVA_OPTS="$JAVA_OPTS -Xmx${IOT_MAX_MEM}"
+
+
+$
 
 # new generation
 if [ "x$IOT_HEAP_NEWSIZE" != "x" ]; then
@@ -52,8 +56,14 @@ fi
 if [ "x$IOT_GC_OPTS" = "x" ]; then
   IOT_GC_OPTS="$IOT_GC_OPTS -XX:+UseParNewGC"
   IOT_GC_OPTS="$IOT_GC_OPTS -XX:+UseConcMarkSweepGC"
-  IOT_GC_OPTS="$IOT_GC_OPTS -XX:CMSInitiatingOccupancyFraction=75"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:+UseTLAB"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:NewSize=128m"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:MaxNewSize=128m"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:MaxTenuringThreshold=0"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:SurvivorRatio=1024"
+  IOT_GC_OPTS="$IOT_GC_OPTS -XX:CMSInitiatingOccupancyFraction=60"
   IOT_GC_OPTS="$IOT_GC_OPTS -XX:+UseCMSInitiatingOccupancyOnly"
+
 fi
 
 JAVA_OPTS="$JAVA_OPTS $IOT_GC_OPTS"
@@ -86,3 +96,8 @@ JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"
 
 # Use our provided JNA always versus the system one
 JAVA_OPTS="$JAVA_OPTS -Djna.nosys=true"
+
+#Enable JMX monitoring
+JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.port=3333"
+JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.authenticate=false"

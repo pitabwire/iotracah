@@ -35,7 +35,7 @@ import java.io.File;
 public interface LogHandler {
 
     String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE = "system.config.logging.log.config.file";
-    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE = "log4j.properties";
+    String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_FILE_DEFAULT_VALUE = "log4j2.xml";
 
     String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY = "system.config.logging.log.config.directory";
     String SYSTEM_CONFIG_LOGGING_LOG_CONFIG_DIRECTORY_DEFAULT_VALUE = "";

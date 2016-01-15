@@ -21,16 +21,16 @@
 package com.caricah.iotracah.server.netty;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
 import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
 import com.caricah.iotracah.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelId;
-import io.netty.channel.EventLoopGroup;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.*;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -58,16 +59,15 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     public static final AttributeKey<Serializable> REQUEST_CONNECTION_ID = AttributeKey.valueOf("requestConnectionIdKey");
 
 
-
-    private int tcpPort ;
-    private int sslPort ;
-    private boolean sslEnabled ;
+    private int tcpPort;
+    private int sslPort;
+    private boolean sslEnabled;
     private int connectionTimeout;
 
     private SSLHandler sslHandler = null;
 
-    private EventLoopGroup parentGroup = null;
-    private EventLoopGroup childGroup = null;
+    private EventLoopGroup bossEventLoopGroup = null;
+    private EventLoopGroup workerEventLoopGroup = null;
 
     private Channel tcpChannel = null;
     private Channel sslChannel = null;
@@ -119,6 +119,9 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
         this.sslHandler = sslHandler;
     }
 
+    public ExecutorService getExecutorService(){
+       return getInternalServer().getExecutorService();
+    }
 
     public ServerImpl(Server<T> internalServer) {
 
@@ -143,16 +146,35 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
         try {
 
-            parentGroup = new NioEventLoopGroup(1);
-            childGroup = new NioEventLoopGroup();
 
+            int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()*2;
+
+            if (Epoll.isAvailable()) {
+                bossEventLoopGroup = new EpollEventLoopGroup(2, getExecutorService());
+                workerEventLoopGroup = new EpollEventLoopGroup(countOfAvailableProcessors, getExecutorService());
+
+            } else {
+                bossEventLoopGroup = new NioEventLoopGroup(2, getExecutorService());
+                workerEventLoopGroup = new NioEventLoopGroup(countOfAvailableProcessors, getExecutorService());
+
+            }
 
 
             //Initialize listener for TCP
             ServerBootstrap tcpBootstrap = new ServerBootstrap();
-            tcpBootstrap.group(parentGroup, childGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler(LogLevel.INFO))
+            tcpBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+            tcpBootstrap.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
+            tcpBootstrap.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
+
+            tcpBootstrap = tcpBootstrap.group(bossEventLoopGroup, workerEventLoopGroup);
+
+            if (Epoll.isAvailable()) {
+                tcpBootstrap = tcpBootstrap.channel(EpollServerSocketChannel.class);
+            } else {
+                tcpBootstrap = tcpBootstrap.channel(NioServerSocketChannel.class);
+            }
+
+            tcpBootstrap = tcpBootstrap.handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(getServerInitializer(this, getConnectionTimeout()));
 
             ChannelFuture tcpChannelFuture = tcpBootstrap.bind(getTcpPort()).sync();
@@ -162,16 +184,29 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
             if (isSslEnabled()) {
                 //Initialize listener for SSL
                 ServerBootstrap sslBootstrap = new ServerBootstrap();
-                sslBootstrap.group(parentGroup, childGroup)
-                        .channel(NioServerSocketChannel.class)
-                        .handler(new LoggingHandler(LogLevel.INFO))
+                sslBootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+                sslBootstrap.childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK, 32 * 1024);
+                sslBootstrap.childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK, 8 * 1024);
+
+
+                sslBootstrap = sslBootstrap.group(bossEventLoopGroup, workerEventLoopGroup);
+
+                if (Epoll.isAvailable()) {
+                    sslBootstrap = sslBootstrap.channel(EpollServerSocketChannel.class);
+                } else {
+                    sslBootstrap = sslBootstrap.channel(NioServerSocketChannel.class);
+                }
+
+
+
+                sslBootstrap = sslBootstrap.handler(new LoggingHandler(LogLevel.INFO))
                         .childHandler(getServerInitializer(this, getConnectionTimeout(), getSslHandler()));
 
                 ChannelFuture sslChannelFuture = sslBootstrap.bind(getSslPort()).sync();
                 sslChannel = sslChannelFuture.channel();
             }
 
-        }catch (InterruptedException e){
+        } catch (InterruptedException e) {
 
             log.error(" configure : Initialization issues ", e);
 
@@ -181,7 +216,6 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
 
     }
-
 
 
     /**
@@ -194,43 +228,45 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
         getChannelGroup().close().awaitUninterruptibly();
 
 
-        if(null != sslChannel){
+        if (null != sslChannel) {
             sslChannel.close().awaitUninterruptibly();
         }
 
-        if(null != tcpChannel){
+        if (null != tcpChannel) {
             tcpChannel.close().awaitUninterruptibly();
         }
 
-        if(null != childGroup){
-            childGroup.shutdownGracefully();
+        if (null != bossEventLoopGroup) {
+            bossEventLoopGroup.shutdownGracefully();
         }
 
-        if(null != parentGroup){
-            parentGroup.shutdownGracefully();
+        if (null != workerEventLoopGroup) {
+            workerEventLoopGroup.shutdownGracefully();
         }
+
 
     }
 
 
+    public void pushToClient(Serializable connectionId, T message) {
 
-
-    public void pushToClient(Serializable connectionId, T message){
 
         log.debug(" pushToClient : Server pushToClient : we got to now sending out {}", message);
 
         Channel channel = getChannel((ChannelId) connectionId);
 
-        if(null != channel && channel.isWritable()) {
-            channel.writeAndFlush(message);
-        }else{
-            log.info(" pushToClient : channel to push message {} is not availble ", message);
+        if (null != channel) {
+
+            channel.eventLoop().execute(() -> channel.writeAndFlush(message, channel.voidPromise()));
+
+        } else {
+            log.info(" pushToClient : channel to push message {} is not available ", message);
         }
 
     }
 
 
-    public void closeClient(ChannelId channelId){
+    public void closeClient(ChannelId channelId) {
         Channel channel = getChannel(channelId);
         if (null != channel) {
 
@@ -245,12 +281,8 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
-        if (ioTMessage.getMessageType().equals(DisconnectMessage.MESSAGE_TYPE)){
-
-                /**
-                 *
-                 */
-                closeClient((ChannelId) ioTMessage.getConnectionId());
+        if (ioTMessage.getMessageType().equals(DisconnectMessage.MESSAGE_TYPE)) {
+            closeClient((ChannelId) ioTMessage.getConnectionId());
         }
 
     }
@@ -260,6 +292,7 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     }
 
     protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout);
+
     protected abstract ServerInitializer<T> getServerInitializer(ServerImpl<T> serverImpl, int connectionTimeout, SSLHandler sslHandler);
 
-}
+ }

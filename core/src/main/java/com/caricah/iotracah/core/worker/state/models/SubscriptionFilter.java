@@ -25,7 +25,9 @@ import com.caricah.iotracah.exceptions.UnRetriableException;
 import org.apache.ignite.cache.query.annotations.QuerySqlField;
 
 import java.io.*;
+import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -93,6 +95,13 @@ public class SubscriptionFilter implements IdKeyComposer, Externalizable {
         return getParentId()+":"+getName();
     }
 
+    public static String quickCheckIdKey(String partition, List<String> nameParts){
+        return getPartitionAsInitialParentId(partition) +":"+ String.join(":", nameParts);
+    }
+
+    public static String getPartitionAsInitialParentId(String partition) {
+        return "p[" + partition + "]";
+    }
 
     @Override
     public String toString() {

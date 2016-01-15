@@ -50,7 +50,9 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
+import java.util.AbstractMap;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,12 +64,6 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     private final Pattern usernamePartitionPattern = Pattern.compile("(?<username>.*)-<(?<partition>.*)>");
     private final Pattern pattern = Pattern.compile("[\\w\\-\\s/<>]*");
-
-   
-    public ConnectionHandler(ConnectMessage message) {
-        super(message);
-    }
-
 
     /**
      * * 3.1.4 Response
@@ -113,7 +109,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
      * @throws UnRetriableException
      */
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(ConnectMessage connectMessage) throws RetriableException, UnRetriableException {
 
 
         log.debug(" handle : client initiating a new connection.");
@@ -131,8 +127,8 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
         try {
 
-            if (!MqttVersion.MQTT_3_1_1.protocolName().equals(getMessage().getProtocolName())
-                    && !MqttVersion.MQTT_3_1.protocolName().equals(getMessage().getProtocolName())
+            if (!MqttVersion.MQTT_3_1_1.protocolName().equals(connectMessage.getProtocolName())
+                    && !MqttVersion.MQTT_3_1.protocolName().equals(connectMessage.getProtocolName())
                     ) {
 
                 /**
@@ -148,8 +144,8 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
             }
 
 
-            if (MqttVersion.MQTT_3_1_1.protocolLevel() != getMessage().getProtocalLevel()
-                    && MqttVersion.MQTT_3_1.protocolLevel() != getMessage().getProtocalLevel()
+            if (MqttVersion.MQTT_3_1_1.protocolLevel() != connectMessage.getProtocalLevel()
+                    && MqttVersion.MQTT_3_1.protocolLevel() != connectMessage.getProtocalLevel()
                     ) {
 
                 /**
@@ -169,7 +165,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
 
             //We now proceed to openning a session on our core service interface.
-            boolean cleanSession = getMessage().isCleanSession();
+            boolean cleanSession = connectMessage.isCleanSession();
 
             /**
              * The Server MUST allow ClientIds which are between 1 and 23 UTF-8 encoded bytes in length,
@@ -185,7 +181,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
              * It MUST then process the CONNECT packet as if the Client had provided that unique ClientId [MQTT-3.1.3-6].
              *
              */
-            String clientIdentifier = getMessage().getClientId();
+            String clientIdentifier = connectMessage.getClientId();
 
 
             /**
@@ -214,17 +210,20 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
             log.debug(" handle: we are ready now to obtain the core session.");
 
-            Observable<Client> newClientObservable = openSubject(getWorker(),
-                    getMessage().getCluster(), getMessage().getNodeId(), getMessage().getConnectionId(),
-                    clientIdentifier, cleanSession, getMessage().getUserName(), getMessage().getPassword(),
-                    getMessage().getKeepAliveTime(), getMessage().getSourceHost(), getMessage().getProtocal()
+            Observable<Map.Entry<Client, String>> newClientObservable = openSubject(getWorker(),
+                    connectMessage.getCluster(), connectMessage.getNodeId(), connectMessage.getConnectionId(),
+                    clientIdentifier, cleanSession, connectMessage.getUserName(), connectMessage.getPassword(),
+                    connectMessage.getKeepAliveTime(), connectMessage.getSourceHost(), connectMessage.getProtocal()
             );
 
             newClientObservable.subscribe(
 
-                    (client) -> {
+                    (clientSessionAuthKeyEntry) -> {
 
-                        getMessage().setSessionId(client.getSessionId());
+                        Client client = clientSessionAuthKeyEntry.getKey();
+
+                        connectMessage.setAuthKey(clientSessionAuthKeyEntry.getValue());
+                        connectMessage.setSessionId(client.getSessionId());
 
 
                         log.debug(" handle: obtained a client : {}. ", client);
@@ -241,14 +240,14 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                         log.info(" onNext : Successfully initiated a session.");
 
                         //Respond to server with a connection successfull.
-                        ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
-                        connectAcknowledgeMessage.copyBase(getMessage());
+                        ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+                        connectAcknowledgeMessage.copyBase(connectMessage);
 
                         pushToServer(connectAcknowledgeMessage);
 
 
                         WillMessage will;
-                        if (getMessage().isHasWill()) {
+                        if (connectMessage.isHasWill()) {
 
                             /**
                              * If the Will Flag is set to 1 this indicates that, if the Connect request is accepted,
@@ -258,11 +257,11 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                              */
 
 
-                            will = WillMessage.from(getMessage().isRetainWill(), getMessage().getWillQos(),
-                                    getMessage().getWillTopic(), getMessage().getWillMessage());
+                            will = WillMessage.from(connectMessage.isRetainWill(), connectMessage.getWillQos(),
+                                    connectMessage.getWillTopic(), connectMessage.getWillMessage());
                             will.setPartition(client.getPartition());
                             will.setClientId(client.getClientId());
-                            will.copyBase(getMessage());
+                            will.copyBase(connectMessage);
 
                             getDatastore().saveWill(will);
 
@@ -293,17 +292,17 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                         if (e instanceof AuthenticationException) {
 
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_BAD_USER_NAME_OR_PASSWORD);
 
                         } else if (e instanceof AuthorizationException) {
 
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_NOT_AUTHORIZED);
 
                         } else {
-                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                            connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
                         }
 
-                        connectAcknowledgeMessage.copyBase(getMessage());
+                        connectAcknowledgeMessage.copyBase(connectMessage);
                         pushToServer(connectAcknowledgeMessage);
 
                     }, () -> {
@@ -317,27 +316,27 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
             ConnectAcknowledgeMessage connectAcknowledgeMessage;
 
             if (e instanceof MqttIdentifierRejectedException) {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_IDENTIFIER_REJECTED);
 
             } else if (e instanceof MqttUnacceptableProtocolVersionException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else if (e instanceof UnknownProtocalException) {
 
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_UNACCEPTABLE_PROTOCOL_VERSION);
 
             } else {
-                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+                connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
             }
 
-            connectAcknowledgeMessage.copyBase(getMessage());
+            connectAcknowledgeMessage.copyBase(connectMessage);
             throw new ShutdownException(connectAcknowledgeMessage);
 
         } catch (Exception systemError) {
 
-            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(getMessage().isDup(), getMessage().getQos(), getMessage().isRetain(), getMessage().getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
-            connectAcknowledgeMessage.copyBase(getMessage());
+            ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_REFUSED_SERVER_UNAVAILABLE);
+            connectAcknowledgeMessage.copyBase(connectMessage);
             log.error(" handle : System experienced the error ", systemError);
             throw new ShutdownException(connectAcknowledgeMessage);
 
@@ -345,7 +344,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     }
 
-    private Observable<Client> openSubject(Worker worker, String connectedCluster, UUID connectedNode,
+    private Observable<Map.Entry<Client, String>> openSubject(Worker worker, String connectedCluster, UUID connectedNode,
                                            Serializable connectionID, String clientIdentifier, boolean cleanSession,
                                            String userName, String password, int keepAliveTime, String sourceHost,
                                            Protocal protocal) {
@@ -377,8 +376,8 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                 log.debug(" openSubject : create -- Futher into the database.");
 
-                Observable<Client> clientObservable = getDatastore().getClient(partition, activeClientId);
-                clientObservable.firstOrDefault(defaultClient).subscribe(( client) ->{
+                Observable<Client> clientObservable = getDatastore().getClient(partition, activeClientId, defaultClient);
+                clientObservable.single().subscribe(( client) ->{
 
                         //We have obtained a client to work with.
 
@@ -423,10 +422,10 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                             session.setTimeout(keepAliveDisconnectiontime.longValue());
                             session.setAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY, principals);
 
+                            String sessionAuthKey = null;
                             if (client.getProtocal().isNotPersistent()) {
-                                String sessionAuthKey = generateMAC();
+                                sessionAuthKey = generateMAC();
                                 session.setAttribute(SESSION_AUTH_KEY, sessionAuthKey);
-                                getMessage().setAuthKey(sessionAuthKey);
                             }
 
 
@@ -441,7 +440,7 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                             getDatastore().saveClient(client);
 
-                            observable.onNext(client);
+                            observable.onNext(new AbstractMap.SimpleEntry<Client, String>(client, sessionAuthKey ));
                             observable.onCompleted();
 
                         } catch (NoSuchAlgorithmException | AuthenticationException  e) {

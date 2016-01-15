@@ -21,6 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.core.handlers.protocal.http.OnPushSuccessListener;
 import com.caricah.iotracah.core.handlers.protocal.http.PushHandler;
 import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
 import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
@@ -39,35 +40,31 @@ import org.json.JSONObject;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  */
-public class PublishOutHandler extends RequestHandler<PublishMessage> {
+public class PublishOutHandler extends RequestHandler<PublishMessage> implements OnPushSuccessListener {
 
-    private String protocalData;
 
-    public PublishOutHandler(PublishMessage message, String protocalData) {
-        super(message);
-        this.protocalData = protocalData;
-    }
 
     @Override
-    public void handle() throws RetriableException, UnRetriableException {
+    public void handle(PublishMessage publishMessage) throws RetriableException, UnRetriableException {
 
-        log.debug(" handle : outbound message {} being processed", getMessage());
+        log.debug(" handle : outbound message {} being processed", publishMessage);
 
-        if (getMessage().getProtocal().isPersistent()) {
+        if (publishMessage.getProtocal().isPersistent()) {
 
             //We need to generate a publish message to start this conversation.
-            pushToServer(getMessage());
+            pushToServer(publishMessage);
 
         } else {
-            switch (getMessage().getProtocal()) {
+            switch (publishMessage.getProtocal()) {
 
                 case HTTP:
                     PushHandler httpPushHandler = new PushHandler();
-                    httpPushHandler.pushToUrl(protocalData, getMessage());
+                    httpPushHandler.pushToUrl(publishMessage, this);
                     break;
                 default:
                     log.error(" handle : outbound message {} using none implemented protocal");
@@ -75,5 +72,13 @@ public class PublishOutHandler extends RequestHandler<PublishMessage> {
         }
     }
 
+    @Override
+    public void success(AcknowledgeMessage acknowledgeMessage) {
 
+        try {
+            getWorker().getHandler(PublishAcknowledgeHandler.class).handle(acknowledgeMessage);
+        } catch (RetriableException | UnRetriableException e) {
+            log.warn(" httpPushToUrl completed : problem closing connection. ");
+        }
+    }
 }
