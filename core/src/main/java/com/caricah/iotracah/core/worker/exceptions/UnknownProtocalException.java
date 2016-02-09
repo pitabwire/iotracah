@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.worker.exceptions;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 
 /**
  *

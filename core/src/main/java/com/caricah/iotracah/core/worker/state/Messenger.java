@@ -21,25 +21,24 @@
 package com.caricah.iotracah.core.worker.state;
 
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 
-import java.util.HashSet;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Implementation class that handles subscribing, unsubscribing and publishing of messages
@@ -71,7 +70,7 @@ public class Messenger {
         this.worker = worker;
     }
 
-    public Observable<Map.Entry<String, Integer>> subscribe(Client client, List<Map.Entry<String, Integer>> topicFilterQosList) {
+    public Observable<Map.Entry<String, Integer>> subscribe(IOTSession iotSession, List<Map.Entry<String, Integer>> topicFilterQosList) {
 
         return Observable.create(observer -> {
 
@@ -90,7 +89,7 @@ public class Messenger {
 
                 Observable<SubscriptionFilter> subscriptionObservable
                         = getDatastore().getOrCreateSubscriptionFilter(
-                        client.getPartition(),
+                        iotSession.getPartition(),
                         topicFilterQos.getKey());
 
                 subscriptionObservable.subscribe(
@@ -101,8 +100,8 @@ public class Messenger {
                                 int qos = null == topicFilterQos.getValue() ? 0 : topicFilterQos.getValue();
 
                                 Subscription subscription = new Subscription();
-                                subscription.setPartition(client.getPartition());
-                                subscription.setClientId(client.getClientId());
+                                subscription.setPartition(iotSession.getPartition());
+                                subscription.setSessionId((String) iotSession.getId());
                                 subscription.setTopicFilterKey((String) subscriptionFilter.generateIdKey());
                                 subscription.setQos(qos);
                                 getDatastore().saveSubscription(subscription);
@@ -128,7 +127,7 @@ public class Messenger {
 
     public void unSubscribe(Subscription subscription) {
 
-
+        // and delete it from our db
         getDatastore().removeSubscription(subscription);
 
         //TODO: Completely remove the subscriptionFilter if it has no subscribers.
@@ -138,7 +137,7 @@ public class Messenger {
 
     public void publish(String partition, PublishMessage publishMessage) throws RetriableException {
 
-        log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getClientId(), partition);
+        log.debug(" publish : new message {} to publish from {} in partition {}", publishMessage, publishMessage.getSessionId(), partition);
 
         //Obtain a list of all the subscribed clients who will receive a message.
         Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getMatchingSubscriptionFilter(partition, publishMessage.getTopic());
@@ -146,42 +145,50 @@ public class Messenger {
         subscriptionFilterObservable.subscribe(
                 subscriptionFilter -> {
 
-
                     try {
 
                         Observable<Subscription> subscriptionObservable
                                 = getDatastore().getSubscriptions(partition, (String) subscriptionFilter.generateIdKey(), publishMessage.getQos());
-                        subscriptionObservable.distinct().subscribe(
+                        subscriptionObservable.subscribeOn(getWorker().getScheduler()).distinct().subscribe(
                                 subscription -> {
 
+                                    Observable<IOTSession> clientObservable = getDatastore().getSession(subscription.getSessionId());
 
-                                    Observable<Client> clientObservable = getDatastore().getClient(partition, subscription.getClientId());
+                                    clientObservable.subscribe(iotSession -> {
 
-                                    clientObservable.subscribe(client -> {
-
-                                        PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                                        clonePublishMessage = client.copyTransmissionData(clonePublishMessage);
-
-                                        if (clonePublishMessage.getQos() > MqttQoS.AT_MOST_ONCE.value()) {
-
-                                            //Save the message as we proceed.
-                                            getDatastore().saveMessage(clonePublishMessage);
+                                        try {
+                                            log.debug(" publish : found subscription {} for message {} in partition {}", iotSession, publishMessage, partition);
 
 
-                                        }
+                                            final PublishMessage clonePublishMessage = iotSession.copyTransmissionData(publishMessage.cloneMessage());
 
-                                        if (client.isActive()) {
-                                            //Actually push out the message.
-                                            //This message should be released to the connected client
-                                            PublishOutHandler handler = getWorker().getHandler(PublishOutHandler.class);
+                                            if (clonePublishMessage.getQos() > MqttQoS.AT_MOST_ONCE.value()) {
 
-                                            try {
-                                                clonePublishMessage.setProtocalData(client.getProtocalData());
-                                                handler.handle(clonePublishMessage);
-                                            } catch (RetriableException | UnRetriableException e) {
-                                                log.error(" publish : problems releasing stored messages", e);
+                                                try {
+                                                    //Save the message as we proceed.
+                                                    long messageId = getDatastore().saveMessage(clonePublishMessage).toBlocking().single();
+
+                                                    log.debug(" publish : new generated message id is {}", messageId);
+
+                                                    clonePublishMessage.setMessageId(messageId);
+
+                                                } catch (Exception e) {
+                                                    log.error(" publish : error details ", e);
+                                                }
                                             }
+
+
+                                            if (iotSession.isActive()) {
+                                                //Actually push out the message.
+                                                //This message should be released to the connected client
+
+                                                getWorker().getHandler(PublishOutHandler.class).handle(clonePublishMessage);
+
+                                            }
+                                        } catch (RetriableException | UnRetriableException e) {
+                                            log.error(" publish : problems releasing stored messages", e);
                                         }
+
                                     });
 
 
@@ -221,26 +228,29 @@ public class Messenger {
             Observable<SubscriptionFilter> retainedSubscriptionFilterObservable = getDatastore()
                     .getOrCreateSubscriptionFilter(partition, publishMessage.getTopic());
 
-            retainedSubscriptionFilterObservable.subscribe(subscriptionFilter -> {
+            retainedSubscriptionFilterObservable.
+                    filter(subscriptionFilter ->
+                            !(Constant.MULTI_LEVEL_WILDCARD.equals(subscriptionFilter.getName())
+                                    || Constant.SINGLE_LEVEL_WILDCARD.equals(subscriptionFilter.getName())))
+                    .subscribe(subscriptionFilter -> {
 
-                log.debug(" publish : Message {} will be retained on subscription filter {}", publishMessage, subscriptionFilter);
+                        log.debug(" publish : Message {} will be retained on subscription filter {}", publishMessage, subscriptionFilter);
 
-                RetainedMessage newRetainedMessage = null;
-                try {
-                    newRetainedMessage = RetainedMessage.from(partition, (String) subscriptionFilter.generateIdKey(), publishMessage);
-                } catch (UnRetriableException e) {
-                    log.warn(" publish : problems ", e);
-                }
+                        try {
+                            RetainedMessage newRetainedMessage = RetainedMessage.from((String) subscriptionFilter.generateIdKey(), publishMessage);
 
-                if (((byte[]) publishMessage.getPayload()).length > 0) {
+                            if (((byte[]) publishMessage.getPayload()).length > 0) {
 
-                    //Save the retain message.
-                    getDatastore().saveRetainedMessage(newRetainedMessage);
+                                //Save the retain message.
+                                getDatastore().saveRetainedMessage(newRetainedMessage);
 
-                } else {
-                    getDatastore().removeRetainedMessage(newRetainedMessage);
-                }
-            });
+                            } else {
+                                getDatastore().removeRetainedMessage(newRetainedMessage);
+                            }
+                        } catch (UnRetriableException e) {
+                            log.warn(" publish : problems ", e);
+                        }
+                    });
 
 
         }

@@ -21,12 +21,12 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.state.messages.CompleteMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.CompleteMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
 
 /**
@@ -39,17 +39,16 @@ public class PublishCompleteHandler extends RequestHandler<CompleteMessage> {
     public void handle(CompleteMessage completeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(completeMessage.getSessionId(),
+        Observable<IOTSession> permissionObservable = checkPermission(completeMessage.getSessionId(),
                 completeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
-                (client) -> {
+                (iotSession) -> {
 
                     //Now deal with removing the message from the database.
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                            client.getPartition(), client.getClientId(),
-                            completeMessage.getMessageId(), false);
+                            iotSession, completeMessage.getMessageId(), false);
 
                     messageObservable.subscribe(getDatastore()::removeMessage);
 

@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.modules.base.server;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 import org.apache.ignite.IgniteMessaging;
 import org.apache.ignite.lang.IgniteBiPredicate;
 import org.slf4j.Logger;

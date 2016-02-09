@@ -21,10 +21,9 @@
 package com.caricah.iotracah.server.httpserver.netty;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.netty.SSLHandler;
-import com.caricah.iotracah.server.netty.ServerHandler;
 import com.caricah.iotracah.server.netty.ServerImpl;
 import com.caricah.iotracah.server.netty.ServerInitializer;
 import io.netty.channel.ChannelId;

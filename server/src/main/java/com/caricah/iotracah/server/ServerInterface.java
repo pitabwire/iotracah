@@ -20,9 +20,8 @@
 
 package com.caricah.iotracah.server;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import io.netty.handler.codec.mqtt.MqttMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 
 import java.io.Serializable;

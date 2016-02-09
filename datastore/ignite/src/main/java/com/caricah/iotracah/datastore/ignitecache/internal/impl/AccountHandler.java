@@ -20,10 +20,12 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.models.Client;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
-import com.caricah.iotracah.security.realm.state.IOTAccount;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTAccount;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.configuration.CacheConfiguration;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -44,4 +46,13 @@ public class AccountHandler extends AbstractHandler<IOTAccount> {
         setCacheName(cacheName);
 
     }
+
+    @Override
+    protected CacheConfiguration moreConfig(Class<IOTAccount> t, CacheConfiguration clCfg) {
+
+        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        return super.moreConfig(t, clCfg);
+    }
+
 }

@@ -20,13 +20,13 @@
 
 package com.caricah.iotracah.core.security;
 
-import com.caricah.iotracah.core.worker.state.models.IOTSession;
-import com.caricah.iotracah.core.worker.state.session.SessionDAO;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.security.IOTIniSecurityManagerFactory;
-import com.caricah.iotracah.security.IOTSecurityManager;
-import com.caricah.iotracah.security.realm.IOTAccountDatastore;
-import com.caricah.iotracah.system.ResourceFileUtil;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.IOTIniSecurityManagerFactory;
+import com.caricah.iotracah.bootstrap.security.IOTSecurityManager;
+import com.caricah.iotracah.bootstrap.security.realm.IOTAccountDatastore;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.system.ResourceFileUtil;
+import com.caricah.iotracah.bootstrap.security.realm.IOTSessionDAO;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
@@ -186,7 +186,7 @@ public class DefaultSecurityHandler {
     }
 
 
-    public void createSecurityManager(String securityFilePath) throws UnRetriableException{
+    public SecurityManager createSecurityManager(String securityFilePath) throws UnRetriableException{
 
 
         Ini ini = new Ini();
@@ -208,13 +208,15 @@ public class DefaultSecurityHandler {
 
 
             //Create our sessions DAO
-            SessionDAO sessionDAO = new SessionDAO(getSessionsCache(), getAtomicSequence());
-            sessionDAO.init();
-            sessionManager.setSessionDAO(sessionDAO);
+            IOTSessionDAO iotSessionDAO = new IOTSessionDAO(getSessionsCache(), getAtomicSequence());
+            iotSessionDAO.init();
+            sessionManager.setSessionDAO(iotSessionDAO);
 
             sessionManager.setSessionListeners(getSessionListenerList());
             sessionManager.setSessionValidationSchedulerEnabled(true);
             sessionManager.setSessionValidationInterval(1000);
+
+            return securityManager;
 
 
         }else {

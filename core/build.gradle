@@ -21,15 +21,10 @@
 
 dependencies {
 
-    compile group: 'org.apache.ignite', name: 'ignite-core', version: '1.4.0'
-    compile group: 'org.apache.ignite', name: 'ignite-indexing', version: '1.4.0'
-    compile group: 'org.apache.ignite', name: 'ignite-slf4j', version: '1.4.0'
-
     compile group: 'io.reactivex', name: 'rxjava', version: '1.0.9'
     compile group: 'io.reactivex', name: 'rxjava-async-util', version: '0.21.0'
 
     compile group: 'com.mashape.unirest', name: 'unirest-java', version: '1.4.5'
-    compile group: 'io.netty', name: 'netty-codec-mqtt', version: '5.0.0.Alpha2'
 
     compile project(':iotracah-bootstrap')
 

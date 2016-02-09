@@ -21,12 +21,12 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.AcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
 
 /**
@@ -38,17 +38,16 @@ public class PublishAcknowledgeHandler extends RequestHandler<AcknowledgeMessage
     public void handle(AcknowledgeMessage acknowledgeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(acknowledgeMessage.getSessionId(),
+        Observable<IOTSession> permissionObservable = checkPermission(acknowledgeMessage.getSessionId(),
                 acknowledgeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
-                (client) -> {
+                (iotSession) -> {
 
                     //Handle acknowledging of message.
 
-                    Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                            client.getPartition(), client.getClientId(),
+                    Observable<PublishMessage> messageObservable = getDatastore().getMessage(iotSession,
                             acknowledgeMessage.getMessageId(), false);
 
                     messageObservable.subscribe(getDatastore()::removeMessage);

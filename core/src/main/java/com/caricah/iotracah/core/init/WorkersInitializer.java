@@ -22,8 +22,8 @@ package com.caricah.iotracah.core.init;
 
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.state.Messenger;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import org.apache.commons.configuration.Configuration;
 
 import java.util.ArrayList;
@@ -118,8 +118,13 @@ public abstract class WorkersInitializer extends ServersInitializer {
             //Link worker observable to servers.
             subscribeObserverToObservables(worker, getServerList());
 
+            //Only usefull for tps tests
+            worker.setIgnite(getIgnite());
+
             //Assign router
             worker.setServerRouter(getServerRouter());
+
+            worker.setExecutorService(getSystemExcecutor(worker));
 
             //Assign messenger.
             Messenger messenger = new Messenger();

@@ -27,7 +27,7 @@
                      filePattern="@packaging.iotracah.log.dir@/iotracah-%d{yyyy-MM-dd}-%i.log.gz"
                      immediateFlush="false">
             <PatternLayout>
-                <Pattern>%d %p %C{1.} [%t] %m%n</Pattern>
+                <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
             </PatternLayout>
             <Policies>
                 <SizeBasedTriggeringPolicy size="250 MB"/>
@@ -45,7 +45,7 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="com.caricah.iotracah" level="info"/>
+        <Logger name="com.caricah.iotracah" level="debug"/>
         <Root level="warn">
             <AppenderRef ref="Async"/>
         </Root>

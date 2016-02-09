@@ -20,15 +20,15 @@
 
 package com.caricah.iotracah.core.handlers;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.Constant;
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishReceivedMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.AcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishReceivedMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import rx.Observable;
 
@@ -79,17 +79,18 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
         /**
          * Before publishing we should get the current session and validate it.
          */
-        Observable<Client> permissionObservable = checkPermission(
+        Observable<IOTSession> permissionObservable = checkPermission(
                 publishMessage.getSessionId(), publishMessage.getAuthKey(),
                 AuthorityRole.PUBLISH, topic);
 
         permissionObservable.subscribe(
-                (client) -> {
+                (iotSession) -> {
 
                     try {
 
-                        publishMessage.setPartition(client.getPartition());
-                        publishMessage.setClientId(client.getClientId());
+                        publishMessage.setPartition(iotSession.getPartition());
+                        publishMessage.setSessionId((String) iotSession.getId());
+                        publishMessage.setId(-1);
 
                         /**
                          * Message processing is based on 4.3 Quality of Service levels and protocol flows
@@ -101,7 +102,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          */
                         if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
 
-                            client.internalPublishMessage(getMessenger(), publishMessage);
+                            getMessenger().publish(iotSession.getPartition(), publishMessage);
                         }
 
 
@@ -113,8 +114,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          */
                         if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
 
-                            client.internalPublishMessage(getMessenger(), publishMessage);
-
+                            getMessenger().publish(iotSession.getPartition(), publishMessage);
 
                             //We need to generate a puback message to close this conversation.
 

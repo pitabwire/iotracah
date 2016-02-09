@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.server.netty;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

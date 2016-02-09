@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.handlers.protocal.http;
 
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.AcknowledgeMessage;
 
 /**
  *

@@ -21,11 +21,10 @@
 package com.caricah.iotracah.server.mqttserver;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
-import com.caricah.iotracah.server.mqttserver.netty.MqttServerHandler;
 import com.caricah.iotracah.server.mqttserver.netty.MqttServerImpl;
 import com.caricah.iotracah.server.mqttserver.transform.IOTMqttTransformerImpl;
 import com.caricah.iotracah.server.mqttserver.transform.MqttIOTTransformerImpl;
@@ -101,7 +100,7 @@ public class MqttServer extends Server<MqttMessage> {
     @Override
     public void onNext(IOTMessage ioTMessage) {
 
-        if(null == ioTMessage || !Protocal.MQTT.equals(ioTMessage.getProtocal())){
+        if(null == ioTMessage || !Protocol.MQTT.equals(ioTMessage.getProtocol())){
             return;
         }
 
@@ -164,7 +163,7 @@ public class MqttServer extends Server<MqttMessage> {
     }
 
     @Override
-    public Protocal getProtocal() {
-        return Protocal.MQTT;
+    public Protocol getProtocal() {
+        return Protocol.MQTT;
     }
 }

@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.runner;
 
+import com.caricah.iotracah.bootstrap.runner.ResourceService;
 import com.caricah.iotracah.system.handler.impl.BaseTestClass;
 import org.apache.commons.configuration.Configuration;
 import org.junit.Test;

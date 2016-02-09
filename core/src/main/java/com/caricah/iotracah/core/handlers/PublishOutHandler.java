@@ -23,24 +23,10 @@ package com.caricah.iotracah.core.handlers;
 
 import com.caricah.iotracah.core.handlers.protocal.http.OnPushSuccessListener;
 import com.caricah.iotracah.core.handlers.protocal.http.PushHandler;
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.mashape.unirest.http.HttpResponse;
-import com.mashape.unirest.http.JsonNode;
-import com.mashape.unirest.http.Unirest;
-import com.mashape.unirest.http.async.Callback;
-import com.mashape.unirest.http.exceptions.UnirestException;
-import com.mashape.unirest.request.body.MultipartBody;
-import io.netty.handler.codec.mqtt.MqttQoS;
-import org.json.JSONObject;
-
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.Charset;
-import java.util.Map;
+import com.caricah.iotracah.bootstrap.data.messages.AcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -54,13 +40,13 @@ public class PublishOutHandler extends RequestHandler<PublishMessage> implements
 
         log.debug(" handle : outbound message {} being processed", publishMessage);
 
-        if (publishMessage.getProtocal().isPersistent()) {
+        if (publishMessage.getProtocol().isPersistent()) {
 
             //We need to generate a publish message to start this conversation.
             pushToServer(publishMessage);
 
         } else {
-            switch (publishMessage.getProtocal()) {
+            switch (publishMessage.getProtocol()) {
 
                 case HTTP:
                     PushHandler httpPushHandler = new PushHandler();

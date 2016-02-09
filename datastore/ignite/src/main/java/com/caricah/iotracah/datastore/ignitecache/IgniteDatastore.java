@@ -20,17 +20,17 @@
 
 package com.caricah.iotracah.datastore.ignitecache;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.modules.Datastore;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
+import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.impl.*;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.security.realm.state.IOTAccount;
-import com.caricah.iotracah.security.realm.state.IOTRole;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTAccount;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
 import org.apache.commons.configuration.Configuration;
 import rx.Observable;
 
@@ -43,10 +43,6 @@ import java.util.Objects;
  * @version 1.0 8/15/15
  */
 public class IgniteDatastore extends Datastore {
-
-
-
-    private final ClientHandler clientHandler = new ClientHandler();
 
     private final WillHandler willHandler = new WillHandler();
 
@@ -63,8 +59,6 @@ public class IgniteDatastore extends Datastore {
     private final RoleHandler roleHandler = new RoleHandler();
 
 
-
-
     /**
      * <code>configure</code> allows the base system to configure itself by getting
      * all the settings it requires and storing them internally. The plugin is only expected to
@@ -75,8 +69,6 @@ public class IgniteDatastore extends Datastore {
      */
     @Override
     public void configure(Configuration configuration) throws UnRetriableException {
-
-        clientHandler.configure(configuration);
 
         subscriptionFilterHandler.configure(configuration);
 
@@ -103,14 +95,26 @@ public class IgniteDatastore extends Datastore {
     public void initiate() throws UnRetriableException {
 
 
-        clientHandler.initiate(Client.class, getIgnite());
         subscriptionFilterHandler.initiate(SubscriptionFilter.class, getIgnite());
+        subscriptionFilterHandler.setExecutorService(getExecutorService());
+
         retainedMessageHandler.initiate(RetainedMessage.class, getIgnite());
+        retainedMessageHandler.setExecutorService(getExecutorService());
+
         subscriptionHandler.initiate(Subscription.class, getIgnite());
+        subscriptionHandler.setExecutorService(getExecutorService());
+
         messageHandler.initiate(PublishMessage.class, getIgnite());
+        messageHandler.setExecutorService(getExecutorService());
+
         willHandler.initiate(WillMessage.class, getIgnite());
+        willHandler.setExecutorService(getExecutorService());
+
         accountHandler.initiate(IOTAccount.class, getIgnite());
+        accountHandler.setExecutorService(getExecutorService());
+
         roleHandler.initiate(IOTRole.class, getIgnite());
+        roleHandler.setExecutorService(getExecutorService());
 
     }
 
@@ -123,27 +127,6 @@ public class IgniteDatastore extends Datastore {
 
     }
 
-    @Override
-    public Observable<Client> getClient(String partition, String clientIdentifier) {
-
-        return clientHandler.getByKey(Client.createIdKey(partition, clientIdentifier));
-    }
-
-    @Override
-    public Observable<Client> getClient(String partition, String clientIdentifier, Client defaultClient) {
-
-        return clientHandler.getByKeyWithDefault(Client.createIdKey(partition, clientIdentifier), defaultClient);
-    }
-
-    @Override
-    public void saveClient(Client client) {
-        clientHandler.save(client);
-    }
-
-    @Override
-    public void removeClient(Client client) {
-        clientHandler.remove(client);
-    }
 
     @Override
     public Observable<WillMessage> getWill(Serializable willKey) {
@@ -173,19 +156,21 @@ public class IgniteDatastore extends Datastore {
 
             List<String> topicNavigationRoute = getTopicNavigationRoute(topic);
 
-            SubscriptionFilter subscriptionFilter =  subscriptionFilterHandler
+            SubscriptionFilter subscriptionFilter = subscriptionFilterHandler
                     .getByKeyWithDefault(SubscriptionFilter
                             .quickCheckIdKey(partition, topicNavigationRoute), null).toBlocking().single();
 
-                    if(Objects.isNull(subscriptionFilter)){
+            if (Objects.isNull(subscriptionFilter)) {
 
-                                 subscriptionFilter = subscriptionFilterHandler.createTree(
-                            partition, topicNavigationRoute).toBlocking().single();
-                    }
+                subscriptionFilterHandler.createTree(
+                        partition, topicNavigationRoute).single()
+                        .subscribe(observer::onNext, observer::onError, observer::onCompleted);
+            } else {
 
 
                 observer.onNext(subscriptionFilter);
                 observer.onCompleted();
+            }
 
         });
 
@@ -204,9 +189,9 @@ public class IgniteDatastore extends Datastore {
 
 
     @Override
-    public Observable<Subscription> getSubscriptions(Client client) {
-        String query = "partition = ? and clientId = ?";
-        Object[] params = {client.getPartition(), client.getClientId()};
+    public Observable<Subscription> getSubscriptions(IOTSession iotSession) {
+        String query = "sessionId = ?";
+        Object[] params = {iotSession.getId()};
         return subscriptionHandler.getByQuery(Subscription.class, query, params);
 
     }
@@ -215,7 +200,7 @@ public class IgniteDatastore extends Datastore {
     public Observable<Subscription> getSubscriptions(String partition, String topicFilterKey, int qos) {
 
         String query = "partition = ? and topicFilterKey = ? and qos >= ?";
-        Object[] params = {partition, topicFilterKey, qos };
+        Object[] params = {partition, topicFilterKey, qos};
         return subscriptionHandler.getByQuery(Subscription.class, query, params);
 
     }
@@ -223,7 +208,7 @@ public class IgniteDatastore extends Datastore {
     @Override
     public void saveSubscription(Subscription subscription) {
 
-      subscriptionHandler.save(subscription);
+        subscriptionHandler.save(subscription);
     }
 
     @Override
@@ -233,19 +218,19 @@ public class IgniteDatastore extends Datastore {
 
 
     @Override
-    public Observable<PublishMessage> getMessages(Client client) {
+    public Observable<PublishMessage> getMessages(IOTSession iotSession) {
 
-        String query = "partition = ? and clientId = ?";
-        Object[] params = {client.getPartition(), client.getClientId()};
+        String query = "sessionId = ?";
+        Object[] params = {iotSession.getId()};
 
         return messageHandler.getByQuery(PublishMessage.class, query, params);
     }
 
     @Override
-    public Observable<PublishMessage> getMessage(String partition, String clientIdentifier, long messageId, boolean isInbound) {
+    public Observable<PublishMessage> getMessage(IOTSession iotSession, long messageId, boolean isInbound) {
 
-        String query = "partition = ? and clientId = ? and messageId = ? and inBound = ?";
-        Object[] params = {partition, clientIdentifier, messageId, isInbound};
+        String query = "sessionId = ? and messageId = ? and inBound = ?";
+        Object[] params = {iotSession.getId(), messageId, isInbound};
 
         return messageHandler.getByQuery(PublishMessage.class, query, params);
     }
@@ -253,7 +238,7 @@ public class IgniteDatastore extends Datastore {
     @Override
     public Observable<Long> saveMessage(PublishMessage publishMessage) {
 
-       return messageHandler.saveWithIdCheck(publishMessage);
+        return messageHandler.saveWithIdCheck(publishMessage);
 
     }
 
@@ -264,7 +249,7 @@ public class IgniteDatastore extends Datastore {
 
     @Override
     public Observable<RetainedMessage> getRetainedMessage(String partition, String topicFilterId) {
-        return retainedMessageHandler.getByKey(RetainedMessage.createKey(partition, topicFilterId));
+        return retainedMessageHandler.getByKey(topicFilterId);
     }
 
     @Override
@@ -275,12 +260,6 @@ public class IgniteDatastore extends Datastore {
     @Override
     public void removeRetainedMessage(RetainedMessage retainedMessage) {
         retainedMessageHandler.remove(retainedMessage);
-    }
-
-    @Override
-    public String nextClientId() {
-        long nextSequence = clientHandler.nextId();
-        return String.format("iotracah-cl-id-%d", nextSequence);
     }
 
 

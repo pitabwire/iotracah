@@ -21,15 +21,11 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
-import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.shiro.subject.Subject;
 import rx.Observable;
 
@@ -50,19 +46,17 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
          * then close the network connection.
          */
 
-        Observable<Client> permissionObservable = checkPermission(disconnectMessage.getSessionId(),
+        Observable<IOTSession> permissionObservable = checkPermission(disconnectMessage.getSessionId(),
                 disconnectMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
-                (client) -> {
-
-
+                (iotSession) -> {
 
                     if (disconnectMessage.isDirtyDisconnect()) {
-                          getWorker().publishWill(client);
+                          getWorker().publishWill(iotSession);
                     }
 
-                    logOutSession(client.getSessionId());
+                    logOutSession(iotSession.getId());
 
                 }, (throwable -> {
                     log.warn(" handle : attempting to disconnect errorfull person.", throwable);
@@ -70,7 +64,6 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
 
 
     }
-
 
     private void logOutSession(Serializable sessionId) {
        try {

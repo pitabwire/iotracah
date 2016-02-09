@@ -20,8 +20,9 @@
 
 package com.caricah.iotracah.system.handler.impl;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.system.handler.LogHandler;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.system.handler.LogHandler;
+import com.caricah.iotracah.bootstrap.system.handler.impl.DefaultLogHandler;
 import org.apache.commons.configuration.Configuration;
 import org.junit.Test;
 import org.mockito.Mockito;

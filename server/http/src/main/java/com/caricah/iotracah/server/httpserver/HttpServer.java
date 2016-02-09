@@ -21,11 +21,10 @@
 package com.caricah.iotracah.server.httpserver;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
-import com.caricah.iotracah.server.httpserver.netty.HttpServerHandler;
 import com.caricah.iotracah.server.httpserver.netty.HttpServerImpl;
 import com.caricah.iotracah.server.httpserver.transform.HttpIOTTransformerImpl;
 import com.caricah.iotracah.server.httpserver.transform.IOTHttpTransformerImpl;
@@ -101,7 +100,7 @@ public class HttpServer extends Server<FullHttpMessage> {
     @Override
     public void onNext(IOTMessage ioTMessage) {
 
-        if(null == ioTMessage || !Protocal.HTTP.equals(ioTMessage.getProtocal())){
+        if(null == ioTMessage || !Protocol.HTTP.equals(ioTMessage.getProtocol())){
             return;
         }
 
@@ -164,7 +163,7 @@ public class HttpServer extends Server<FullHttpMessage> {
     }
 
     @Override
-    public Protocal getProtocal() {
-        return Protocal.HTTP;
+    public Protocol getProtocal() {
+        return Protocol.HTTP;
     }
 }

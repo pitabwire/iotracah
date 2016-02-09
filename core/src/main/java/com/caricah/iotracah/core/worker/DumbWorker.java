@@ -20,22 +20,27 @@
 
 package com.caricah.iotracah.core.worker;
 
+import com.caricah.iotracah.bootstrap.data.messages.*;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
+import com.caricah.iotracah.core.worker.state.Constant;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.core.worker.state.messages.*;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.security.IOTSecurityManager;
-import com.caricah.iotracah.security.realm.auth.IdConstruct;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
 import com.mashape.unirest.http.Unirest;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.IgniteCache;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.CacheMemoryMode;
+import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
+import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.shiro.session.Session;
-import org.apache.shiro.subject.PrincipalCollection;
 import rx.Observable;
 
 import java.io.IOException;
@@ -50,6 +55,7 @@ public class DumbWorker extends Worker {
 
 
     private HashMap<String, Set<Serializable>> subscriptions = new HashMap<>();
+    private IgniteCache<String, Set<Serializable>> igniteSubscriptions = null;
 
 
     /**
@@ -102,6 +108,21 @@ public class DumbWorker extends Worker {
         setSessionResetManager(sessionResetManager);
 
 
+        String igniteCacheName = "dumbTester";
+
+        CacheConfiguration clCfg = new CacheConfiguration();
+
+        clCfg.setName(igniteCacheName);
+        clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+        clCfg.setCacheMode(CacheMode.PARTITIONED);
+        clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
+
+        LruEvictionPolicy lruEvictionPolicy = new LruEvictionPolicy(5170000);
+        clCfg.setEvictionPolicy(lruEvictionPolicy);
+
+        clCfg.setSwapEnabled(true);
+        igniteSubscriptions = getIgnite().createCache(clCfg);
+
         //Initiate unirest properties.
         Unirest.setTimeouts(5000, 5000);
 
@@ -136,121 +157,184 @@ public class DumbWorker extends Worker {
     public void onNext(IOTMessage iotMessage) {
 
 
-            log.info(" onNext : received {}", iotMessage);
-            try {
+
+        getExecutorService().submit(()->{
+        log.info(" onNext : received {}", iotMessage);
+        try {
 
 
-                IOTMessage response = null;
+            IOTMessage response = null;
 
 
-                switch (iotMessage.getMessageType()) {
-                    case ConnectMessage.MESSAGE_TYPE:
-                        ConnectMessage connectMessage = (ConnectMessage) iotMessage;
-                        response = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
+            switch (iotMessage.getMessageType()) {
+                case ConnectMessage.MESSAGE_TYPE:
+                    ConnectMessage connectMessage = (ConnectMessage) iotMessage;
+                    response = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
 
-                        break;
-                    case SubscribeMessage.MESSAGE_TYPE:
+                    break;
+                case SubscribeMessage.MESSAGE_TYPE:
 
 
-                                                SubscribeMessage subscribeMessage = (SubscribeMessage) iotMessage;
+                    SubscribeMessage subscribeMessage = (SubscribeMessage) iotMessage;
 
-                        List<Integer> grantedQos = new ArrayList<>();
-                        subscribeMessage.getTopicFilterList().forEach(topic ->
-                        {
+                    List<Integer> grantedQos = new ArrayList<>();
+                    subscribeMessage.getTopicFilterList().forEach(topic ->
+                    {
 
-                            Set<Serializable> channelIds = subscriptions.get(topic.getKey());
+                        String topicKey = SubscriptionFilter.quickCheckIdKey("", Arrays.asList(topic.getKey().split(Constant.PATH_SEPARATOR)));
 
-                            if(Objects.isNull(channelIds)){
-                                channelIds = new HashSet<>();
-                            }
+                        Set<Serializable> channelIds = igniteSubscriptions.get(topicKey);
 
-                            channelIds.add(subscribeMessage.getConnectionId());
-                            subscriptions.put(topic.getKey(), channelIds);
+                        if (Objects.isNull(channelIds)) {
+                            channelIds = new HashSet<>();
+                        }
 
-                            grantedQos.add(topic.getValue());
+                        channelIds.add(subscribeMessage.getConnectionId());
+                        igniteSubscriptions.put(topicKey, channelIds);
 
-                        });
+                        grantedQos.add(topic.getValue());
 
-                        response =  SubscribeAcknowledgeMessage.from(
+                    });
+
+                    response = SubscribeAcknowledgeMessage.from(
                             subscribeMessage.getMessageId(), grantedQos);
 
 
-                        break;
-                    case UnSubscribeMessage.MESSAGE_TYPE:
-                        UnSubscribeMessage unSubscribeMessage = (UnSubscribeMessage) iotMessage;
-                        response = UnSubscribeAcknowledgeMessage.from(unSubscribeMessage.getMessageId());
+                    break;
+                case UnSubscribeMessage.MESSAGE_TYPE:
+                    UnSubscribeMessage unSubscribeMessage = (UnSubscribeMessage) iotMessage;
+                    response = UnSubscribeAcknowledgeMessage.from(unSubscribeMessage.getMessageId());
 
-                        break;
-                    case Ping.MESSAGE_TYPE:
-                        response = iotMessage;
-                        break;
-                    case PublishMessage.MESSAGE_TYPE:
-
-
-
-                        PublishMessage publishMessage = (PublishMessage) iotMessage;
+                    break;
+                case Ping.MESSAGE_TYPE:
+                    response = iotMessage;
+                    break;
+                case PublishMessage.MESSAGE_TYPE:
 
 
-                        Set<Serializable> channelIds = subscriptions.get(publishMessage.getTopic());
+                    PublishMessage publishMessage = (PublishMessage) iotMessage;
 
-                        channelIds.forEach(id ->{
+                    Set<String> matchingTopics = getMatchingSubscriptions("", publishMessage.getTopic());
 
-                            PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                        Map<String, Set<Serializable>> channelIdMap = igniteSubscriptions.getAll(matchingTopics);
 
-                            clonePublishMessage.copyBase(iotMessage);
-                            clonePublishMessage.setConnectionId(id);
-                            pushToServer(clonePublishMessage);
+                        channelIdMap.values().forEach(channelIds -> {
+                            if (Objects.nonNull(channelIds)) {
+
+                                channelIds.forEach(id -> {
+
+                                    PublishMessage clonePublishMessage = publishMessage.cloneMessage();
+                                    clonePublishMessage.copyBase(iotMessage);
+                                    clonePublishMessage.setConnectionId(id);
+                                    pushToServer(clonePublishMessage);
+                                });
+
+                            }
                         });
 
 
+                    if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
+
+                        break;
+
+                    } else if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
+
+                        response = AcknowledgeMessage.from(
+                                publishMessage.getMessageId());
+                        break;
 
 
-                         if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
-
-                            break;
-
-                        }else if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
-
-                            response  = AcknowledgeMessage.from(
-                                    publishMessage.getMessageId());
-                            break;
+                    }
 
 
-                        }
+                case PublishReceivedMessage.MESSAGE_TYPE:
+                case ReleaseMessage.MESSAGE_TYPE:
+                case CompleteMessage.MESSAGE_TYPE:
+                case DisconnectMessage.MESSAGE_TYPE:
+                case AcknowledgeMessage.MESSAGE_TYPE:
+                default:
+                    DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
+                    disconnectMessage.copyBase(iotMessage);
 
+                    throw new ShutdownException(disconnectMessage);
 
-                    case PublishReceivedMessage.MESSAGE_TYPE:
-                    case ReleaseMessage.MESSAGE_TYPE:
-                    case CompleteMessage.MESSAGE_TYPE:
-                    case DisconnectMessage.MESSAGE_TYPE:
-                    case AcknowledgeMessage.MESSAGE_TYPE:
-                    default:
-                        DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-                        disconnectMessage.copyBase(iotMessage);
-
-                        throw new ShutdownException(disconnectMessage);
-
-                }
-
-                if(Objects.nonNull(response)){
-
-                    response.copyBase(iotMessage);
-                    pushToServer(response);
-                }
-
-
-            } catch (ShutdownException e) {
-
-                IOTMessage response = e.getResponse();
-                if (Objects.nonNull(response)) {
-                    pushToServer(response);
-                }
-
-
-
-            } catch (Exception e) {
-                log.error(" onNext : Serious error that requires attention ", e);
             }
+
+            if (Objects.nonNull(response)) {
+
+                response.copyBase(iotMessage);
+                pushToServer(response);
+            }
+
+
+        } catch (ShutdownException e) {
+
+            IOTMessage response = e.getResponse();
+            if (Objects.nonNull(response)) {
+                pushToServer(response);
+            }
+
+
+        } catch (Exception e) {
+            log.error(" onNext : Serious error that requires attention ", e);
+        }
+
+        });
+    }
+
+    private Set<String> getMatchingSubscriptions(String partition, String topic) {
+
+        Set<String> topicFilterKeys = new HashSet<>();
+
+        ListIterator<String> pathIterator = Arrays.asList(topic.split(Constant.PATH_SEPARATOR)).listIterator();
+
+        List<String> growingTitles = new ArrayList<>();
+
+        while (pathIterator.hasNext()) {
+
+            String name = pathIterator.next();
+
+
+            List<String> slWildCardList = new ArrayList<>(growingTitles);
+
+            if (pathIterator.hasNext()) {
+                //We deal with wildcard.
+                slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+
+            } else {
+                //we deal with full topic
+                slWildCardList.add(name);
+            }
+
+            List<String> reverseSlWildCardList = new ArrayList<>(slWildCardList);
+
+            growingTitles.add(name);
+
+            int sizeOfTopic = slWildCardList.size();
+            if (sizeOfTopic > 1) {
+                sizeOfTopic -= 1;
+
+                for (int i = 0; i < sizeOfTopic; i++) {
+
+                    if (i >= 0) {
+                        slWildCardList.set(i, Constant.MULTI_LEVEL_WILDCARD);
+                        reverseSlWildCardList.set(sizeOfTopic - i, Constant.MULTI_LEVEL_WILDCARD);
+
+                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+
+                    }
+                }
+            }
+
+
+        }
+
+        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+
+        return topicFilterKeys;
 
     }
 
@@ -262,85 +346,63 @@ public class DumbWorker extends Worker {
 
     @Override
     public void onStop(Session session) {
-        postSessionCleanUp(session, false);
+        postSessionCleanUp((IOTSession) session, false);
     }
 
     @Override
     public void onExpiration(Session session) {
 
-
         log.debug(" onExpiration : -----------------------------------------------------");
         log.debug(" onExpiration : -------  We have an expired session {} -------", session);
         log.debug(" onExpiration : -----------------------------------------------------");
 
-
-        postSessionCleanUp(session, true);
+        postSessionCleanUp((IOTSession) session, true);
     }
 
 
-    private void postSessionCleanUp(Session session, boolean isExpiry) {
-
-        PrincipalCollection principales = (PrincipalCollection) session.getAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY);
-        IdConstruct construct = (IdConstruct) principales.getPrimaryPrincipal();
-
-        String partition = construct.getPartition();
-        String session_client_id = construct.getClientId();
-
-        Observable<Client> clientObservable = getDatastore().getClient(partition, session_client_id);
-
-        clientObservable.subscribe(client -> {
-
-            if (isExpiry) {
-                log.debug(" postSessionCleanUp : ---------------- We are to publish a will man for {}", client);
-                publishWill(client);
-            }
+    private void postSessionCleanUp(IOTSession iotSession, boolean isExpiry) {
 
 
-            //Notify the server to remove this client from further sending in requests.
-            DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
-            disconnectMessage = client.copyTransmissionData(disconnectMessage);
-            pushToServer(disconnectMessage);
+
+        if (isExpiry) {
+            log.debug(" postSessionCleanUp : ---------------- We are to publish a will man for {}", iotSession);
+            publishWill(iotSession);
+        }
 
 
-            // Unsubscribe all
-
-            if (client.isCleanSession()) {
-                Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(client);
-
-                subscriptionObservable.subscribe(
-                        subscription ->
-                                getMessenger().unSubscribe(subscription)
-
-                        , throwable -> log.error(" postSessionCleanUp : problems while unsubscribing", throwable)
-
-                        , () -> {
-
-                            Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(client);
-                            publishMessageObservable.subscribe(
-                                    getDatastore()::removeMessage,
-                                    throwable -> {
-                                        log.error(" postSessionCleanUp : problems while unsubscribing", throwable);
-                                        // any way still delete it from our db
-                                        getDatastore().removeClient(client);
-                                    },
-                                    () -> {
-                                        // and delete it from our db
-                                        getDatastore().removeClient(client);
-                                    });
-
-                        }
-                );
-            } else {
-                //Mark the client as inactive
-                client.setActive(false);
-                client.setSessionId(null);
-                getDatastore().saveClient(client);
-
-            }
+        //Notify the server to remove this client from further sending in requests.
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+        disconnectMessage = iotSession.copyTransmissionData(disconnectMessage);
+        pushToServer(disconnectMessage);
 
 
-        }, throwable -> log.error(" postSessionCleanUp : problems obtaining user for session {}", session));
+        // Unsubscribe all
 
+        if (iotSession.isCleanSession()) {
+            Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(iotSession);
+
+            subscriptionObservable.subscribe(
+                    subscription ->
+                            getMessenger().unSubscribe(subscription)
+
+                    , throwable -> log.error(" postSessionCleanUp : problems while unsubscribing", throwable)
+
+                    , () -> {
+
+                        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotSession);
+                        publishMessageObservable.subscribe(
+                                getDatastore()::removeMessage,
+                                throwable -> {
+                                    log.error(" postSessionCleanUp : problems while unsubscribing", throwable);
+                                    // any way still delete it from our db
+                                },
+                                () -> {
+                                    // and delete it from our db
+                                });
+
+                    }
+            );
+        }
 
     }
 

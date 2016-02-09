@@ -21,8 +21,7 @@
 package com.caricah.iotracah.datastore.ignitecache.internal;
 
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
-import com.caricah.iotracah.data.IdKeyComposer;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.IdKeyComposer;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
@@ -30,18 +29,16 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMemoryMode;
 import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.eviction.EvictableEntry;
-import org.apache.ignite.cache.eviction.EvictionPolicy;
 import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.cache.query.SqlQuery;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.lang.IgniteFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Scheduler;
+import rx.schedulers.Schedulers;
 
 import javax.cache.Cache.Entry;
 import java.io.Serializable;
@@ -51,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -64,6 +62,10 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
     private IgniteCache<Serializable, T> datastoreCache;
 
     private IgniteAtomicSequence idSequence;
+
+    private Scheduler scheduler;
+
+    private ExecutorService executorService;
 
     private Class<T> classType;
 
@@ -92,6 +94,24 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         this.idSequence = idSequence;
     }
 
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    public void setScheduler() {
+        this.scheduler = Schedulers.from(getExecutorService());
+    }
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+
+        setScheduler();
+    }
+
     public abstract void configure(Configuration configuration);
 
     public void initiate(Class<T> t, Ignite ignite) {
@@ -102,7 +122,6 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
 
-        clCfg = setIndexData(t, clCfg);
         clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
         clCfg.setOffHeapMaxMemory(0);
 
@@ -113,6 +132,8 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         clCfg.setRebalanceBatchSize(1024 * 1024);
         clCfg.setRebalanceThrottle(0);
         clCfg.setRebalanceThreadPoolSize(4);
+
+        clCfg = moreConfig(t, clCfg);
 
         ignite.createCache(clCfg);
         IgniteCache clientIgniteCache = ignite.cache(getCacheName());
@@ -134,7 +155,7 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         setIdSequence(idSequence);
     }
 
-    protected CacheConfiguration setIndexData(Class<T> t, CacheConfiguration clCfg) {
+    protected CacheConfiguration moreConfig(Class<T> t, CacheConfiguration clCfg) {
 
         clCfg.setIndexedTypes(String.class, t);
         return clCfg;
@@ -170,22 +191,20 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
     public Observable<T> getBySet(Set<Serializable> keys) {
 
-        return Observable.create(observer -> {
+        return Observable.create(observer ->{
 
             try {
-                // do work on separate thread
-                Map<Serializable, T> itemsBySet = getDatastoreCache().getAll(keys);
 
-                itemsBySet.entrySet().forEach(serializableTEntry -> {
+                Map<Serializable, T> itemMap = getDatastoreCache().getAllOutTx(keys);
 
-                    if (Objects.nonNull(serializableTEntry.getValue()))
-                        observer.onNext(serializableTEntry.getValue());
-
+                itemMap.values().forEach(item -> {
+                    if (Objects.nonNull(item))
+                        observer.onNext(item);
                 });
+
                 observer.onCompleted();
 
-
-            } catch (Exception e) {
+            }catch (Exception e){
                 observer.onError(e);
             }
 
@@ -277,21 +296,32 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
 
     public void save(T item) {
-        try {
-            getDatastoreCache().put(item.generateIdKey(), item);
-        } catch (UnRetriableException e) {
-            log.error(" save : issues while saving item ", e);
-        }
+
+        getExecutorService().submit(() -> {
+
+            try {
+
+                getDatastoreCache().put(item.generateIdKey(), item);
+
+            } catch (Exception e) {
+                log.error(" save : issues while saving item ", e);
+            }
+
+        });
 
     }
 
     public void remove(IdKeyComposer item) {
 
-        try {
-            getDatastoreCache().remove(item.generateIdKey());
-        } catch (UnRetriableException e) {
 
-        }
+        getExecutorService().submit(() -> {
+
+            try {
+                getDatastoreCache().remove(item.generateIdKey());
+            } catch (Exception e) {
+                log.error(" remove : problem while removing item ", e);
+            }
+        });
 
     }
 

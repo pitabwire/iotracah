@@ -20,27 +20,28 @@
 
 package com.caricah.iotracah.core.handlers;
 
-import com.caricah.iotracah.core.modules.Worker;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSubject;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.exceptions.UnknownProtocalException;
-import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.core.worker.state.messages.ConnectAcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.ConnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.security.IOTSecurityManager;
-import com.caricah.iotracah.security.realm.auth.IdConstruct;
-import com.caricah.iotracah.security.realm.auth.IdPassToken;
+import com.caricah.iotracah.bootstrap.data.messages.ConnectAcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.ConnectMessage;
+import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.IOTSecurityManager;
+import com.caricah.iotracah.bootstrap.security.realm.auth.IdConstruct;
+import com.caricah.iotracah.bootstrap.security.realm.auth.IdPassToken;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttIdentifierRejectedException;
 import io.netty.handler.codec.mqtt.MqttUnacceptableProtocolVersionException;
 import io.netty.handler.codec.mqtt.MqttVersion;
+import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authz.AuthorizationException;
-import org.apache.shiro.session.Session;
+import org.apache.shiro.session.mgt.DefaultSessionContext;
+import org.apache.shiro.session.mgt.SessionContext;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.subject.Subject;
@@ -50,9 +51,8 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import java.io.Serializable;
 import java.security.NoSuchAlgorithmException;
-import java.util.AbstractMap;
 import java.util.Base64;
-import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -210,23 +210,23 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
             log.debug(" handle: we are ready now to obtain the core session.");
 
-            Observable<Map.Entry<Client, String>> newClientObservable = openSubject(getWorker(),
+            Observable<IOTSession> newClientObservable = openSubject(
                     connectMessage.getCluster(), connectMessage.getNodeId(), connectMessage.getConnectionId(),
                     clientIdentifier, cleanSession, connectMessage.getUserName(), connectMessage.getPassword(),
-                    connectMessage.getKeepAliveTime(), connectMessage.getSourceHost(), connectMessage.getProtocal()
+                    connectMessage.getKeepAliveTime(), connectMessage.getSourceHost(), connectMessage.getProtocol()
             );
 
             newClientObservable.subscribe(
 
-                    (clientSessionAuthKeyEntry) -> {
-
-                        Client client = clientSessionAuthKeyEntry.getKey();
-
-                        connectMessage.setAuthKey(clientSessionAuthKeyEntry.getValue());
-                        connectMessage.setSessionId(client.getSessionId());
+                    ( iotSession ) -> {
 
 
-                        log.debug(" handle: obtained a client : {}. ", client);
+                        connectMessage.setSessionId((String) iotSession.getId());
+                        if (iotSession.getProtocol().isNotPersistent()) {
+                            connectMessage.setAuthKey((String) iotSession.getAttribute(SESSION_AUTH_KEY));
+                        }
+
+                        log.debug(" handle: obtained a client session : {}. ", iotSession);
 
                         /**
                          * 3.     The Server MAY check that the contents of the CONNECT Packet meet any further restrictions
@@ -235,9 +235,6 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                          *      in section 3.2 and it MUST close the Network Connection.
                          *
                          */
-
-
-                        log.info(" onNext : Successfully initiated a session.");
 
                         //Respond to server with a connection successfull.
                         ConnectAcknowledgeMessage connectAcknowledgeMessage = ConnectAcknowledgeMessage.from(connectMessage.isDup(), connectMessage.getQos(), connectMessage.isRetain(), connectMessage.getKeepAliveTime(), MqttConnectReturnCode.CONNECTION_ACCEPTED);
@@ -259,9 +256,8 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                             will = WillMessage.from(connectMessage.isRetainWill(), connectMessage.getWillQos(),
                                     connectMessage.getWillTopic(), connectMessage.getWillMessage());
-                            will.setPartition(client.getPartition());
-                            will.setClientId(client.getClientId());
-                            will.copyBase(connectMessage);
+
+                            iotSession.copyTransmissionData(will);
 
                             getDatastore().saveWill(will);
 
@@ -271,15 +267,14 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                         } else {
                             //We need to clear the existing will if any.
                             will = WillMessage.from(false, 0, "", "");
-                            will.setPartition(client.getPartition());
-                            will.setClientId(client.getClientId());
+                            iotSession.copyTransmissionData(will);
                             getDatastore().removeWill(will);
                         }
 
                         //Perform a reset for our session.
                         getWorker()
                                 .getSessionResetManager()
-                                .process(client);
+                                .process(iotSession);
 
 
                     },
@@ -344,10 +339,10 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     }
 
-    private Observable<Map.Entry<Client, String>> openSubject(Worker worker, String connectedCluster, UUID connectedNode,
+    private Observable<IOTSession> openSubject(String connectedCluster, UUID connectedNode,
                                            Serializable connectionID, String clientIdentifier, boolean cleanSession,
                                            String userName, String password, int keepAliveTime, String sourceHost,
-                                           Protocal protocal) {
+                                           Protocol protocol) {
 
         return Observable.create(observable -> {
 
@@ -355,29 +350,20 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                 log.debug(" openSubject : create -- initiating subject creation.");
 
-                final String activeClientId;
-                if (null == clientIdentifier) {
-                    activeClientId = worker.getDatastore().nextClientId();
-                }else{
-                    activeClientId  = clientIdentifier;
-                }
-
                 final String partition = processUsernameForPartition(userName);
 
-                Client defaultClient = new Client();
-                defaultClient.setConnectedCluster(connectedCluster);
-                defaultClient.setConnectedNode(connectedNode);
-                defaultClient.setConnectionId(connectionID);
-                defaultClient.setClientId(activeClientId);
-                defaultClient.setPartition(partition);
-                defaultClient.setSessionId(null);
-                defaultClient.setActive(false);
-                defaultClient.setProtocal(protocal);
 
-                log.debug(" openSubject : create -- Futher into the database.");
 
-                Observable<Client> clientObservable = getDatastore().getClient(partition, activeClientId, defaultClient);
-                clientObservable.single().subscribe(( client) ->{
+                final String activeClientId;
+
+                if(Objects.isNull(clientIdentifier)){
+                    activeClientId = "iot-cl-"+ getWorker().getAtomicSequence().incrementAndGet();
+                }else{
+                    activeClientId = clientIdentifier;
+                }
+
+
+                        Serializable sessionId = IOTSession.createIdKey(partition, activeClientId);
 
                         //We have obtained a client to work with.
 
@@ -385,14 +371,15 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
                         try {
 
-                            IdConstruct idConstruct = new IdConstruct(partition, userName, activeClientId);
+                            IdConstruct idConstruct = new IdConstruct(partition, userName,  activeClientId);
                             PrincipalCollection principals = new SimplePrincipalCollection(idConstruct, "");
 
                             Subject.Builder subjectBuilder = new Subject.Builder();
                             subjectBuilder = subjectBuilder.principals(principals);
                             subjectBuilder = subjectBuilder.host(sourceHost);
                             subjectBuilder = subjectBuilder.sessionCreationEnabled(true);
-                            subjectBuilder = subjectBuilder.sessionId(client.getSessionId());
+                            subjectBuilder = subjectBuilder.sessionId(sessionId);
+
                             Subject activeUser = subjectBuilder.buildSubject();
 
                             if (activeUser.isAuthenticated() && cleanSession) {
@@ -416,38 +403,46 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
                             Double keepAliveDisconnectiontime = keepAliveTime * 1.5 * 1000;
 
 
-                            log.info(" openSubject : Authenticated client <{}> username {} with keep alive of {} seconds", client.getClientId(), userName, keepAliveDisconnectiontime);
+                            log.debug(" openSubject : Authenticated client session <{}> username {} with keep alive of {} seconds", activeClientId, userName, keepAliveDisconnectiontime);
 
-                            Session session = activeUser.getSession();
+                            //Force a session context.
+                            SessionContext sessionContext = new DefaultSessionContext();
+                            sessionContext.put(IOTSession.CONTEXT_PARTITION_KEY, partition );
+                            sessionContext.put(IOTSession.CONTEXT_USERNAME_KEY, userName );
+                            sessionContext.put(IOTSession.CONTEXT_CLIENT_ID_KEY, activeClientId);
+
+
+                            ((IOTSubject) activeUser).setSessionContext(sessionContext);
+
+                            IOTSession session = (IOTSession) activeUser.getSession();
                             session.setTimeout(keepAliveDisconnectiontime.longValue());
                             session.setAttribute(IOTSecurityManager.SESSION_PRINCIPLES_KEY, principals);
 
                             String sessionAuthKey = null;
-                            if (client.getProtocal().isNotPersistent()) {
+
+                            session.setConnectedCluster(connectedCluster);
+                            session.setConnectedNode(connectedNode);
+                            session.setConnectionId(connectionID);
+                            session.setActive(true);
+                            session.setExpired(false);
+                            session.setStopTimestamp(null);
+                            session.setProtocol(protocol);
+                            session.setCleanSession(cleanSession);
+
+
+                            if (session.getProtocol().isNotPersistent()) {
                                 sessionAuthKey = generateMAC();
                                 session.setAttribute(SESSION_AUTH_KEY, sessionAuthKey);
                             }
 
-
-
                             session.touch();
 
-                            client.setProtocal(protocal);
-                            client.setActive(true);
-                            client.setCleanSession(cleanSession);
-                            client.setSessionId(session.getId());
-                            client.setConnectionId(connectionID);
-
-                            getDatastore().saveClient(client);
-
-                            observable.onNext(new AbstractMap.SimpleEntry<Client, String>(client, sessionAuthKey ));
+                            observable.onNext(session);
                             observable.onCompleted();
 
                         } catch (NoSuchAlgorithmException | AuthenticationException  e) {
                             observable.onError(e);
                         }
-                    }, observable::onError
-                );
 
 
             } catch (Exception e) {

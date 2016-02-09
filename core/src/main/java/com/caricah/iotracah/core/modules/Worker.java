@@ -20,20 +20,24 @@
 
 package com.caricah.iotracah.core.modules;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.handlers.RequestHandler;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
+import org.apache.ignite.Ignite;
+import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.shiro.session.SessionListener;
 import rx.Observable;
+import rx.Scheduler;
+import rx.schedulers.Schedulers;
 
 import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
@@ -56,6 +60,15 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     public static final String CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS = "core.config.worker.client.keep.alive.in.seconds";
     public static final int CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS_DEFAULT_VALUE = 65535;
 
+    private Ignite ignite;
+
+    public Ignite getIgnite() {
+        return ignite;
+    }
+
+    public void setIgnite(Ignite ignite) {
+        this.ignite = ignite;
+    }
 
     private boolean annonymousLoginEnabled;
 
@@ -68,6 +81,12 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     private Datastore datastore;
 
     private Messenger messenger;
+
+    private ExecutorService executorService;
+
+    private IgniteAtomicSequence atomicSequence;
+
+    private Scheduler scheduler;
 
     private ServerRouter serverRouter;
 
@@ -89,6 +108,32 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
 
     public void setMessenger(Messenger messenger) {
         this.messenger = messenger;
+    }
+
+    public ExecutorService getExecutorService() {
+        return executorService;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
+
+        setScheduler();
+    }
+
+    public IgniteAtomicSequence getAtomicSequence() {
+        return atomicSequence;
+    }
+
+    public void setAtomicSequence(IgniteAtomicSequence atomicSequence) {
+        this.atomicSequence = atomicSequence;
+    }
+
+    public Scheduler getScheduler() {
+        return scheduler;
+    }
+
+    public void setScheduler() {
+        this.scheduler = Schedulers.from(getExecutorService());
     }
 
     public ServerRouter getServerRouter() {
@@ -159,13 +204,15 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     }
 
 
-    public void publishWill(Client client) {
+    public void publishWill(IOTSession iotSession) {
 
-        log.debug(" publishWill : client : " + client.getClientId() + " may have lost connectivity.");
+        log.debug(" publishWill : client : " + iotSession.getClientId() + " may have lost connectivity.");
 
         //Publish will before handling other
 
-        Observable<WillMessage> willMessageObservable = client.getWill(getDatastore());
+
+        String willKey = WillMessage.createWillKey(iotSession.getPartition(), iotSession.getClientId());
+        Observable<WillMessage> willMessageObservable = getDatastore().getWill(willKey);
 
         willMessageObservable.subscribe(
                 willMessage -> {
@@ -177,11 +224,11 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
 
 
                     PublishMessage willPublishMessage = willMessage.toPublishMessage();
-                    willPublishMessage.copyBase(willMessage);
-                    client.copyTransmissionData(willPublishMessage);
+                    iotSession.copyTransmissionData(willPublishMessage);
 
                     try {
-                        client.internalPublishMessage(getMessenger(), willPublishMessage);
+
+                        getMessenger().publish(iotSession.getPartition(), willPublishMessage);
                     } catch (RetriableException e) {
                         log.error(" publishWill : experienced issues publishing will.", e);
                     }

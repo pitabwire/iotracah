@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.server.transform;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

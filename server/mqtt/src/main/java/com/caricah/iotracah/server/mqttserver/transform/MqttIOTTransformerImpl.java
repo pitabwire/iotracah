@@ -20,8 +20,8 @@
 
 package com.caricah.iotracah.server.mqttserver.transform;
 
-import com.caricah.iotracah.core.worker.state.messages.*;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.*;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 import com.caricah.iotracah.server.transform.MqttIOTTransformer;
 import io.netty.handler.codec.mqtt.*;
 
@@ -58,7 +58,7 @@ public class MqttIOTTransformerImpl implements MqttIOTTransformer<MqttMessage> {
                 ByteBuffer byteBuffer = publishMessage.payload().nioBuffer();
 
                 return PublishMessage.from(pubVH.messageId(), fxH.isDup(), fxH.qosLevel().value(),
-                        fxH.isRetain(), pubVH.topicName(), byteBuffer,  true);
+                        fxH.isRetain(), pubVH.topicName(), byteBuffer, true);
 
 
             case PUBACK:

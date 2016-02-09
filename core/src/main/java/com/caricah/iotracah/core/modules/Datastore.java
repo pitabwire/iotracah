@@ -20,21 +20,28 @@
 
 package com.caricah.iotracah.core.modules;
 
+import com.caricah.iotracah.bootstrap.security.IOTSecurityManager;
+import com.caricah.iotracah.bootstrap.security.IOTSessionManager;
+import com.caricah.iotracah.bootstrap.security.realm.IOTSessionDAO;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.Constant;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.models.Subscription;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
-import com.caricah.iotracah.security.realm.IOTAccountDatastore;
-import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.security.realm.IOTAccountDatastore;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import org.apache.ignite.Ignite;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.session.Session;
+import org.apache.shiro.session.mgt.DefaultSessionKey;
+import org.apache.shiro.session.mgt.eis.SessionDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.Scheduler;
 import rx.Subscriber;
 
 import java.io.Serializable;
@@ -59,8 +66,6 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
     private ExecutorService executorService;
 
-    private Scheduler datastoreScheduler;
-
     protected Ignite getIgnite() {
         return ignite;
     }
@@ -73,17 +78,33 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
         return executorService;
     }
 
-    public void setDatastoreScheduler(Scheduler datastoreScheduler) {
-        this.datastoreScheduler = datastoreScheduler;
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
     }
 
-    public abstract Observable<Client> getClient(String partition, String clientIdentifier, Client defaultClient);
+    public Observable<IOTSession> getSession(Serializable sessionId){
 
-    public abstract Observable<Client> getClient(String partition, String clientIdentifier);
+        return Observable.create(   observer ->{
 
+                 try{
 
-    public abstract void saveClient(Client client);
-    public abstract void removeClient(Client client);
+                     DefaultSessionKey sessionKey = new DefaultSessionKey(sessionId);
+
+                    IOTSession session = (IOTSession) SecurityUtils.getSecurityManager().getSession(sessionKey);
+                    if(Objects.isNull(session)){
+                        observer.onError(new DoesNotExistException("No session with the id exists."));
+                    }else {
+                        observer.onNext(session);
+                        observer.onCompleted();
+                    }
+
+                 }catch (Exception e){
+                     observer.onError(e);
+                 }
+
+                }
+        );
+    }
 
     public abstract Observable<WillMessage> getWill(Serializable willKey);
     public abstract void saveWill(WillMessage will);
@@ -95,7 +116,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public abstract void removeSubscriptionFilter(SubscriptionFilter subscriptionFilter);
 
 
-    public abstract Observable<Subscription> getSubscriptions(Client client);
+    public abstract Observable<Subscription> getSubscriptions(IOTSession session);
     public abstract Observable<Subscription> getSubscriptions(String partition, String topicFilterKey, int qos);
     public abstract void saveSubscription(Subscription subscription);
     public abstract void removeSubscription(Subscription subscription);
@@ -103,8 +124,8 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
 
 
-    public abstract Observable<PublishMessage> getMessages(Client client);
-    public abstract Observable<PublishMessage> getMessage(String partition, String clientIdentifier, long messageId, boolean isInbound) ;
+    public abstract Observable<PublishMessage> getMessages(IOTSession session);
+    public abstract Observable<PublishMessage> getMessage(IOTSession iotSession, long messageId, boolean isInbound) ;
 
     public abstract Observable<Long> saveMessage(PublishMessage publishMessage);
 
@@ -115,8 +136,6 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     public abstract void saveRetainedMessage(RetainedMessage publishMessage);
 
     public abstract void removeRetainedMessage(RetainedMessage publishMessage);
-
-    public abstract String nextClientId();
 
     /**
      * getTopicNavigationRoute is a utility method to breakdown route to

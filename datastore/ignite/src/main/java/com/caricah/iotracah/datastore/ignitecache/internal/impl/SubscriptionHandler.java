@@ -20,12 +20,9 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.Subscription;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
-import rx.Observable;
-
-import java.util.Arrays;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

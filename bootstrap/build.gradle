@@ -1,4 +1,12 @@
 
 dependencies {
     compile group: 'org.apache.shiro', name: 'shiro-core', version: '1.2.3'
+
+
+    compile group: 'io.netty', name: 'netty-codec-mqtt', version: '5.0.0.Alpha2'
+
+    compile group: 'org.apache.ignite', name: 'ignite-core', version: '1.4.0'
+    compile group: 'org.apache.ignite', name: 'ignite-indexing', version: '1.4.0'
+    compile group: 'org.apache.ignite', name: 'ignite-slf4j', version: '1.4.0'
+
 }

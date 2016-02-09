@@ -20,13 +20,12 @@
 
 package com.caricah.iotracah.system.handler.impl;
 
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.system.handler.impl.DefaultConfigHandler;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.SystemConfiguration;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 

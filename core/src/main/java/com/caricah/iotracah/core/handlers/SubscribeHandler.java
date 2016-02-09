@@ -21,21 +21,20 @@
 package com.caricah.iotracah.core.handlers;
 
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
-import com.caricah.iotracah.core.worker.state.messages.SubscribeAcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.SubscribeMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.SubscribeAcknowledgeMessage;
+import com.caricah.iotracah.bootstrap.data.messages.SubscribeMessage;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -72,14 +71,14 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                     List<String> topics = new ArrayList<>();
                     subscribeMessage.getTopicFilterList().forEach(topic -> topics.add(topic.getKey()));
 
-                        Observable<Client> permissionObservable = checkPermission(subscribeMessage.getSessionId(),
+                        Observable<IOTSession> permissionObservable = checkPermission(subscribeMessage.getSessionId(),
                                 subscribeMessage.getAuthKey(), AuthorityRole.SUBSCRIBE, topics);
 
                         permissionObservable.subscribe(
-                                (client)->{
+                                (iotSession)->{
 
                                     //We have all the security to proceed.
-                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(client, subscribeMessage.getTopicFilterList());
+                            Observable<Map.Entry<String, Integer>> subscribeObservable = getMessenger().subscribe(iotSession, subscribeMessage.getTopicFilterList());
 
                             subscribeObservable.subscribe(
                                     (entry) -> grantedQos.add(entry.getValue()),
@@ -89,9 +88,9 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                         /**
                                          * Save subscription payload
                                          */
-                                        if(subscribeMessage.getProtocal().isNotPersistent()){
-                                            client.setProtocalData(subscribeMessage.getReceptionUrl());
-                                            getDatastore().saveClient(client);
+                                        if(subscribeMessage.getProtocol().isNotPersistent()){
+                                            iotSession.setProtocalData(subscribeMessage.getReceptionUrl());
+                                            iotSession.touch();
                                         }
 
                                         SubscribeAcknowledgeMessage subAckMessage = SubscribeAcknowledgeMessage.from(
@@ -104,54 +103,52 @@ public class SubscribeHandler extends RequestHandler<SubscribeMessage> {
                                          * Queue retained messages to our subscriber.
                                          */
 
+                                        if(grantedQos.size()> 0) {
 
-                                        int count = 0;
-                                        for(Map.Entry<String, Integer> entry : subscribeMessage.getTopicFilterList())
-                                            if (grantedQos.get(count++) != 0x80) {
-                                                Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(client.getPartition(), entry.getKey());
-                                                subscriptionFilterObservable.subscribe(
-                                                        subscriptionFilter -> {
+                                            int count = 0;
+                                            for (Map.Entry<String, Integer> entry : subscribeMessage.getTopicFilterList())
+                                                if (grantedQos.get(count++) != 0x80) {
+                                                    Observable<SubscriptionFilter> subscriptionFilterObservable = getDatastore().getSubscriptionFilter(iotSession.getPartition(), entry.getKey());
+                                                    subscriptionFilterObservable.subscribe(
+                                                            subscriptionFilter -> {
 
-                                                            try {
+                                                                try {
 
-                                                                Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(client.getPartition(), (String) subscriptionFilter.generateIdKey());
-                                                                retainedMessageObservable.subscribe(retainedMessage -> {
+                                                                    Observable<RetainedMessage> retainedMessageObservable = getDatastore().getRetainedMessage(iotSession.getPartition(), (String) subscriptionFilter.generateIdKey());
+                                                                    retainedMessageObservable.subscribe(retainedMessage -> {
 
+                                                                        PublishMessage publishMessage = iotSession.copyTransmissionData(retainedMessage.toPublishMessage());
 
-                                                                    PublishMessage publishMessage = retainedMessage.toPublishMessage();
-                                                                    publishMessage.setPartition(client.getPartition());
-                                                                    publishMessage.setClientId(client.getClientId());
-                                                                    publishMessage.copyBase(subscribeMessage);
-
-                                                                    if (publishMessage.getQos() > 0) {
-                                                                        publishMessage.setReleased(false);
-                                                                        //Save the message as we proceed.
-                                                                        getDatastore().saveMessage(publishMessage);
-                                                                    }
+                                                                        if (publishMessage.getQos() > 0) {
+                                                                            publishMessage.setReleased(false);
+                                                                            //Save the message as we proceed.
+                                                                           long messageId = getDatastore().saveMessage(publishMessage).toBlocking().single();
+                                                                            publishMessage.setMessageId(messageId);
+                                                                        }
 
 
-                                                                    try {
+                                                                        try {
 
-                                                                        publishMessage.setProtocalData( client.getProtocalData());
-                                                                        getWorker().getHandler(PublishOutHandler.class).handle(publishMessage);
+                                                                            getWorker().getHandler(PublishOutHandler.class).handle(publishMessage);
 
-                                                                        log.info(" handle : we got to release a retained message.");
+                                                                            log.info(" handle : we got to release a retained message.");
 
-                                                                    } catch (RetriableException | UnRetriableException e) {
-                                                                        log.error(" handle : problems publishing ", e);
-                                                                    }
+                                                                        } catch (RetriableException | UnRetriableException e) {
+                                                                            log.error(" handle : problems publishing ", e);
+                                                                        }
 
 
-                                                                }, throwable -> {});
+                                                                    }, throwable -> {
+                                                                    });
 
-                                                            } catch (UnRetriableException e) {
-                                                                log.error("  handle : problems obtaining subscription filter key", e);
+                                                                } catch (UnRetriableException e) {
+                                                                    log.error("  handle : problems obtaining subscription filter key", e);
+                                                                }
                                                             }
-                                                        }
-                                                );
+                                                    );
 
-                                            }
-
+                                                }
+                                        }
                                     });
                         }, throwable2 -> disconnectDueToError(throwable2, subscribeMessage));
 

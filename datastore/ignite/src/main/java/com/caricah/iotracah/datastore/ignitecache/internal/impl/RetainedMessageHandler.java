@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
 

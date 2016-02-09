@@ -20,19 +20,17 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.transactions.Transaction;
 import rx.Observable;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -52,8 +50,8 @@ public class MessageHandler extends AbstractHandler<PublishMessage> {
     }
 
     @Override
-    protected CacheConfiguration setIndexData(Class<PublishMessage> t, CacheConfiguration clCfg) {
-        return clCfg.setIndexedTypes(Long.class, t);
+    protected CacheConfiguration moreConfig(Class<PublishMessage> t, CacheConfiguration clCfg) {
+        return clCfg.setIndexedTypes(String.class, t);
     }
 
     @Override
@@ -73,58 +71,51 @@ public class MessageHandler extends AbstractHandler<PublishMessage> {
 
     public Observable<Long> saveWithIdCheck(PublishMessage publishMessage) {
 
-        try {
-
-            if(publishMessage.getId() <= 0){
-                publishMessage.setId(nextId());
-            }
-
-            getDatastoreCache().put(publishMessage.generateIdKey(), publishMessage);
-
-            if(PublishMessage.ID_TO_FORCE_GENERATION_ON_SAVE == publishMessage.getMessageId()){
+        return Observable.create(observer -> {
+            try {
 
 
+                if (publishMessage.getId() < 1) {
+                    publishMessage.setId(getIdSequence().incrementAndGet());
+                }
+
+
+                if (PublishMessage.ID_TO_FORCE_GENERATION_ON_SAVE == publishMessage.getMessageId()) {
 
                     long messageId = getPartitionClientMessageId(
-                            publishMessage.getPartition(),
-                            publishMessage.getClientId(),
+                            publishMessage.getSessionId(),
                             publishMessage.isInBound(),
                             publishMessage.getId()
                     );
 
-                //Implement max check.
-
+                    //Implement max check.
                     publishMessage.setMessageId(messageId);
+                }
 
                 getDatastoreCache().put(publishMessage.generateIdKey(), publishMessage);
 
+                observer.onNext(publishMessage.getMessageId());
+                observer.onCompleted();
 
+            } catch (UnRetriableException e) {
+                log.error(" save : issues while saving item ", e);
+                observer.onError(e);
             }
-
-        } catch (UnRetriableException e) {
-            log.error(" save : issues while saving item ", e);
-        }
-
-        return Observable.create(observer -> {
-            // callback with value
-            observer.onNext(publishMessage.getMessageId());
-            observer.onCompleted();
-
 
         });
 
     }
 
-    private long getPartitionClientMessageId(String partition, String clientId, boolean isInBound, long id){
+    private long getPartitionClientMessageId(Serializable sessionId, boolean isInBound, long id) {
 
         String queryForCount = "SELECT " +
-                "(SELECT MAX(messageId) FROM PublishMessage WHERE partition = ? AND clientId = ? AND messageId > ? AND inBound = ? AND id < ? ) " +
-                "+ (SELECT COUNT(id) FROM PublishMessage WHERE partition = ? AND clientId = ? AND messageId <= ? AND inBound = ? AND id <= ? ) " +
+                "(SELECT MAX(messageId) FROM PublishMessage WHERE sessionId = ? AND inBound = ? AND id < ? ) " +
+                "+ (SELECT COUNT(id) FROM PublishMessage WHERE sessionId = ? AND inBound = ? AND id <= ? ) " +
                 " AS newId";
-        Object[] params = { partition, clientId, 0, isInBound, id, partition, clientId, 0, isInBound, id };
+        Object[] params = {sessionId, isInBound, id, sessionId, isInBound, id };
 
         Long currentMax = getByQueryAsValue(Long.class, queryForCount, params).toBlocking().single();
-        if(null == currentMax){
+        if (Objects.isNull(currentMax)) {
             currentMax = 1l;
         }
 

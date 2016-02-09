@@ -20,13 +20,13 @@
 
 package com.caricah.iotracah.core.handlers;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.state.messages.CompleteMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.CompleteMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.ReleaseMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
 
 /**
@@ -38,11 +38,11 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
     public void handle(ReleaseMessage releaseMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(releaseMessage.getSessionId(),
+        Observable<IOTSession> permissionObservable = checkPermission(releaseMessage.getSessionId(),
                 releaseMessage.getAuthKey(), AuthorityRole.CONNECT);
         permissionObservable.subscribe(
 
-                (client) -> {
+                (iotSession) -> {
 
 
                     /**
@@ -52,7 +52,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
 
 
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                            client.getPartition(), client.getClientId(), releaseMessage.getMessageId(), true);
+                            iotSession, releaseMessage.getMessageId(), true);
 
                     messageObservable.subscribe(publishMessage -> {
 
@@ -62,8 +62,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
                         messageIdObservable.subscribe(messageId -> {
                             try {
 
-                                client.internalPublishMessage(getMessenger(), publishMessage);
-
+                                getMessenger().publish(iotSession.getPartition(), publishMessage);
                                 //Initiate a publish complete.
                                 CompleteMessage destroyMessage = CompleteMessage.from(publishMessage.getMessageId());
                                 destroyMessage.copyBase(publishMessage);

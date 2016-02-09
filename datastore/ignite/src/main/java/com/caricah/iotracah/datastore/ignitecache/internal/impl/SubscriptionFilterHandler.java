@@ -21,15 +21,15 @@
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
 import com.caricah.iotracah.core.worker.state.Constant;
-import com.caricah.iotracah.core.worker.state.models.SubscriptionFilter;
+import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import rx.Observable;
 import rx.Subscriber;
 
-import javax.cache.Cache;
 import java.io.Serializable;
 import java.util.*;
 
@@ -52,6 +52,15 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
     }
 
+    @Override
+    protected CacheConfiguration moreConfig(Class<SubscriptionFilter> t, CacheConfiguration clCfg) {
+
+        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        return super.moreConfig(t, clCfg);
+    }
+
+
     public Observable<SubscriptionFilter> matchTopicFilterTree(String partition, List<String> topicNavigationRoute) {
 
         return Observable.create(observer -> {
@@ -62,59 +71,100 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
             List<String> growingTitles = new ArrayList<>();
 
-            try {
+            while (pathIterator.hasNext()) {
 
-                while (pathIterator.hasNext()) {
+                String name = pathIterator.next();
 
-                    String name = pathIterator.next();
+                List<String> slWildCardList = new ArrayList<>(growingTitles);
 
-                    List<String> slWildCardList = new ArrayList<>(growingTitles);
+                if (pathIterator.hasNext()) {
+                    //We deal with wildcard.
+                    slWildCardList.add(Constant.MULTI_LEVEL_WILDCARD);
+                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
 
-                    if(pathIterator.hasNext()){
-                        //We deal with wildcard.
-                        slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
-                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                } else {
 
-                    }else{
-                        //we deal with full topic
-                        slWildCardList.add(name);
-                    }
 
-                    List<String> reverseSlWildCardList = new ArrayList<>(slWildCardList);
+                    slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
 
-                    growingTitles.add(name);
+                    slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
 
-                    int sizeOfTopic = slWildCardList.size();
-                    if(sizeOfTopic > 1) {
-                        sizeOfTopic -= 1;
+                    slWildCardList.remove(slWildCardList.size()-1);
+                    slWildCardList.remove(slWildCardList.size()-1);
 
-                        for (int i = 0; i < sizeOfTopic; i++) {
+                    //we deal with full topic
+                    slWildCardList.add(name);
+                }
 
-                            if (i >= 0) {
-                                slWildCardList.set(i, Constant.MULTI_LEVEL_WILDCARD);
-                                reverseSlWildCardList.set(sizeOfTopic - i, Constant.MULTI_LEVEL_WILDCARD);
+                List<String> reverseSlWildCardList = new ArrayList<>(slWildCardList);
 
-                                topicFilterKeys.add( SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+                growingTitles.add(name);
+
+                int sizeOfTopic = slWildCardList.size()-1;
+
+
+                    for (int i = 0; i <= sizeOfTopic; i++) {
+
+                        if (i < sizeOfTopic) {
+                           int reverseIndex = sizeOfTopic - i;
+
+                            slWildCardList.set(i, Constant.SINGLE_LEVEL_WILDCARD);
+                            reverseSlWildCardList.set(reverseIndex, Constant.SINGLE_LEVEL_WILDCARD);
+
+                            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+
+                        } else {
+
+                            if(!pathIterator.hasNext()){
+
+                                slWildCardList.set(i, Constant.SINGLE_LEVEL_WILDCARD);
+                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+
+                                slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+
+                                slWildCardList.set(slWildCardList.size()-1, Constant.MULTI_LEVEL_WILDCARD);
+                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
 
                             }
+
                         }
                     }
 
 
-                }
-
-                topicFilterKeys.add( SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
-
-                getBySet(topicFilterKeys).toBlocking().forEach(observer::onNext);
 
 
-                observer.onCompleted();
 
 
-            } catch (Exception e) {
-                observer.onError(e);
             }
+
+            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+            growingTitles.add(Constant.SINGLE_LEVEL_WILDCARD);
+            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+            growingTitles.set(growingTitles.size()-1, Constant.MULTI_LEVEL_WILDCARD);
+            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+            growingTitles.remove(growingTitles.size()-1);
+
+            growingTitles.set(growingTitles.size()-1, Constant.SINGLE_LEVEL_WILDCARD);
+            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+            growingTitles.set(growingTitles.size()-1, Constant.MULTI_LEVEL_WILDCARD);
+            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+
+
+            //Add lost wildcard
+
+
+            getBySet(topicFilterKeys).subscribe(observer::onNext, observer::onError, observer::onCompleted);
+
+            //Single match without wildcards.
+            //getByKey(SubscriptionFilter.quickCheckIdKey(partition, growingTitles)).subscribe(observer::onNext, observer::onError, observer::onCompleted);
 
         });
 
@@ -245,21 +295,15 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                                 currentTreeName += Constant.PATH_SEPARATOR + name;
                             }
 
-
-                            String query = "partition = ? AND parentId = ? AND name = ? ";
-                            Object[] params = {partition, parentId, name};
-
-                            SubscriptionFilter internalSubscriptionFilter = getByQuery(SubscriptionFilter.class, query, params).toBlocking().singleOrDefault(null);
+                            SubscriptionFilter internalSubscriptionFilter = getByKeyWithDefault(SubscriptionFilter.createIdKey(parentId, name), null).toBlocking().single();
 
                             if (null == internalSubscriptionFilter) {
                                 internalSubscriptionFilter = new SubscriptionFilter();
                                 internalSubscriptionFilter.setPartition(partition);
                                 internalSubscriptionFilter.setParentId(parentId);
-                                internalSubscriptionFilter.setFullTreeName(currentTreeName);
                                 internalSubscriptionFilter.setName(name);
                                 save(internalSubscriptionFilter);
-
-                                }
+                            }
 
 
                             if (!pathIterator.hasNext()) {
@@ -269,7 +313,7 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                             }
                         }
 
-                        if (Objects.nonNull( activeSubscriptionFilter)) {
+                        if (Objects.nonNull(activeSubscriptionFilter)) {
                             observer.onNext(activeSubscriptionFilter);
                         }
                         observer.onCompleted();

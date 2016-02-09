@@ -20,18 +20,10 @@
 
 package com.caricah.iotracah.runner;
 
-import com.caricah.iotracah.runner.impl.DefaultRunner;
+import com.caricah.iotracah.bootstrap.runner.IOTracah;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.BDDMockito;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.util.concurrent.CountDownLatch;
-
-import static org.junit.Assert.*;
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/9/15

@@ -45,7 +45,7 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
         this.sslHandler = sslHandler;
         this.connectionTimeout = connectionTimeout;
 
-        int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()*2;
+        int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()+1;
 
         this.iotEventExecutorGroup = new DefaultEventExecutorGroup( countOfAvailableProcessors , getServerImpl().getExecutorService());
 

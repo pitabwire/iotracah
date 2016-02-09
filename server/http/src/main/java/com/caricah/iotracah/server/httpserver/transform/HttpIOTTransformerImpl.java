@@ -20,8 +20,8 @@
 
 package com.caricah.iotracah.server.httpserver.transform;
 
-import com.caricah.iotracah.core.worker.state.messages.*;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.*;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 import com.caricah.iotracah.server.transform.MqttIOTTransformer;
 import io.netty.handler.codec.http.FullHttpMessage;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -71,9 +71,9 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                     return ConnectMessage.from(
                             false, 1, false,
                             "MQTT", 4, false, isAnnonymousConnect, json.getString("clientId"),
-                            json.has("username")?json.getString("username"):"",
-                            json.has("password")?json.getString("password"):"",
-                                   keepAliveTime , "");
+                            json.has("username") ? json.getString("username") : "",
+                            json.has("password") ? json.getString("password") : "",
+                            keepAliveTime, "");
 
                 case "/PUBLISH":
 

@@ -21,8 +21,8 @@
 package com.caricah.iotracah.core.worker.exceptions;
 
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

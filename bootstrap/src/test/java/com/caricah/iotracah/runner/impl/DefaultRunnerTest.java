@@ -20,15 +20,14 @@
 
 package com.caricah.iotracah.runner.impl;
 
-import com.caricah.iotracah.system.SystemInitializer;
+import com.caricah.iotracah.bootstrap.runner.impl.DefaultRunner;
+import com.caricah.iotracah.bootstrap.system.SystemInitializer;
 import com.caricah.iotracah.system.handler.impl.BaseTestClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.internal.verification.Times;
 
 import java.util.concurrent.CountDownLatch;
-
-import static org.junit.Assert.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>

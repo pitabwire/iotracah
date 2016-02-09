@@ -21,9 +21,9 @@
 package com.caricah.iotracah.server.netty;
 
 import com.caricah.iotracah.core.modules.Server;
-import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -147,7 +147,7 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
         try {
 
 
-            int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()*2;
+            int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()+1;
 
             if (Epoll.isAvailable()) {
                 bossEventLoopGroup = new EpollEventLoopGroup(2, getExecutorService());
@@ -156,7 +156,6 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
             } else {
                 bossEventLoopGroup = new NioEventLoopGroup(2, getExecutorService());
                 workerEventLoopGroup = new NioEventLoopGroup(countOfAvailableProcessors, getExecutorService());
-
             }
 
 
@@ -281,7 +280,7 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     @Override
     public void postProcess(IOTMessage ioTMessage) {
 
-        if (ioTMessage.getMessageType().equals(DisconnectMessage.MESSAGE_TYPE)) {
+        if (DisconnectMessage.MESSAGE_TYPE.equals(ioTMessage.getMessageType())) {
             closeClient((ChannelId) ioTMessage.getConnectionId());
         }
 

@@ -20,17 +20,14 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.core.worker.state.messages.DisconnectMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.system.BaseSystemHandler;
-import org.apache.ignite.IgniteCompute;
-import rx.Scheduler;
-import rx.functions.Action0;
-import rx.util.async.Async;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 
 import java.io.Serializable;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -63,6 +60,7 @@ public abstract class Server<T> extends IOTBaseHandler {
      * @return
      */
     public abstract boolean isPersistentConnection();
+
     /**
      * Implementation to return the protocal for this particular implementation
      * Mainly the supported protocals are mqtt and http
@@ -70,12 +68,12 @@ public abstract class Server<T> extends IOTBaseHandler {
      * @return
      */
 
-    public abstract Protocal getProtocal();
+    public abstract Protocol getProtocal();
 
     /**
      * Implementation is expected to transform a server specific message
      * to an internal message that the iotracah workers can handle.
-     *
+     * <p>
      * Everything that goes beyond the server to workers and eventers
      * or the other way round.
      *
@@ -87,7 +85,7 @@ public abstract class Server<T> extends IOTBaseHandler {
     /**
      * Implementation transforms the internal message to a server specific message
      * that the server now knows how to handle.
-     *
+     * <p>
      * At the risk of making iotracah create so many unwanted objects,
      * This would be the best way to just ensure the appropriate plugin separation
      * is maintained.
@@ -107,35 +105,35 @@ public abstract class Server<T> extends IOTBaseHandler {
      * @param connectionId
      * @param sessionId
      * @param message
-     *
      */
-    public final void pushToWorker(Serializable connectionId, Serializable sessionId, T message){
+    public final void pushToWorker(Serializable connectionId, Serializable sessionId, T message) {
 
         IOTMessage ioTMessage = toIOTMessage(message);
 
-        if(null == message){
+        if (Objects.isNull(message)) {
             dirtyDisconnect(connectionId, sessionId);
             return;
         }
 
-        internalPushToWorker(connectionId, sessionId, ioTMessage);
+        if (Objects.nonNull(ioTMessage))
+            internalPushToWorker(connectionId, sessionId, ioTMessage);
 
     }
 
 
-    private void internalPushToWorker(Serializable connectionId, Serializable sessionId, IOTMessage ioTMessage){
+    private void internalPushToWorker(Serializable connectionId, Serializable sessionId, IOTMessage ioTMessage) {
 
         ioTMessage.setConnectionId(connectionId);
 
-        if(isPersistentConnection()) {
+        if (isPersistentConnection()) {
             //Client specific variables.
-            ioTMessage.setSessionId(sessionId);
+            ioTMessage.setSessionId( (String) sessionId);
 
         }
         //Hardware specific variables
         ioTMessage.setNodeId(getNodeId());
         ioTMessage.setCluster(getCluster());
-        ioTMessage.setProtocal(getProtocal());
+        ioTMessage.setProtocol(getProtocal());
 
         getSubscriberList().forEach(subscriber -> subscriber.onNext(ioTMessage));
 
@@ -154,10 +152,10 @@ public abstract class Server<T> extends IOTBaseHandler {
     @Override
     public int compareTo(BaseSystemHandler baseSystemHandler) {
 
-        if(null == baseSystemHandler)
+        if (null == baseSystemHandler)
             throw new NullPointerException("You can't compare a null object.");
 
-        if(baseSystemHandler instanceof Server)
+        if (baseSystemHandler instanceof Server)
             return 0;
         else
             return -1;

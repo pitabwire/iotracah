@@ -20,21 +20,19 @@
 
 package com.caricah.iotracah.core.worker.state;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
-import com.caricah.iotracah.core.worker.state.messages.AcknowledgeMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishReceivedMessage;
-import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishReceivedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.ReleaseMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
-import rx.Subscriber;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -64,16 +62,16 @@ public class SessionResetManager {
         this.datastore = datastore;
     }
 
-    public void process(Client client) {
+    public void process(IOTSession iotSession) {
 
-        log.debug(" process : Resetting a session for client {} ", client);
+        log.debug(" process : Resetting a session for client {} ", iotSession);
 
 
-        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(client);
+        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotSession);
 
         publishMessageObservable.subscribe(publishMessage -> {
 
-            publishMessage = client.copyTransmissionData(publishMessage);
+            publishMessage = iotSession.copyTransmissionData(publishMessage);
             //Update current session id for message.
 
                     if (publishMessage.isInBound()) {
@@ -83,7 +81,7 @@ public class SessionResetManager {
 
 
                             PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(publishMessage.getMessageId());
-                            publishReceivedMessage.copyBase(publishMessage);
+                            publishReceivedMessage = iotSession.copyTransmissionData(publishReceivedMessage);
                             getWorker().pushToServer(publishReceivedMessage);
 
 
@@ -95,14 +93,13 @@ public class SessionResetManager {
 
                             //We need to generate a PUBREL message to allow transmission of qos 2 message.
                             ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), true);
-                            releaseMessage.copyBase(publishMessage);
+                            releaseMessage = iotSession.copyTransmissionData(releaseMessage);
                             getWorker().pushToServer(releaseMessage);
 
 
                         } else {
 
                             //This message should be released to the client
-                            publishMessage.setProtocalData(client.getProtocalData());
 
                             try {
                                 getWorker().getHandler(PublishOutHandler.class).handle(publishMessage);

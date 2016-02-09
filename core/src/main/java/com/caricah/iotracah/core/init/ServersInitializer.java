@@ -26,10 +26,10 @@ import com.caricah.iotracah.core.modules.Server;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.modules.base.server.DefaultServerRouter;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.exceptions.UnRetriableException;
-import com.caricah.iotracah.system.BaseSystemHandler;
-import com.caricah.iotracah.system.SystemInitializer;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
+import com.caricah.iotracah.bootstrap.system.SystemInitializer;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteLogger;
@@ -39,7 +39,6 @@ import org.apache.ignite.cluster.ClusterGroup;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.configuration.TransactionConfiguration;
 import org.apache.ignite.logger.slf4j.Slf4jLogger;
-import org.apache.ignite.marshaller.jdk.JdkMarshaller;
 import org.apache.ignite.marshaller.optimized.OptimizedMarshaller;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
@@ -55,7 +54,6 @@ import rx.schedulers.Schedulers;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * <code>WorkersInitializer</code> Handler for initializing base worker
@@ -104,9 +102,6 @@ public abstract class ServersInitializer implements SystemInitializer {
     private String[] discoveryAddresses;
 
     private List<Subscription> rxSubscriptionList = new ArrayList<>();
-
-    private ExecutorService executorService;
-
 
     public boolean isServerEngineEnabled() {
         return serverEngineEnabled;
@@ -182,16 +177,6 @@ public abstract class ServersInitializer implements SystemInitializer {
         return rxSubscriptionList;
     }
 
-
-    public ExecutorService getExecutorService() {
-        return executorService;
-    }
-
-    public void setExecutorService(ExecutorService executorService) {
-        this.executorService = executorService;
-    }
-
-
     public void startServers() throws UnRetriableException {
 
         if (isServerEngineEnabled() && getServerList().isEmpty()) {
@@ -206,7 +191,7 @@ public abstract class ServersInitializer implements SystemInitializer {
             //Link server observable to .
             subscribeObserverToAnObservable(server, getServerRouter());
 
-            server.setExecutorService(getExecutorService());
+            server.setExecutorService(getSystemExcecutor(server));
 
             //Actually just start our server guy.
             server.initiate();
@@ -401,12 +386,11 @@ public abstract class ServersInitializer implements SystemInitializer {
 
             Observable<IOTMessage> observable = Observable.create(observableOnSubscriber);
 
-            //The schedular obtained allows for processing of data to be sent to the
-            //correct excecutor groups.
 
-            setExecutorService(obtainExcecutor(observableOnSubscriber));
+        //The schedular obtained allows for processing of data to be sent to the
+        //correct excecutor groups.
 
-            Scheduler scheduler = Schedulers.from(getExecutorService());
+        Scheduler scheduler = Schedulers.from(getSystemExcecutor(observableOnSubscriber));
 
         return observable
                     //.onBackpressureBuffer()
@@ -416,7 +400,7 @@ public abstract class ServersInitializer implements SystemInitializer {
     }
 
 
-    private ExecutorService obtainExcecutor(Object observableOnSubscriber) {
+    public ExecutorService getSystemExcecutor(Object observableOnSubscriber) {
 
         //Note: since ignite expects a runnable that is serializable we will deffer
         // Work on distributing the load to a cluster separated by functions.

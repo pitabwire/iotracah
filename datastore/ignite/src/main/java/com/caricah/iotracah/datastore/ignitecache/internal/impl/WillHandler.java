@@ -20,9 +20,11 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.core.worker.state.messages.WillMessage;
+import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.configuration.CacheConfiguration;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -42,5 +44,15 @@ public class WillHandler extends AbstractHandler<WillMessage> {
         setCacheName(cacheName);
 
     }
+
+
+    @Override
+    protected CacheConfiguration moreConfig(Class<WillMessage> t, CacheConfiguration clCfg) {
+
+        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        return super.moreConfig(t, clCfg);
+    }
+
 
 }

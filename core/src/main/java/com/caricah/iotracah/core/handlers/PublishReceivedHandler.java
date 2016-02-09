@@ -20,13 +20,13 @@
 
 package com.caricah.iotracah.core.handlers;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
 import com.caricah.iotracah.core.security.AuthorityRole;
-import com.caricah.iotracah.core.worker.state.messages.PublishMessage;
-import com.caricah.iotracah.core.worker.state.messages.PublishReceivedMessage;
-import com.caricah.iotracah.core.worker.state.messages.ReleaseMessage;
-import com.caricah.iotracah.core.worker.state.models.Client;
-import com.caricah.iotracah.exceptions.RetriableException;
-import com.caricah.iotracah.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishReceivedMessage;
+import com.caricah.iotracah.bootstrap.data.messages.ReleaseMessage;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
 
 /**
@@ -39,17 +39,16 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
     public void handle(PublishReceivedMessage publishReceivedMessage) throws RetriableException, UnRetriableException {
 
 
-//Check for connect permissions
-        Observable<Client> permissionObservable = checkPermission(publishReceivedMessage.getSessionId(),
+        //Check for connect permissions
+        Observable<IOTSession> permissionObservable = checkPermission(publishReceivedMessage.getSessionId(),
                 publishReceivedMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
 
-                (client) -> {
+                (iotSession) -> {
 
                     Observable<PublishMessage> messageObservable = getDatastore().getMessage(
-                            client.getPartition(), client.getClientId(),
-                            publishReceivedMessage.getMessageId(), false);
+                            iotSession, publishReceivedMessage.getMessageId(), false);
 
                     messageObservable.subscribe(publishMessage -> {
 

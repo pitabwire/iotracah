@@ -20,9 +20,9 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.core.worker.state.messages.base.IOTMessage;
-import com.caricah.iotracah.core.worker.state.messages.base.Protocal;
-import com.caricah.iotracah.system.BaseSystemHandler;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import rx.Subscriber;
 
 /**
@@ -49,14 +49,14 @@ import rx.Subscriber;
  */
 public abstract class Eventer extends Subscriber<IOTMessage> implements BaseSystemHandler {
 
-    private Protocal protocal;
+    private Protocol protocol;
 
-    public Protocal getProtocal() {
-        return protocal;
+    public Protocol getProtocol() {
+        return protocol;
     }
 
-    public void setProtocal(Protocal protocal) {
-        this.protocal = protocal;
+    public void setProtocol(Protocol protocol) {
+        this.protocol = protocol;
     }
 
     @Override
