@@ -20,13 +20,14 @@
 
 package com.caricah.iotracah.bootstrap.security.realm.state;
 
-import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
-import com.caricah.iotracah.bootstrap.data.IdKeyComposer;
+import com.caricah.iotracah.bootstrap.security.realm.auth.permission.IOTPermission;
+import com.caricah.iotracah.bootstrap.security.realm.auth.permission.IOTPermissionResolver;
 import org.apache.shiro.authz.Permission;
+import org.apache.shiro.authz.permission.PermissionResolver;
 
-import java.io.*;
+import java.io.Serializable;
 import java.util.Collection;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -34,69 +35,266 @@ import java.util.Set;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
-public class IOTRole implements IdKeyComposer, Externalizable {
+public class IOTRole implements Serializable {
 
-    protected String partition = "";
-    protected String name = null;
-    protected Set<Permission> permissions;
+    private static final PermissionResolver pr = new IOTPermissionResolver();
+    private transient Set<Permission> permissions;
+
+    /** */
+    private static final long serialVersionUID = 0L;
+
+    /** Value for id. */
+    private long id;
+
+    /** Value for dateCreated. */
+    private java.sql.Timestamp dateCreated;
+
+    /** Value for dateModified. */
+    private java.sql.Timestamp dateModified;
+
+    /** Value for isActive. */
+    private boolean isActive;
+
+    /** Value for name. */
+    private String name;
+
+    /** Value for permissionList. */
+    private String permissionList;
+
+    /** Value for partitionId. */
+    private String partitionId;
+
 
     public IOTRole() {
     }
 
     public IOTRole(String partition, String name) {
-        setPartition(partition);
+        setPartitionId(partition);
         setName(name);
     }
 
-    public IOTRole(String partition, String name, Set<Permission> permissions) {
-        setPartition(partition);
-        setName(name);
-        setPermissions(permissions);
+    /**
+     * Gets id.
+     *
+     * @return Value for id.
+     */
+    public long getId() {
+        return id;
     }
 
-    public String getPartition() {
-        return partition;
+    /**
+     * Sets id.
+     *
+     * @param id New value for id.
+     */
+    public void setId(long id) {
+        this.id = id;
     }
 
-    public void setPartition(String partition) {
-        this.partition = partition;
+    /**
+     * Gets dateCreated.
+     *
+     * @return Value for dateCreated.
+     */
+    public java.sql.Timestamp getDateCreated() {
+        return dateCreated;
     }
 
+    /**
+     * Sets dateCreated.
+     *
+     * @param dateCreated New value for dateCreated.
+     */
+    public void setDateCreated(java.sql.Timestamp dateCreated) {
+        this.dateCreated = dateCreated;
+    }
+
+    /**
+     * Gets dateModified.
+     *
+     * @return Value for dateModified.
+     */
+    public java.sql.Timestamp getDateModified() {
+        return dateModified;
+    }
+
+    /**
+     * Sets dateModified.
+     *
+     * @param dateModified New value for dateModified.
+     */
+    public void setDateModified(java.sql.Timestamp dateModified) {
+        this.dateModified = dateModified;
+    }
+
+    /**
+     * Gets isActive.
+     *
+     * @return Value for isActive.
+     */
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    /**
+     * Sets isActive.
+     *
+     * @param isActive New value for isActive.
+     */
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    /**
+     * Gets name.
+     *
+     * @return Value for name.
+     */
     public String getName() {
         return name;
     }
 
+    /**
+     * Sets name.
+     *
+     * @param name New value for name.
+     */
     public void setName(String name) {
         this.name = name;
     }
 
+    /**
+     * Gets permissionList.
+     *
+     * @return Value for permissionList.
+     */
+    public String getPermissionList() {
+        return permissionList;
+    }
+
+    /**
+     * Sets permissionList.
+     *
+     * @param permissionList New value for permissionList.
+     */
+    public void setPermissionList(String permissionList) {
+        this.permissionList = permissionList;
+    }
+
+    /**
+     * Gets partitionId.
+     *
+     * @return Value for partitionId.
+     */
+    public String getPartitionId() {
+        return partitionId;
+    }
+
+    /**
+     * Sets partitionId.
+     *
+     * @param partitionId New value for partitionId.
+     */
+    public void setPartitionId(String partitionId) {
+        this.partitionId = partitionId;
+    }
+
+    /** {@inheritDoc} */
+    @Override public boolean equals(Object o) {
+        if (this == o)
+            return true;
+
+        if (!(o instanceof IOTRole))
+            return false;
+
+        IOTRole that = (IOTRole)o;
+
+        if (id != that.id)
+            return false;
+
+        if (dateCreated != null ? !dateCreated.equals(that.dateCreated) : that.dateCreated != null)
+            return false;
+
+        if (dateModified != null ? !dateModified.equals(that.dateModified) : that.dateModified != null)
+            return false;
+
+        if (isActive != that.isActive)
+            return false;
+
+        if (name != null ? !name.equals(that.name) : that.name != null)
+            return false;
+
+        if (permissionList != null ? !permissionList.equals(that.permissionList) : that.permissionList != null)
+            return false;
+
+        if (partitionId != null ? !partitionId.equals(that.partitionId) : that.partitionId != null)
+            return false;
+
+        return true;
+    }
+
+    /** {@inheritDoc} */
+    @Override public int hashCode() {
+
+
+       int res = 31 * (int) id + (dateCreated != null ? dateCreated.hashCode() : 0);
+
+        res = 31 * res + (dateModified != null ? dateModified.hashCode() : 0);
+
+        res = 31 * res + (isActive ? 1 : 0);
+
+        res = 31 * res + (name != null ? name.hashCode() : 0);
+
+        res = 31 * res + (permissionList != null ? permissionList.hashCode() : 0);
+
+        res = 31 * res + (partitionId != null ? partitionId.hashCode() : 0);
+
+        return res;
+    }
+
+
     public Set<Permission> getPermissions() {
+
+        if(Objects.isNull(permissions) ){
+
+            permissions = new HashSet<>();
+
+        }
+
+        if(permissions.isEmpty()){
+
+            if(Objects.nonNull(getPermissionList())) {
+              for (String wildCard: getPermissionList().split(",")){
+
+                  permissions.add(pr.resolvePermission(wildCard));
+              }
+            }
+
+        }
+
         return permissions;
     }
 
-    public void setPermissions(Set<Permission> permissions) {
-        this.permissions = permissions;
+
+
+    public void add(IOTPermission permission) {
+
+        String permissionString = permission.getWildcard();
+
+        String permissionStringList;
+        if(Objects.isNull(getPermissionList()) || getPermissionList().isEmpty()){
+            permissionStringList = permissionString;
+        }else{
+            permissionStringList = getPermissionList()+","+permissionString;
+        }
+
+        setPermissionList(permissionStringList);
+
     }
 
-    public void add(Permission permission) {
-        Set<Permission> permissions = getPermissions();
-        if (permissions == null) {
-            permissions = new LinkedHashSet<>();
-            setPermissions(permissions);
-        }
-        permissions.add(permission);
-    }
-
-    public void addAll(Collection<Permission> perms) {
-        if (perms != null && !perms.isEmpty()) {
-            Set<Permission> permissions = getPermissions();
-            if (permissions == null) {
-                permissions = new LinkedHashSet<>(perms.size());
-                setPermissions(permissions);
-            }
-            permissions.addAll(perms);
-        }
-    }
+  public void add(Set<IOTPermission> permissionList) {
+      permissionList.forEach(this::add);
+  }
 
     public boolean isPermitted(Permission p) {
         Collection<Permission> perms = getPermissions();
@@ -110,50 +308,4 @@ public class IOTRole implements IdKeyComposer, Externalizable {
         return false;
     }
 
-    public int hashCode() {
-        return (getName() != null ? getName().hashCode() : 0);
-    }
-
-    public boolean equals(Object o) {
-        if (o == this) {
-            return true;
-        }
-        if (o instanceof IOTRole) {
-            IOTRole ir = (IOTRole) o;
-            //only check name, since role names should be unique across an entire application:
-            return (getName() != null ? getName().equals(ir.getName()) : ir.getName() == null);
-        }
-        return false;
-    }
-
-    @Override
-    public Serializable generateIdKey() throws UnRetriableException {
-
-        if(Objects.isNull(getName()) ){
-            throw new UnRetriableException(" Can't save a role without a name");
-        }
-
-        return createCacheKey(getPartition(), getName());
-
-    }
-
-    public static String createCacheKey(String partition, String rolename){
-        return "p["+ partition + "]-" + rolename;
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        objectOutput.writeObject(getPartition());
-        objectOutput.writeObject(getName());
-        objectOutput.writeObject(getPermissions());
-
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-
-        setPartition((String) objectInput.readObject());
-        setName((String) objectInput.readObject());
-        setPermissions((Set<Permission>)objectInput.readObject());
-    }
 }

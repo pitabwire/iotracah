@@ -20,18 +20,20 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.models.messages.IotMessageKey;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscription;
+import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import com.caricah.iotracah.core.handlers.RequestHandler;
 import com.caricah.iotracah.core.modules.base.IOTBaseHandler;
 import com.caricah.iotracah.core.modules.base.server.ServerRouter;
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.Messenger;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
-import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
-import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
-import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
-import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
 import org.apache.shiro.session.SessionListener;
@@ -40,6 +42,7 @@ import rx.Scheduler;
 import rx.schedulers.Schedulers;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -75,6 +78,8 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     private String annonymousLoginUsername;
 
     private String annonymousLoginPassword;
+
+    private String defaultPartitionName;
 
     private int keepAliveInSeconds;
 
@@ -175,6 +180,13 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
         this.annonymousLoginPassword = annonymousLoginPassword;
     }
 
+    public String getDefaultPartitionName() {
+        return defaultPartitionName;
+    }
+
+    public void setDefaultPartitionName(String defaultPartitionName) {
+        this.defaultPartitionName = defaultPartitionName;
+    }
     public int getKeepAliveInSeconds() {
         return keepAliveInSeconds;
     }
@@ -204,15 +216,13 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
     }
 
 
-    public void publishWill(IOTSession iotSession) {
+    public void publishWill(IOTClient iotClient) {
 
-        log.debug(" publishWill : client : " + iotSession.getClientId() + " may have lost connectivity.");
+        log.debug(" publishWill : client : {} may have lost connectivity.", iotClient);
 
         //Publish will before handling other
 
-
-        String willKey = WillMessage.createWillKey(iotSession.getPartition(), iotSession.getClientId());
-        Observable<WillMessage> willMessageObservable = getDatastore().getWill(willKey);
+        Observable<PublishMessage> willMessageObservable = getDatastore().getWill(iotClient);
 
         willMessageObservable.subscribe(
                 willMessage -> {
@@ -222,13 +232,22 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
                     log.debug(" publishWill : -------  We have a will {} -------", willMessage);
                     log.debug(" publishWill : -----------------------------------------------------");
 
-
-                    PublishMessage willPublishMessage = willMessage.toPublishMessage();
-                    iotSession.copyTransmissionData(willPublishMessage);
+                   willMessage = iotClient.copyTransmissionData(willMessage);
 
                     try {
 
-                        getMessenger().publish(iotSession.getPartition(), willPublishMessage);
+
+                        if (willMessage.getQos() > 0) {
+                            willMessage.setIsRelease(false);
+                            //Save the message as we proceed.
+                            willMessage.setMessageId(PublishMessage.ID_TO_FORCE_GENERATION_ON_SAVE);
+                            Map.Entry<Long, IotMessageKey> messageIdentity = getDatastore().saveMessage(willMessage).toBlocking().single();
+                            willMessage.setMessageId(messageIdentity.getValue().getMessageId());
+                        }
+
+                        getMessenger().publish(iotClient.getPartitionId(), willMessage);
+
+
                     } catch (RetriableException e) {
                         log.error(" publishWill : experienced issues publishing will.", e);
                     }
@@ -238,9 +257,50 @@ public abstract class Worker extends IOTBaseHandler implements SessionListener{
                     if(!(throwable instanceof DoesNotExistException)){
                         log.error(" dirtyDisconnect : problems getting will ", throwable);
                     }
-                }
+
+                    disconnectClient(iotClient);
+                }, ()-> disconnectClient(iotClient)
         );
 
+
+    }
+
+    private void disconnectClient(IOTClient iotClient){
+
+        //Notify the server to remove this client from further sending in requests.
+        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
+        disconnectMessage = iotClient.copyTransmissionData(disconnectMessage);
+        pushToServer(disconnectMessage);
+
+
+        // Unsubscribe all
+        if (iotClient.getIsCleanSession()) {
+
+
+            Observable<IotSubscription> subscriptionObservable = getDatastore().getSubscriptions(iotClient);
+
+            subscriptionObservable.subscribe(
+                    subscription ->
+                            getMessenger().unSubscribe(subscription)
+
+                    , throwable -> log.error(" onStop : problems while unsubscribing", throwable)
+
+                    , () -> {
+
+                        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotClient);
+                        publishMessageObservable.subscribe(
+                                getDatastore()::removeMessage,
+                                throwable -> {
+                                    log.error(" onStop : problems while unsubscribing", throwable);
+                                    // any way still delete it from our db
+                                },
+                                () -> {
+                                    // and delete it from our db
+                                });
+
+                    }
+            );
+        }
 
     }
 

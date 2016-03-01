@@ -43,9 +43,9 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
 
                 PublishMessage pubMsg = (PublishMessage) internalMessage;
                 //We generate a publish message.
-                MqttPublishVariableHeader respVariableHeader = new MqttPublishVariableHeader(pubMsg.getTopic(), pubMsg.getMessageId().intValue());
+                MqttPublishVariableHeader respVariableHeader = new MqttPublishVariableHeader(pubMsg.getTopic(), pubMsg.getMessageId());
 
-                MqttFixedHeader respFixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, pubMsg.isDup(), MqttQoS.valueOf(pubMsg.getQos()), pubMsg.isRetain(), 0);
+                MqttFixedHeader respFixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, pubMsg.getIsDuplicate(), MqttQoS.valueOf(pubMsg.getQos()), pubMsg.getIsRetain(), 0);
                 ByteBuf content = Unpooled.wrappedBuffer((byte[]) pubMsg.getPayload());
 
                 return MqttMessageFactory.newMessage(respFixedHeader, respVariableHeader, content);
@@ -55,7 +55,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 //Generate a PUBACK for qos 1 messages.
                 AcknowledgeMessage ackMsg = (AcknowledgeMessage) internalMessage;
                 MqttFixedHeader ackFixedHeader = new MqttFixedHeader(MqttMessageType.PUBACK, ackMsg.isDup(), MqttQoS.valueOf(ackMsg.getQos()), ackMsg.isRetain(), 0);
-                MqttMessageIdVariableHeader msgIdVariableHeader = MqttMessageIdVariableHeader.from(ackMsg.getMessageId().intValue());
+                MqttMessageIdVariableHeader msgIdVariableHeader = MqttMessageIdVariableHeader.from(ackMsg.getMessageId());
                 return MqttMessageFactory.newMessage(ackFixedHeader, msgIdVariableHeader, null);
 
 
@@ -64,7 +64,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 //We need to generate a PUBREC message to acknowledge reception of message.
                 PublishReceivedMessage pubrec = (PublishReceivedMessage) internalMessage;
                 MqttFixedHeader recFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREC, false, MqttQoS.valueOf(pubrec.getQos()), false, 0);
-                msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrec.getMessageId().intValue());
+                msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrec.getMessageId());
                 return MqttMessageFactory.newMessage(recFixedHeader, msgIdVariableHeader, null);
 
 
@@ -73,7 +73,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 //We need to generate a PUBREL message to release cached message.
                 ReleaseMessage pubrel = (ReleaseMessage) internalMessage;
                 MqttFixedHeader relFixedHeader = new MqttFixedHeader(MqttMessageType.PUBREL, pubrel.isDup(), MqttQoS.valueOf(pubrel.getQos()),false, 0);
-                msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrel.getMessageId().intValue());
+                msgIdVariableHeader = MqttMessageIdVariableHeader.from(pubrel.getMessageId());
                 return MqttMessageFactory.newMessage(relFixedHeader, msgIdVariableHeader, null);
 
 
@@ -82,7 +82,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 //We need to generate a PUBCOMP message to acknowledge finalization of transmission of qos 2 message.
                 CompleteMessage destroyMessage = (CompleteMessage) internalMessage;
                 MqttFixedHeader compFixedHeader = new MqttFixedHeader(MqttMessageType.PUBCOMP, false, MqttQoS.valueOf(destroyMessage.getQos()), false, 0);
-                msgIdVariableHeader = MqttMessageIdVariableHeader.from(destroyMessage.getMessageId().intValue());
+                msgIdVariableHeader = MqttMessageIdVariableHeader.from(destroyMessage.getMessageId());
                 return MqttMessageFactory.newMessage(compFixedHeader, msgIdVariableHeader, null);
 
             case Ping.MESSAGE_TYPE:
@@ -112,7 +112,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
                 MqttSubAckPayload payload = new MqttSubAckPayload(subAckMsg.getGrantedQos());
 
                 MqttFixedHeader subAckFixedHeader = new MqttFixedHeader(MqttMessageType.SUBACK, subAckMsg.isDup(), MqttQoS.valueOf(subAckMsg.getQos()), subAckMsg.isRetain(), 0);
-                MqttMessageIdVariableHeader subAckVariableHeader = MqttMessageIdVariableHeader.from(subAckMsg.getMessageId().intValue());
+                MqttMessageIdVariableHeader subAckVariableHeader = MqttMessageIdVariableHeader.from(subAckMsg.getMessageId());
                 return MqttMessageFactory.newMessage(subAckFixedHeader, subAckVariableHeader, payload);
 
 
@@ -120,7 +120,7 @@ public class IOTMqttTransformerImpl implements IOTMqttTransformer<MqttMessage> {
 
                 UnSubscribeAcknowledgeMessage unSubAckMsg = (UnSubscribeAcknowledgeMessage) internalMessage;
                 respFixedHeader = new MqttFixedHeader(MqttMessageType.UNSUBACK, unSubAckMsg.isDup(), MqttQoS.valueOf(unSubAckMsg.getQos()), unSubAckMsg.isRetain(), 0);
-                MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(unSubAckMsg.getMessageId().intValue());
+                MqttMessageIdVariableHeader variableHeader = MqttMessageIdVariableHeader.from(unSubAckMsg.getMessageId());
                 return MqttMessageFactory.newMessage(respFixedHeader, variableHeader, null);
 
 

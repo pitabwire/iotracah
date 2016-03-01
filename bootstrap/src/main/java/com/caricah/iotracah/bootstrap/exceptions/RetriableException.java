@@ -24,7 +24,7 @@ package com.caricah.iotracah.bootstrap.exceptions;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 5/26/15
  */
-public class RetriableException extends Exception {
+public class RetriableException extends RuntimeException {
 
     public RetriableException() {
     }
@@ -33,8 +33,8 @@ public class RetriableException extends Exception {
         super(message);
     }
 
-    public RetriableException(String message, Throwable var2) {
-        super(message, var2);
+    public RetriableException(String message, Throwable throwable) {
+        super(message, throwable);
     }
 
     public RetriableException(Throwable message) {

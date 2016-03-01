@@ -29,42 +29,40 @@ public final class AcknowledgeMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "PUBACK";
 
-    private final boolean dup = false;
-    private final int qos = 0;
-    private final boolean retain = false;
+    private final int messageId;
 
-    public static AcknowledgeMessage from(long messageId) {
+    public static AcknowledgeMessage from(int messageId) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
         return new AcknowledgeMessage(messageId);
     }
 
-    private AcknowledgeMessage(long messageId) {
+    private AcknowledgeMessage(int messageId) {
 
-        setMessageId(messageId);
+        this. messageId = messageId;
         setMessageType(MESSAGE_TYPE);
 
     }
 
     public boolean isDup() {
-        return dup;
+        return false;
     }
 
     public int getQos() {
-        return qos;
+        return 0;
     }
 
     public boolean isRetain() {
-        return retain;
+        return false;
+    }
+
+    public int getMessageId() {
+        return messageId;
     }
 
     @Override
     public String toString() {
-        return new StringBuilder(getClass().getName())
-                .append('[')
-                .append("messageId=").append(getMessageId())
-                .append(']')
-                .toString();
+        return getClass().getName() + '[' + "messageId=" + getMessageId() + ']';
     }
 }

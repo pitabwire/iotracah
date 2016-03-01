@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2015 Caricah <info@caricah.com>.
+ * Copyright (c) 2016 Caricah <info@caricah.com>.
  *
  * Caricah licenses this file to you under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License. You may obtain a copy
@@ -18,17 +18,27 @@
  *
  */
 
-package com.caricah.iotracah.bootstrap.data;
-
-import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
-
-import java.io.Serializable;
+package com.caricah.iotracah.bootstrap.exceptions;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
- * @version 1.0 9/21/15
+ * @version 1.0 2/22/16
  */
-public interface IdKeyComposer {
+public class NotImplementedException extends RetriableException {
+    public NotImplementedException() {
+    }
 
-    Serializable generateIdKey() throws UnRetriableException;
+    public NotImplementedException(String message) {
+        super(message);
+    }
+
+    public NotImplementedException(String message, Throwable throwable) {
+        super(message, throwable);
+    }
+
+    public NotImplementedException(Throwable message) {
+        super(message);
+    }
+
+
 }

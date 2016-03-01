@@ -20,31 +20,25 @@
 
 package com.caricah.iotracah.core.modules;
 
-import com.caricah.iotracah.bootstrap.security.IOTSecurityManager;
-import com.caricah.iotracah.bootstrap.security.IOTSessionManager;
-import com.caricah.iotracah.bootstrap.security.realm.IOTSessionDAO;
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.models.client.IotClientKey;
+import com.caricah.iotracah.bootstrap.data.models.messages.IotMessageKey;
+import com.caricah.iotracah.bootstrap.data.models.subscriptionfilters.IotSubscriptionFilter;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscription;
+import com.caricah.iotracah.bootstrap.security.realm.IOTSecurityDatastore;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
+import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
 import com.caricah.iotracah.core.worker.state.Constant;
-import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
-import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
-import com.caricah.iotracah.bootstrap.data.messages.WillMessage;
-import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
-import com.caricah.iotracah.bootstrap.data.models.Subscription;
-import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
-import com.caricah.iotracah.bootstrap.security.realm.IOTAccountDatastore;
-import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import org.apache.ignite.Ignite;
 import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.session.Session;
 import org.apache.shiro.session.mgt.DefaultSessionKey;
-import org.apache.shiro.session.mgt.eis.SessionDAO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
 import rx.Subscriber;
 
-import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
@@ -56,7 +50,7 @@ import java.util.concurrent.ExecutorService;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/10/15
  */
-public abstract class Datastore implements IOTAccountDatastore, Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
+public abstract class Datastore implements IOTSecurityDatastore, Observable.OnSubscribe<IOTMessage>,BaseSystemHandler {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -82,7 +76,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
         this.executorService = executorService;
     }
 
-    public Observable<IOTSession> getSession(Serializable sessionId){
+    public Observable<IOTClient> getSession(IotClientKey sessionId){
 
         return Observable.create(   observer ->{
 
@@ -90,7 +84,7 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
 
                      DefaultSessionKey sessionKey = new DefaultSessionKey(sessionId);
 
-                    IOTSession session = (IOTSession) SecurityUtils.getSecurityManager().getSession(sessionKey);
+                    IOTClient session = (IOTClient) SecurityUtils.getSecurityManager().getSession(sessionKey);
                     if(Objects.isNull(session)){
                         observer.onError(new DoesNotExistException("No session with the id exists."));
                     }else {
@@ -106,36 +100,38 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
         );
     }
 
-    public abstract Observable<WillMessage> getWill(Serializable willKey);
-    public abstract void saveWill(WillMessage will);
-    public abstract void removeWill(WillMessage will);
+    public abstract Observable<PublishMessage> getWill(IOTClient client);
+    public abstract void saveWill(IOTClient iotSession, PublishMessage publishMessage);
+    public abstract void removeWill(IOTClient client);
 
-    public abstract Observable<SubscriptionFilter> getMatchingSubscriptionFilter(String partition, String topic);
-    public abstract Observable<SubscriptionFilter> getSubscriptionFilter(String partition, String topic);
-    public abstract Observable<SubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic);
-    public abstract void removeSubscriptionFilter(SubscriptionFilter subscriptionFilter);
+    public abstract Observable<IotSubscriptionFilter> getMatchingSubscriptionFilter(String partition, String topic);
+    public abstract Observable<IotSubscriptionFilter> getOrCreateSubscriptionFilter(String partition, String topic);
+    public abstract Observable<IotSubscriptionFilter> getSubscriptionFilterTree(String partitionId, String topic);
 
-
-    public abstract Observable<Subscription> getSubscriptions(IOTSession session);
-    public abstract Observable<Subscription> getSubscriptions(String partition, String topicFilterKey, int qos);
-    public abstract void saveSubscription(Subscription subscription);
-    public abstract void removeSubscription(Subscription subscription);
+    public abstract void removeSubscriptionFilter(IotSubscriptionFilter subscriptionFilter);
 
 
+    public abstract Observable<IotSubscription> getSubscriptions(IOTClient client);
+    public abstract Observable<IotSubscription> getSubscriptions( IotSubscriptionFilter iotSubscriptionFilter, int qos);
+    public abstract Observable<IotSubscription> getSubscriptionWithDefault(IotSubscription subscription);
+    public abstract void saveSubscription(IotSubscription subscription);
+    public abstract void removeSubscription(IotSubscription subscription);
 
 
-    public abstract Observable<PublishMessage> getMessages(IOTSession session);
-    public abstract Observable<PublishMessage> getMessage(IOTSession iotSession, long messageId, boolean isInbound) ;
 
-    public abstract Observable<Long> saveMessage(PublishMessage publishMessage);
+
+    public abstract Observable<PublishMessage> getMessages(IOTClient session);
+    public abstract Observable<PublishMessage> getMessage(IOTClient iotClient, long messageId, boolean isInbound) ;
+
+    public abstract Observable<Map.Entry<Long, IotMessageKey>> saveMessage(PublishMessage publishMessage);
 
     public abstract void removeMessage(PublishMessage publishMessage);
 
-    public abstract Observable<RetainedMessage> getRetainedMessage(String partition, String topicFilterId) ;
+    public abstract Observable<PublishMessage> getRetainedMessage(IotSubscriptionFilter subscriptionFilter) ;
 
-    public abstract void saveRetainedMessage(RetainedMessage publishMessage);
+    public abstract void saveRetainedMessage(IotSubscriptionFilter subscriptionFilter, int qos, Object payload);
 
-    public abstract void removeRetainedMessage(RetainedMessage publishMessage);
+    public abstract void removeRetainedMessage(IotSubscriptionFilter subscriptionFilter);
 
     /**
      * getTopicNavigationRoute is a utility method to breakdown route to
@@ -181,4 +177,4 @@ public abstract class Datastore implements IOTAccountDatastore, Observable.OnSub
     }
 
 
-   }
+  }

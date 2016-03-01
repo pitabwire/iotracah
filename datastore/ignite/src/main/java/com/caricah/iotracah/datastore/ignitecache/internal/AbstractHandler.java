@@ -20,8 +20,10 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal;
 
+import com.caricah.iotracah.bootstrap.data.models.client.IotClientKey;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.worker.exceptions.DoesNotExistException;
-import com.caricah.iotracah.bootstrap.data.IdKeyComposer;
 import org.apache.commons.configuration.Configuration;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteAtomicSequence;
@@ -29,10 +31,12 @@ import org.apache.ignite.IgniteCache;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cache.CacheMemoryMode;
 import org.apache.ignite.cache.CacheMode;
+import org.apache.ignite.cache.CacheWriteSynchronizationMode;
 import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
 import org.apache.ignite.cache.query.QueryCursor;
 import org.apache.ignite.cache.query.SqlFieldsQuery;
 import org.apache.ignite.cache.query.SqlQuery;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +45,10 @@ import rx.Scheduler;
 import rx.schedulers.Schedulers;
 
 import javax.cache.Cache.Entry;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import javax.sql.DataSource;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -54,12 +62,12 @@ import java.util.concurrent.ExecutorService;
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public abstract class AbstractHandler<T extends IdKeyComposer> implements Serializable {
+public abstract class AbstractHandler<K, T> implements Serializable {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
 
     private String cacheName;
-    private IgniteCache<Serializable, T> datastoreCache;
+    private IgniteCache<K, T> datastoreCache;
 
     private IgniteAtomicSequence idSequence;
 
@@ -68,6 +76,9 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
     private ExecutorService executorService;
 
     private Class<T> classType;
+
+    private boolean persistanceEnabled;
+
 
     public String getCacheName() {
         return cacheName;
@@ -78,11 +89,20 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
     }
 
 
-    public IgniteCache<Serializable, T> getDatastoreCache() {
+    public boolean isPersistanceEnabled() {
+        return persistanceEnabled;
+    }
+
+    public void setPersistanceEnabled(boolean persistanceEnabled) {
+        this.persistanceEnabled = persistanceEnabled;
+    }
+
+
+    public IgniteCache<K, T> getDatastoreCache() {
         return datastoreCache;
     }
 
-    public void setDatastoreCache(IgniteCache<Serializable, T> datastoreCache) {
+    public void setDatastoreCache(IgniteCache<K, T> datastoreCache) {
         this.datastoreCache = datastoreCache;
     }
 
@@ -116,10 +136,45 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
     public void initiate(Class<T> t, Ignite ignite) {
 
-        CacheConfiguration clCfg = new CacheConfiguration();
 
-        clCfg.setName(getCacheName());
-        clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
+        try {
+            Context ic = new InitialContext();
+
+            DataSource dataSource;
+            if(isPersistanceEnabled())
+             dataSource = (DataSource) ic.lookup("jdbc_commonpool");
+else
+            dataSource = null;
+
+            CacheConfiguration<K,T> clCfg = getCacheConfiguration(isPersistanceEnabled(), dataSource);
+
+            clCfg = extraCacheSettingsConfigure(clCfg);
+
+            ignite.createCache(clCfg);
+            IgniteCache<K, T> clientIgniteCache = ignite.cache(getCacheName());
+
+            clientIgniteCache.loadCache(null);
+
+            setDatastoreCache(clientIgniteCache);
+
+            classType = t;
+
+            String nameOfSequence = getCacheName() + "-sequence";
+            initializeSequence(nameOfSequence, ignite);
+
+        } catch (NamingException e) {
+            log.error(" getFactory : problems obtaining appropriate jdbc context");
+            throw new UnRetriableException(e);
+        }
+
+
+    }
+
+    private CacheConfiguration<K,T> extraCacheSettingsConfigure(CacheConfiguration<K,T> clCfg) {
+
+        clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+
+        clCfg.setWriteSynchronizationMode(CacheWriteSynchronizationMode.PRIMARY_SYNC);
         clCfg.setCacheMode(CacheMode.PARTITIONED);
 
         clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
@@ -133,20 +188,11 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         clCfg.setRebalanceThrottle(0);
         clCfg.setRebalanceThreadPoolSize(4);
 
-        clCfg = moreConfig(t, clCfg);
-
-        ignite.createCache(clCfg);
-        IgniteCache clientIgniteCache = ignite.cache(getCacheName());
-
-        setDatastoreCache(clientIgniteCache);
-
-
-        classType = t;
-
-        String nameOfSequence = getCacheName() + "-sequence";
-        initializeSequence(nameOfSequence, ignite);
+        return clCfg;
 
     }
+
+    protected abstract CacheConfiguration<K,T> getCacheConfiguration(boolean persistanceEnabled, DataSource ds);
 
     public void initializeSequence(String nameOfSequence, Ignite ignite) {
 
@@ -155,83 +201,77 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
         setIdSequence(idSequence);
     }
 
-    protected CacheConfiguration moreConfig(Class<T> t, CacheConfiguration clCfg) {
-
-        clCfg.setIndexedTypes(String.class, t);
-        return clCfg;
-    }
-
-    public long nextId() {
-        return idSequence.incrementAndGet();
-    }
-
-    public Observable<T> getByKey(Serializable key) {
+    public Observable<T> getByKey(K key) {
 
         return Observable.create(observer -> {
 
-            try {
-                // do work on separate thread
-                T actualResult = getDatastoreCache().get(key);
 
-                if (Objects.nonNull(actualResult)) {
-                    observer.onNext(actualResult);
+                try {
+                    // do work on separate thread
+                    T actualResult = getDatastoreCache().get(key);
+
+                    if (Objects.nonNull(actualResult)) {
+                        observer.onNext(actualResult);
+                        observer.onCompleted();
+                    } else {
+                        observer.onError(new DoesNotExistException(String.format("%s with key [%s] does not exist.", classType, key)));
+                    }
+
+                } catch (Exception e) {
+                    observer.onError(e);
+                }
+
+        });
+
+    }
+
+
+    public Observable<T> getBySet(Set<K> keys) {
+
+        return Observable.create(observer -> {
+
+
+                try {
+
+                    Map<K, T> itemMap = getDatastoreCache().getAllOutTx(keys);
+
+                    itemMap.values().forEach(item -> {
+                        if (Objects.nonNull(item))
+                            observer.onNext(item);
+                    });
+
                     observer.onCompleted();
-                } else {
-                    observer.onError(new DoesNotExistException(String.format("%s with key [%s] does not exist.", classType, key)));
+
+                } catch (Exception e) {
+                    observer.onError(e);
                 }
 
-            } catch (Exception e) {
-                observer.onError(e);
-            }
+            });
 
-        });
 
     }
 
 
-    public Observable<T> getBySet(Set<Serializable> keys) {
-
-        return Observable.create(observer ->{
-
-            try {
-
-                Map<Serializable, T> itemMap = getDatastoreCache().getAllOutTx(keys);
-
-                itemMap.values().forEach(item -> {
-                    if (Objects.nonNull(item))
-                        observer.onNext(item);
-                });
-
-                observer.onCompleted();
-
-            }catch (Exception e){
-                observer.onError(e);
-            }
-
-        });
-
-    }
-
-
-    public Observable<T> getByKeyWithDefault(Serializable key, T defaultValue) {
+    public Observable<T> getByKeyWithDefault(K key, T defaultValue) {
 
         return Observable.create(observer -> {
 
-            try {
-                // do work on separate thread
 
-                T value = getDatastoreCache().get(key);
-                // callback with value only if not null
-                if (null != value) {
-                    observer.onNext(value);
-                } else {
-                    observer.onNext(defaultValue);
+                try {
+                    // do work on separate thread
+
+                    T value = getDatastoreCache().get(key);
+                    // callback with value only if not null
+                    if (null != value) {
+                        observer.onNext(value);
+                    } else {
+                        observer.onNext(defaultValue);
+                    }
+                    observer.onCompleted();
+
+                } catch (Exception e) {
+                    observer.onError(e);
                 }
-                observer.onCompleted();
-
-            } catch (Exception e) {
-                observer.onError(e);
-            }
 
         });
 
@@ -242,24 +282,24 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
 
         return Observable.create(observer -> {
 
-            try {
+                try {
 
-                SqlQuery sql = new SqlQuery<Serializable, T>(t, query);
-                sql.setArgs(params);
+                    SqlQuery sql = new SqlQuery<Serializable, T>(t, query);
+                    sql.setArgs(params);
 
-                // Find all messages belonging to a client.
-                QueryCursor<Entry<Serializable, T>> queryResult = getDatastoreCache().query(sql);
+                    // Find all messages belonging to a client.
+                    QueryCursor<Entry<K, T>> queryResult = getDatastoreCache().query(sql);
 
-                for (Entry<Serializable, T> entry : queryResult) {
-                    // callback with value
-                    observer.onNext(entry.getValue());
+                    for (Entry<K, T> entry : queryResult) {
+                        // callback with value
+                        observer.onNext(entry.getValue());
+                    }
+
+
+                    observer.onCompleted();
+                } catch (Exception e) {
+                    observer.onError(e);
                 }
-
-
-                observer.onCompleted();
-            } catch (Exception e) {
-                observer.onError(e);
-            }
 
         });
 
@@ -268,7 +308,6 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
     public <L extends Serializable> Observable<L> getByQueryAsValue(Class<L> l, String query, Object[] params) {
 
         return Observable.create(observer -> {
-
             try {
 
                 SqlFieldsQuery sql = new SqlFieldsQuery(query);
@@ -289,39 +328,41 @@ public abstract class AbstractHandler<T extends IdKeyComposer> implements Serial
             } catch (Exception e) {
                 observer.onError(e);
             }
-
         });
 
     }
 
+    public abstract K keyFromModel(T model);
 
     public void save(T item) {
+        save(keyFromModel(item), item);
+    }
 
-        getExecutorService().submit(() -> {
+    protected void save(K key, T item) {
 
-            try {
 
-                getDatastoreCache().put(item.generateIdKey(), item);
+        try {
 
-            } catch (Exception e) {
-                log.error(" save : issues while saving item ", e);
-            }
+            getDatastoreCache().put(key, item);
 
-        });
+        } catch (Exception e) {
+            log.error(" save : issues while saving item ", e);
+        }
+
 
     }
 
-    public void remove(IdKeyComposer item) {
+    public void remove(T item) {
+        removeByKey(keyFromModel(item));
+    }
 
+    protected void removeByKey(K item) {
 
-        getExecutorService().submit(() -> {
-
-            try {
-                getDatastoreCache().remove(item.generateIdKey());
-            } catch (Exception e) {
-                log.error(" remove : problem while removing item ", e);
-            }
-        });
+        try {
+            getDatastoreCache().remove(item);
+        } catch (Exception e) {
+            log.error(" remove : problem while removing item ", e);
+        }
 
     }
 

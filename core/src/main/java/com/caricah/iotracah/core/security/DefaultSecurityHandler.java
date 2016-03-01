@@ -23,19 +23,9 @@ package com.caricah.iotracah.core.security;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.bootstrap.security.IOTIniSecurityManagerFactory;
 import com.caricah.iotracah.bootstrap.security.IOTSecurityManager;
-import com.caricah.iotracah.bootstrap.security.realm.IOTAccountDatastore;
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.IOTSecurityDatastore;
 import com.caricah.iotracah.bootstrap.system.ResourceFileUtil;
-import com.caricah.iotracah.bootstrap.security.realm.IOTSessionDAO;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteAtomicSequence;
-import org.apache.ignite.IgniteCache;
-import org.apache.ignite.cache.CacheAtomicityMode;
-import org.apache.ignite.cache.CacheMemoryMode;
-import org.apache.ignite.cache.CacheMode;
-import org.apache.ignite.cache.eviction.lru.LruEvictionPolicy;
-import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.config.Ini;
 import org.apache.shiro.mgt.SecurityManager;
@@ -45,9 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.Serializable;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -64,23 +51,15 @@ public class DefaultSecurityHandler {
     public static final String SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY = "system.config.security.config.directory";
     public static final String SYSTEM_CONFIG_SECURITY_CONFIG_DIRECTORY_DEFAULT_VALUE = "";
 
+    public static final String CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME = "config.system.security.default.partition.name";
+    public static final String CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME_VALUE_DEFAULT = "default_partition";
 
     private final String securityFileName;
     private String securityFileDirectory;
-
-    public static final String CONFIG_IGNITECACHE_SESSION_CACHE_NAME = "config.ignitecache.session.cache.name";
-    public static final String CONFIG_IGNITECACHE_SESSION_CACHE_NAME_VALUE_DEFAULT = "iotracah_session_cache";
-
-    public static final String CONFIG_IGNITECACHE_SESSION_ATOMIC_SEQUENCE_NAME = "config.ignitecache.session.atomic.sequence.name";
-    public static final String CONFIG_IGNITECACHE_SESSION_ATOMIC_SEQUENCE_NAME_VALUE_DEFAULT = "iotracah_session_atomic_sequence";
+    private String defaultPartitionName;
 
 
-    private String cacheName;
-    private String atomicSequenceName;
-    private IgniteCache<Serializable, IOTSession> sessionsCache;
-    private IgniteAtomicSequence atomicSequence;
-
-    private IOTAccountDatastore iotAccountDatastore;
+    private IOTSecurityDatastore iotSecurityDatastore;
 
     private Set<SessionListener> sessionListenerList = new HashSet<>();
 
@@ -104,44 +83,21 @@ public class DefaultSecurityHandler {
         this.securityFileDirectory = securityFileDirectory;
     }
 
-    public String getCacheName() {
-        return cacheName;
+
+    public IOTSecurityDatastore getIotSecurityDatastore() {
+        return iotSecurityDatastore;
     }
 
-    public void setCacheName(String cacheName) {
-        this.cacheName = cacheName;
+    public void setIotSecurityDatastore(IOTSecurityDatastore iotSecurityDatastore) {
+        this.iotSecurityDatastore = iotSecurityDatastore;
     }
 
-    public String getAtomicSequenceName() {
-        return atomicSequenceName;
+    public String getDefaultPartitionName() {
+        return defaultPartitionName;
     }
 
-    public void setAtomicSequenceName(String atomicSequenceName) {
-        this.atomicSequenceName = atomicSequenceName;
-    }
-
-    public IgniteCache<Serializable, IOTSession> getSessionsCache() {
-        return sessionsCache;
-    }
-
-    public void setSessionsCache(IgniteCache<Serializable, IOTSession> sessionsCache) {
-        this.sessionsCache = sessionsCache;
-    }
-
-    public IgniteAtomicSequence getAtomicSequence() {
-        return atomicSequence;
-    }
-
-    public void setAtomicSequence(IgniteAtomicSequence atomicSequence) {
-        this.atomicSequence = atomicSequence;
-    }
-
-    public IOTAccountDatastore getIotAccountDatastore() {
-        return iotAccountDatastore;
-    }
-
-    public void setIotAccountDatastore(IOTAccountDatastore iotAccountDatastore) {
-        this.iotAccountDatastore = iotAccountDatastore;
+    public void setDefaultPartitionName(String defaultPartitionName) {
+        this.defaultPartitionName = defaultPartitionName;
     }
 
     public Set<SessionListener> getSessionListenerList() {
@@ -177,11 +133,9 @@ public class DefaultSecurityHandler {
 
         setSecurityFileDirectory(securityFileDirectory);
 
-        String cacheName = configuration.getString(CONFIG_IGNITECACHE_SESSION_CACHE_NAME, CONFIG_IGNITECACHE_SESSION_CACHE_NAME_VALUE_DEFAULT);
-        setCacheName(cacheName);
 
-        String atomicSequenceName = configuration.getString(CONFIG_IGNITECACHE_SESSION_ATOMIC_SEQUENCE_NAME, CONFIG_IGNITECACHE_SESSION_ATOMIC_SEQUENCE_NAME_VALUE_DEFAULT);
-        setAtomicSequenceName(atomicSequenceName);
+        String defaultPartitionName = configuration.getString(CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME, CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME_VALUE_DEFAULT);
+        setDefaultPartitionName(defaultPartitionName);
 
     }
 
@@ -192,7 +146,7 @@ public class DefaultSecurityHandler {
         Ini ini = new Ini();
         ini.loadFromPath(securityFilePath);
 
-        IOTIniSecurityManagerFactory iniSecurityManagerFactory = new IOTIniSecurityManagerFactory(ini, getIotAccountDatastore());
+        IOTIniSecurityManagerFactory iniSecurityManagerFactory = new IOTIniSecurityManagerFactory(ini, getIotSecurityDatastore(), getDefaultPartitionName());
 
         SecurityManager securityManager = iniSecurityManagerFactory.getInstance();
 
@@ -205,12 +159,8 @@ public class DefaultSecurityHandler {
 
             SecurityUtils.setSecurityManager(iotSecurityManager);
 
-
-
-            //Create our sessions DAO
-            IOTSessionDAO iotSessionDAO = new IOTSessionDAO(getSessionsCache(), getAtomicSequence());
-            iotSessionDAO.init();
-            sessionManager.setSessionDAO(iotSessionDAO);
+            //Assign session dao from the security datastore.
+            sessionManager.setSessionDAO(getIotSecurityDatastore());
 
             sessionManager.setSessionListeners(getSessionListenerList());
             sessionManager.setSessionValidationSchedulerEnabled(true);
@@ -223,37 +173,5 @@ public class DefaultSecurityHandler {
             throw new UnRetriableException("Security manager has to be an instance of the default security manager (DefaultSecurityManager). "+securityManager.getClass().getName()+" was used instead." );
         }
     }
-
-
-
-
-    public void initiate(Ignite ignite){
-
-        CacheConfiguration clCfg = new CacheConfiguration();
-
-        clCfg.setName(getCacheName());
-        clCfg.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-        clCfg.setCacheMode(CacheMode.PARTITIONED);
-        clCfg.setIndexedTypes(String.class, IOTSession.class);
-        clCfg.setMemoryMode(CacheMemoryMode.ONHEAP_TIERED);
-
-        LruEvictionPolicy lruEvictionPolicy = new LruEvictionPolicy(5170000);
-        clCfg.setEvictionPolicy(lruEvictionPolicy);
-
-        clCfg.setSwapEnabled(true);
-        ignite.createCache(clCfg);
-
-
-        IgniteCache<Serializable, IOTSession> clientIgniteCache = ignite.cache(getCacheName());
-        setSessionsCache(clientIgniteCache);
-
-
-        long currentTime = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC);
-        IgniteAtomicSequence atomicSequence = ignite.atomicSequence(getAtomicSequenceName(), currentTime, true);
-        setAtomicSequence(atomicSequence);
-
-
-    }
-
 
 }

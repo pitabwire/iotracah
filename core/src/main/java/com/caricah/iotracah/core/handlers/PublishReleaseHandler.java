@@ -20,7 +20,8 @@
 
 package com.caricah.iotracah.core.handlers;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.models.messages.IotMessageKey;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.CompleteMessage;
 import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
@@ -28,6 +29,8 @@ import com.caricah.iotracah.bootstrap.data.messages.ReleaseMessage;
 import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
+
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -38,7 +41,7 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
     public void handle(ReleaseMessage releaseMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<IOTSession> permissionObservable = checkPermission(releaseMessage.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(releaseMessage.getSessionId(),
                 releaseMessage.getAuthKey(), AuthorityRole.CONNECT);
         permissionObservable.subscribe(
 
@@ -56,16 +59,16 @@ public class PublishReleaseHandler extends RequestHandler<ReleaseMessage> {
 
                     messageObservable.subscribe(publishMessage -> {
 
-                        publishMessage.setReleased(true);
-                        Observable<Long> messageIdObservable = getDatastore().saveMessage(publishMessage);
+                        publishMessage.setIsRelease(true);
+                        Observable<Map.Entry<Long, IotMessageKey>> messageIdObservable = getDatastore().saveMessage(publishMessage);
 
                         messageIdObservable.subscribe(messageId -> {
                             try {
 
-                                getMessenger().publish(iotSession.getPartition(), publishMessage);
+                                getMessenger().publish(iotSession.getPartitionId(), publishMessage);
                                 //Initiate a publish complete.
                                 CompleteMessage destroyMessage = CompleteMessage.from(publishMessage.getMessageId());
-                                destroyMessage.copyBase(publishMessage);
+                                destroyMessage.copyTransmissionData(publishMessage);
                                 pushToServer(destroyMessage);
 
 

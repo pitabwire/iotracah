@@ -33,6 +33,8 @@ import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import org.apache.commons.configuration.Configuration;
 
+import java.util.Objects;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/28/15
@@ -111,14 +113,14 @@ public class MqttServerImpl extends ServerImpl<MqttMessage> {
                  * Use the connection acknowledgement message to store session id for persistance.
                  */
 
-                Channel channel = getChannel((ChannelId) ioTMessage.getConnectionId());
-                if (null != channel) {
+                Channel channel = getChannel( ioTMessage.getConnectionId());
+                if (Objects.nonNull( channel)) {
 
                     if (MqttConnectReturnCode.CONNECTION_ACCEPTED.equals(conMessage.getReturnCode())) {
 
                         channel.attr(ServerImpl.REQUEST_SESSION_ID).set(ioTMessage.getSessionId());
                     }else{
-                        closeClient((ChannelId) ioTMessage.getConnectionId());
+                        closeClient(ioTMessage.getConnectionId());
                     }
                 }
 

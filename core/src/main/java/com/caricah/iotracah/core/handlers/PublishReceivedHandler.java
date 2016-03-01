@@ -20,7 +20,8 @@
 
 package com.caricah.iotracah.core.handlers;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.models.messages.IotMessageKey;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
 import com.caricah.iotracah.bootstrap.data.messages.PublishReceivedMessage;
@@ -28,6 +29,8 @@ import com.caricah.iotracah.bootstrap.data.messages.ReleaseMessage;
 import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import rx.Observable;
+
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -40,7 +43,7 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
 
 
         //Check for connect permissions
-        Observable<IOTSession> permissionObservable = checkPermission(publishReceivedMessage.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(publishReceivedMessage.getSessionId(),
                 publishReceivedMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(
@@ -54,16 +57,16 @@ public class PublishReceivedHandler extends RequestHandler<PublishReceivedMessag
 
                         log.debug(" handle : Obtained the message {} to be released.", publishMessage);
 
-                        publishMessage.setReleased(true);
+                        publishMessage.setIsRelease(true);
 
 
-                        Observable<Long> messageIdObservable = getDatastore().saveMessage(publishMessage);
-                        messageIdObservable.subscribe(messageId -> {
+                        Observable<Map.Entry<Long, IotMessageKey>> messageIdObservable = getDatastore().saveMessage(publishMessage);
+                        messageIdObservable.subscribe(messageIdentity -> {
 
                             //Generate a PUBREL message.
 
-                            ReleaseMessage releaseMessage = ReleaseMessage.from(messageId, false);
-                            releaseMessage.copyBase(publishReceivedMessage);
+                            ReleaseMessage releaseMessage = ReleaseMessage.from(messageIdentity.getValue().getMessageId(), false);
+                            releaseMessage.copyTransmissionData(publishReceivedMessage);
                             pushToServer(releaseMessage);
 
                         });

@@ -106,30 +106,26 @@ public abstract class Server<T> extends IOTBaseHandler {
      * @param sessionId
      * @param message
      */
-    public final void pushToWorker(Serializable connectionId, Serializable sessionId, T message) {
+    public final void pushToWorker(String connectionId, String sessionId, T message) {
 
         IOTMessage ioTMessage = toIOTMessage(message);
 
         if (Objects.isNull(message)) {
             dirtyDisconnect(connectionId, sessionId);
             return;
-        }
+        }else {
 
-        if (Objects.nonNull(ioTMessage))
             internalPushToWorker(connectionId, sessionId, ioTMessage);
-
+        }
     }
 
 
-    private void internalPushToWorker(Serializable connectionId, Serializable sessionId, IOTMessage ioTMessage) {
+    private void internalPushToWorker(String connectionId, String sessionId, IOTMessage ioTMessage) {
 
         ioTMessage.setConnectionId(connectionId);
 
-        if (isPersistentConnection()) {
-            //Client specific variables.
-            ioTMessage.setSessionId( (String) sessionId);
-
-        }
+        //Client specific variables.
+        ioTMessage.setSessionId( sessionId);
         //Hardware specific variables
         ioTMessage.setNodeId(getNodeId());
         ioTMessage.setCluster(getCluster());
@@ -140,7 +136,7 @@ public abstract class Server<T> extends IOTBaseHandler {
     }
 
 
-    public void dirtyDisconnect(Serializable connectionId, Serializable sessionId) {
+    public void dirtyDisconnect(String connectionId, String sessionId) {
 
         DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
 

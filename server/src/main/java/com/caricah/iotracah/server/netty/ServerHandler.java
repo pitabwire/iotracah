@@ -58,7 +58,7 @@ public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
         Channel channel = ctx.channel();
         ChannelGroup channelGroup = getServerImpl().getChannelGroup();
 
-        ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).set(channel.id());
+        ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).set(channel.id().asLongText());
 
         channelGroup.add(channel);
         super.channelActive(ctx);
@@ -69,11 +69,11 @@ public abstract class ServerHandler<T> extends SimpleChannelInboundHandler<T> {
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
         super.channelInactive(ctx);
 
-        Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
+        String sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
         if (null != sessionId) {
 
-            Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
+            String connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
 
             getInternalServer().dirtyDisconnect(connectionId, sessionId);
 

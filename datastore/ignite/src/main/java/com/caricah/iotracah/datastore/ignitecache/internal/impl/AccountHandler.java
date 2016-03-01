@@ -20,18 +20,21 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
-import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
+import com.caricah.iotracah.bootstrap.data.models.users.CacheConfig;
+import com.caricah.iotracah.bootstrap.data.models.users.IotAccountKey;
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTAccount;
+import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
 import org.apache.ignite.configuration.CacheConfiguration;
+
+import javax.sql.DataSource;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class AccountHandler extends AbstractHandler<IOTAccount> {
+public class AccountHandler extends AbstractHandler<IotAccountKey, IOTAccount> {
 
 
     public static final String CONFIG_IGNITECACHE_ACCOUNT_CACHE_NAME = "config.ignitecache.account.cache.name";
@@ -48,11 +51,38 @@ public class AccountHandler extends AbstractHandler<IOTAccount> {
     }
 
     @Override
-    protected CacheConfiguration moreConfig(Class<IOTAccount> t, CacheConfiguration clCfg) {
+    protected CacheConfiguration<IotAccountKey, IOTAccount> getCacheConfiguration( boolean persistanceEnabled, DataSource ds) {
 
-        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
 
-        return super.moreConfig(t, clCfg);
+        CacheJdbcPojoStoreFactory<IotAccountKey, IOTAccount> factory = null;
+
+        if (persistanceEnabled){
+            factory = new CacheJdbcPojoStoreFactory<>();
+        factory.setDataSource(ds);
+    }
+        return CacheConfig.cache(getCacheName(), factory);
     }
 
+
+    @Override
+    public IotAccountKey keyFromModel(IOTAccount model) {
+
+        IotAccountKey userKey = new IotAccountKey();
+        userKey.setPartitionId(model.getPartitionId());
+        userKey.setUsername(model.getUsername());
+        return userKey;
+    }
+
+
+    @Override
+    public void save(IOTAccount item) {
+
+        if(item.getId() == 0){
+
+            item.setId(getIdSequence().incrementAndGet());
+        }
+
+
+        super.save(item);
+    }
 }

@@ -59,7 +59,7 @@ public class HttpServerHandler extends ServerHandler<FullHttpMessage> {
 
         log.debug(" messageReceived : received the message {}", msg);
 
-         Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
+         String connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
 
         getInternalServer().pushToWorker(connectionId, null, msg);
 

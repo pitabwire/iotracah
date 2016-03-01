@@ -25,13 +25,9 @@ import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.bootstrap.system.BaseSystemHandler;
 import com.caricah.iotracah.core.security.DefaultSecurityHandler;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.cluster.ClusterGroup;
-import org.apache.shiro.mgt.*;
-import rx.schedulers.Schedulers;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 
 /**
  * <code>DatastoresInitializer</code> Handler for initializing base datastore handler
@@ -134,9 +130,7 @@ public abstract class DatastoresInitializer extends WorkersInitializer {
 
 
         //Initialize security.
-        securityHandler.setIotAccountDatastore(getActiveDatastore());
-        //Perform initialization of the security system too.
-        securityHandler.initiate(getIgnite());
+        securityHandler.setIotSecurityDatastore(getActiveDatastore());
 
         String securityFile = securityHandler.getSecurityIniPath();
         securityHandler.createSecurityManager(securityFile);

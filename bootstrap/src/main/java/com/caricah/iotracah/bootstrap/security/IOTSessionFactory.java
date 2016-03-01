@@ -20,15 +20,15 @@
 
 package com.caricah.iotracah.bootstrap.security;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.models.client.IotClientKey;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.mgt.SessionContext;
 import org.apache.shiro.session.mgt.SessionFactory;
-import org.apache.shiro.session.mgt.SimpleSession;
 
 /**
  *
- * {@code SessionFactory} implementation that generates {@link IOTSession} instances.
+ * {@code SessionFactory} implementation that generates {@link IOTClient} instances.
  *
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 1/16/16
@@ -36,20 +36,25 @@ import org.apache.shiro.session.mgt.SimpleSession;
 public class IOTSessionFactory  implements SessionFactory {
 
         /**
-         * Creates a new {@link IOTSession} instance retaining the context's
+         * Creates a new {@link IOTClient} instance retaining the context's
          * {@link SessionContext#getHost() host} if one can be found.
          *
          * @param initData the initialization data to be used during {@link Session} creation.
-         * @return a new {@link IOTSession} instance
+         * @return a new {@link IOTClient} instance
          */
         public Session createSession(SessionContext initData) {
             if (initData != null) {
-                IOTSession iotSession = new IOTSession(initData.getHost());
-                iotSession.setPartition( (String) initData.get(IOTSession.CONTEXT_PARTITION_KEY));
-                iotSession.setUsername( (String) initData.get(IOTSession.CONTEXT_USERNAME_KEY));
-                iotSession.setClientId((String) initData.get(IOTSession.CONTEXT_CLIENT_ID_KEY));
+                IOTClient iotClient = new IOTClient(initData.getHost());
+                iotClient.setPartitionId((String) initData.get(IOTClient.CONTEXT_PARTITION_KEY));
+                iotClient.setUsername((String) initData.get(IOTClient.CONTEXT_USERNAME_KEY));
+                iotClient.setClientIdentification((String) initData.get(IOTClient.CONTEXT_CLIENT_ID_KEY));
 
-                return iotSession;
+                String  sessionId = IOTClient.keyFromStrings(iotClient.getPartitionId(), iotClient.getClientIdentification()).getSessionId();
+                iotClient.setSessionId(sessionId);
+                iotClient.setIsActive(true);
+                iotClient.setIsExpired(false);
+
+                return iotClient;
             }
             return null;
         }

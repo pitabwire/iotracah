@@ -45,8 +45,8 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="com.caricah.iotracah" level="debug"/>
-        <Root level="warn">
+        <Logger name="com.caricah.iotracah" level="info"/>
+        <Root level="error">
             <AppenderRef ref="Async"/>
         </Root>
     </Loggers>

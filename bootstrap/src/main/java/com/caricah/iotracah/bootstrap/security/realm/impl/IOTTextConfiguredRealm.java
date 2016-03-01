@@ -21,6 +21,7 @@
 package com.caricah.iotracah.bootstrap.security.realm.impl;
 
 import com.caricah.iotracah.bootstrap.security.realm.IOTAbstractRealm;
+import com.caricah.iotracah.bootstrap.security.realm.auth.permission.IOTPermission;
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTAccount;
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
 import org.apache.shiro.authz.Permission;
@@ -46,12 +47,21 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
     private volatile String userDefinitions;
     private volatile String roleDefinitions;
 
+    private String defaultPartitionName;
+
+    public String getDefaultPartitionName() {
+        return defaultPartitionName;
+    }
+
+    public void setDefaultPartitionName(String defaultPartitionName) {
+        this.defaultPartitionName = defaultPartitionName;
+    }
 
     /**
      * Will call 'processDefinitions' on startup.
      *
-     * @since 1.2
      * @see <a href="https://issues.apache.org/jira/browse/SHIRO-223">SHIRO-223</a>
+     * @since 1.2
      */
     @Override
     protected void onInit() {
@@ -94,14 +104,14 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
      * equals character signifies the key/value separation, like so:</p>
      * <p/>
      * <p><code><em>rolename</em> = <em>permissionDefinition1</em>, <em>permissionDefinition2</em>, ...</code></p>
-     * <p/>
+     * <p>
      * <p>where <em>permissionDefinition</em> is an arbitrary String, but must people will want to use
      * Strings that conform to the {@link org.apache.shiro.authz.permission.WildcardPermission WildcardPermission}
      * format for ease of use and flexibility.  Note that if an individual <em>permissionDefnition</em> needs to
      * be internally comma-delimited (e.g. <code>printer:5thFloor:print,info</code>), you will need to surround that
      * definition with double quotes (&quot;) to avoid parsing errors (e.g.
      * <code>&quot;printer:5thFloor:print,info&quot;</code>).
-     * <p/>
+     * <p>
      * <p><b>NOTE:</b> if you have roles that don't require permission associations, don't include them in this
      * definition - just defining the role name in the {@link #setUserDefinitions(String) userDefinitions} is
      * enough to create the role if it does not yet exist.  This property is really only for configuring realms that
@@ -141,12 +151,14 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
             String value = roleDefs.get(rolename);
 
             //Parse the rolename for partition.
-            String partition = "";
+            String partition;
 
             Matcher matcher = rolePartitionPattern.matcher(rolename);
             if (matcher.matches()) {
                 partition = matcher.group("partition");
                 rolename = matcher.group("rolename");
+            }else {
+                partition = getDefaultPartitionName();
             }
 
             IOTRole role = getIOTRole(partition, rolename);
@@ -156,7 +168,11 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
             }
 
             Set<Permission> permissions = PermissionUtils.resolveDelimitedPermissions(value, getPermissionResolver());
-            role.setPermissions(permissions);
+
+            for (Permission permission : permissions) {
+                role.add((IOTPermission) permission);
+            }
+
             saveIOTRole(role);
         }
     }
@@ -184,30 +200,32 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
 
             String password = passwordAndRolesArray[0];
 
-            String partition = "";
+            String partition;
             Matcher matcher = usernamePartitionPattern.matcher(username);
             if (matcher.matches()) {
                 partition = matcher.group("partition");
                 username = matcher.group("username");
-            }
-
-            IOTAccount account =  getIOTAccount(partition, username);
-            if (account == null) {
-
-                account = addIOTAccount(partition, username, password);
-            }
-            account.setCredentials(password);
-
-            if (passwordAndRolesArray.length > 1) {
-                for (int i = 1; i < passwordAndRolesArray.length; i++) {
-                    String rolename = passwordAndRolesArray[i];
-                    account.addRole(rolename);
-                }
             } else {
-                account.setRoles(null);
+                partition = getDefaultPartitionName();
             }
 
-            saveIOTAccount(account);
+            if (Objects.nonNull(username) && !username.isEmpty()) {
+                IOTAccount account = getIOTAccount(partition, username);
+                if (account == null) {
+
+                    account = addIOTAccount(partition, username, password);
+                }
+                account.setCredential(password);
+
+                if (passwordAndRolesArray.length > 1) {
+                    for (int i = 1; i < passwordAndRolesArray.length; i++) {
+                        String rolename = passwordAndRolesArray[i];
+                        account.addRole(rolename);
+                    }
+                }
+
+                saveIOTAccount(account);
+            }
         }
     }
 
@@ -235,7 +253,6 @@ public class IOTTextConfiguredRealm extends IOTAbstractRealm {
 
         return pairs;
     }
-
 
 
 }

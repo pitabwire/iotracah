@@ -21,15 +21,14 @@
 package com.caricah.iotracah.core.worker;
 
 import com.caricah.iotracah.bootstrap.data.messages.*;
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscription;
+import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.modules.Worker;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.Constant;
 import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
-import com.caricah.iotracah.bootstrap.data.models.Subscription;
-import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
-import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
 import com.mashape.unirest.http.Unirest;
 import io.netty.handler.codec.mqtt.MqttConnectReturnCode;
 import io.netty.handler.codec.mqtt.MqttQoS;
@@ -55,7 +54,7 @@ public class DumbWorker extends Worker {
 
 
     private HashMap<String, Set<Serializable>> subscriptions = new HashMap<>();
-    private IgniteCache<String, Set<Serializable>> igniteSubscriptions = null;
+    private IgniteCache<String, Set<String>> igniteSubscriptions = null;
 
 
     /**
@@ -181,9 +180,9 @@ public class DumbWorker extends Worker {
                     subscribeMessage.getTopicFilterList().forEach(topic ->
                     {
 
-                        String topicKey = SubscriptionFilter.quickCheckIdKey("", Arrays.asList(topic.getKey().split(Constant.PATH_SEPARATOR)));
+                        String topicKey = quickCheckIdKey("", Arrays.asList(topic.getKey().split(Constant.PATH_SEPARATOR)));
 
-                        Set<Serializable> channelIds = igniteSubscriptions.get(topicKey);
+                        Set<String> channelIds = igniteSubscriptions.get(topicKey);
 
                         if (Objects.isNull(channelIds)) {
                             channelIds = new HashSet<>();
@@ -216,7 +215,7 @@ public class DumbWorker extends Worker {
 
                     Set<String> matchingTopics = getMatchingSubscriptions("", publishMessage.getTopic());
 
-                        Map<String, Set<Serializable>> channelIdMap = igniteSubscriptions.getAll(matchingTopics);
+                        Map<String, Set<String>> channelIdMap = igniteSubscriptions.getAll(matchingTopics);
 
                         channelIdMap.values().forEach(channelIds -> {
                             if (Objects.nonNull(channelIds)) {
@@ -224,7 +223,7 @@ public class DumbWorker extends Worker {
                                 channelIds.forEach(id -> {
 
                                     PublishMessage clonePublishMessage = publishMessage.cloneMessage();
-                                    clonePublishMessage.copyBase(iotMessage);
+                                    clonePublishMessage.copyTransmissionData(iotMessage);
                                     clonePublishMessage.setConnectionId(id);
                                     pushToServer(clonePublishMessage);
                                 });
@@ -254,7 +253,7 @@ public class DumbWorker extends Worker {
                 case AcknowledgeMessage.MESSAGE_TYPE:
                 default:
                     DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-                    disconnectMessage.copyBase(iotMessage);
+                    disconnectMessage.copyTransmissionData(iotMessage);
 
                     throw new ShutdownException(disconnectMessage);
 
@@ -262,7 +261,7 @@ public class DumbWorker extends Worker {
 
             if (Objects.nonNull(response)) {
 
-                response.copyBase(iotMessage);
+                response.copyTransmissionData(iotMessage);
                 pushToServer(response);
             }
 
@@ -300,7 +299,7 @@ public class DumbWorker extends Worker {
             if (pathIterator.hasNext()) {
                 //We deal with wildcard.
                 slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
-                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                topicFilterKeys.add(quickCheckIdKey(partition, slWildCardList));
 
             } else {
                 //we deal with full topic
@@ -321,8 +320,8 @@ public class DumbWorker extends Worker {
                         slWildCardList.set(i, Constant.MULTI_LEVEL_WILDCARD);
                         reverseSlWildCardList.set(sizeOfTopic - i, Constant.MULTI_LEVEL_WILDCARD);
 
-                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-                        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+                        topicFilterKeys.add(quickCheckIdKey(partition, slWildCardList));
+                        topicFilterKeys.add(quickCheckIdKey(partition, reverseSlWildCardList));
 
                     }
                 }
@@ -331,11 +330,20 @@ public class DumbWorker extends Worker {
 
         }
 
-        topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+        topicFilterKeys.add(quickCheckIdKey(partition, growingTitles));
 
 
         return topicFilterKeys;
 
+    }
+
+    private static String quickCheckIdKey(String partition, List<String> nameParts){
+
+        return getPartitionAsInitialParentId(partition) +":"+ String.join(":", nameParts);
+    }
+
+    private static String getPartitionAsInitialParentId(String partition) {
+        return "p[" + partition + "]";
     }
 
 
@@ -346,7 +354,7 @@ public class DumbWorker extends Worker {
 
     @Override
     public void onStop(Session session) {
-        postSessionCleanUp((IOTSession) session, false);
+        postSessionCleanUp((IOTClient) session, false);
     }
 
     @Override
@@ -356,30 +364,30 @@ public class DumbWorker extends Worker {
         log.debug(" onExpiration : -------  We have an expired session {} -------", session);
         log.debug(" onExpiration : -----------------------------------------------------");
 
-        postSessionCleanUp((IOTSession) session, true);
+        postSessionCleanUp((IOTClient) session, true);
     }
 
 
-    private void postSessionCleanUp(IOTSession iotSession, boolean isExpiry) {
+    private void postSessionCleanUp(IOTClient iotClient, boolean isExpiry) {
 
 
 
         if (isExpiry) {
-            log.debug(" postSessionCleanUp : ---------------- We are to publish a will man for {}", iotSession);
-            publishWill(iotSession);
+            log.debug(" postSessionCleanUp : ---------------- We are to publish a will man for {}", iotClient);
+            publishWill(iotClient);
         }
 
 
         //Notify the server to remove this client from further sending in requests.
         DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
-        disconnectMessage = iotSession.copyTransmissionData(disconnectMessage);
+        disconnectMessage = iotClient.copyTransmissionData(disconnectMessage);
         pushToServer(disconnectMessage);
 
 
         // Unsubscribe all
 
-        if (iotSession.isCleanSession()) {
-            Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(iotSession);
+        if (iotClient.getIsCleanSession()) {
+            Observable<IotSubscription> subscriptionObservable = getDatastore().getSubscriptions(iotClient);
 
             subscriptionObservable.subscribe(
                     subscription ->
@@ -389,7 +397,7 @@ public class DumbWorker extends Worker {
 
                     , () -> {
 
-                        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotSession);
+                        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotClient);
                         publishMessageObservable.subscribe(
                                 getDatastore()::removeMessage,
                                 throwable -> {

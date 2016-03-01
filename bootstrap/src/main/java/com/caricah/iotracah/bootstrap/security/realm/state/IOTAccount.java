@@ -20,74 +20,67 @@
 
 package com.caricah.iotracah.bootstrap.security.realm.state;
 
-import com.caricah.iotracah.bootstrap.data.IdKeyComposer;
-import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
-import com.caricah.iotracah.bootstrap.security.realm.IOTAccountDatastore;
+import com.caricah.iotracah.bootstrap.security.realm.IOTSecurityDatastore;
 import com.caricah.iotracah.bootstrap.security.realm.auth.IdConstruct;
-import org.apache.shiro.authc.*;
+import org.apache.shiro.authc.Account;
+import org.apache.shiro.authc.SaltedAuthenticationInfo;
+import org.apache.shiro.authc.SimpleAccount;
 import org.apache.shiro.authz.Permission;
 import org.apache.shiro.authz.permission.PermissionResolver;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.util.ByteSource;
 
-import java.io.*;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.io.Serializable;
+import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
-public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComposer, Externalizable {
+public class IOTAccount implements Account,  SaltedAuthenticationInfo, Serializable {
 
 
-    /*--------------------------------------------
-    |    I N S T A N C E   V A R I A B L E S    |
-    ============================================*/
-    /**
-     * The internal roles collection.
-     */
-    protected Set<String> roles;
+    private transient IOTSecurityDatastore iotAccountDatastore;
 
-    /**
-     * The principals identifying the account associated with this AuthenticationInfo instance.
-     */
-    protected PrincipalCollection principals;
+    private transient IdConstruct idConstruct;
 
-    /**
-     * The credentials verifying the account principals.
-     */
-    protected Object credentials;
+    /** */
+    private static final long serialVersionUID = 0L;
 
-    /**
-     * Any salt used in hashing the credentials.
-     *
-     * @since 1.1
-     */
-    protected ByteSource credentialsSalt;
+    /** Value for id. */
+    private long id;
 
-    /**
-     * Indicates this account is locked.  This isn't honored by all <tt>Realms</tt> but is honored by
-     * {@link org.apache.shiro.realm.SimpleAccountRealm}.
-     */
-    private boolean locked;
+    /** Value for dateCreated. */
+    private java.sql.Timestamp dateCreated;
 
-    /**
-     * Indicates credentials on this account are expired.  This isn't honored by all <tt>Realms</tt> but is honored by
-     * {@link org.apache.shiro.realm.SimpleAccountRealm}.
-     */
-    private boolean credentialsExpired;
+    /** Value for dateModified. */
+    private java.sql.Timestamp dateModified;
 
+    /** Value for isActive. */
+    private boolean isActive;
 
-    private IOTAccountDatastore iotAccountDatastore;
+    /** Value for username. */
+    private String username;
 
+    /** Value for credential. */
+    private String credential;
 
-       /*--------------------------------------------
-    |         C O N S T R U C T O R S           |
-    ============================================*/
+    /** Value for credentialSalt. */
+    private Object credentialSalt;
+
+    /** Value for rolelist. */
+    private String rolelist;
+
+    /** Value for isLocked. */
+    private boolean isLocked;
+
+    /** Value for isCredentialExpired. */
+    private boolean isCredentialExpired;
+
+    /** Value for partitionId. */
+    private String partitionId;
+
 
     /**
      * Default no-argument constructor.
@@ -99,77 +92,226 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
      * Constructs a SimpleAccount instance for the specified realm with the given principal and credentials, with the
      * the assigned roles and permissions.
      *
-     * @param principal   the 'primary' identifying attributes of the account, for example, a user id or username.
+     * @param idConstruct   the 'primary' identifying attributes of the account, for example, a user id or username.
      * @param credentials the credentials that verify identity for the account
-     * @param realmName   the name of the realm that accesses this account data
      */
-    public IOTAccount(Object principal, Object credentials, String realmName) {
-        this.principals = new SimplePrincipalCollection(principal, realmName);
-        this.credentials = credentials;
+    public IOTAccount(IdConstruct idConstruct, String credentials) {
+
+        this.idConstruct = idConstruct;
+
+        this.setPartitionId(idConstruct.getPartition());
+        this.setUsername(idConstruct.getUsername());
+        this.setCredential(credentials);
+
     }
 
-    public IOTAccountDatastore getIotAccountDatastore() {
+    public IOTSecurityDatastore getIotAccountDatastore() {
         return iotAccountDatastore;
     }
 
-    public void setIotAccountDatastore(IOTAccountDatastore iotAccountDatastore) {
+    public void setIotAccountDatastore(IOTSecurityDatastore iotAccountDatastore) {
         this.iotAccountDatastore = iotAccountDatastore;
     }
 
-    /**
-     * Returns <code>true</code> if this Account is locked and thus cannot be used to login, <code>false</code> otherwise.
-     *
-     * @return <code>true</code> if this Account is locked and thus cannot be used to login, <code>false</code> otherwise.
-     */
-    public boolean isLocked() {
-        return locked;
-    }
 
     /**
-     * Sets whether or not the account is locked and can be used to login.
+     * Gets id.
      *
-     * @param locked <code>true</code> if this Account is locked and thus cannot be used to login, <code>false</code> otherwise.
+     * @return Value for id.
      */
-    public void setLocked(boolean locked) {
-        this.locked = locked;
+    public long getId() {
+        return id;
     }
 
     /**
-     * Returns whether or not the Account's credentials are expired.  This usually indicates that the Subject or an application
-     * administrator would need to change the credentials before the account could be used.
+     * Sets id.
      *
-     * @return whether or not the Account's credentials are expired.
+     * @param id New value for id.
      */
-    public boolean isCredentialsExpired() {
-        return credentialsExpired;
+    public void setId(long id) {
+        this.id = id;
     }
 
     /**
-     * Sets whether or not the Account's credentials are expired.  A <code>true</code> value indicates that the Subject
-     * or application administrator would need to change their credentials before the account could be used.
+     * Gets dateCreated.
      *
-     * @param credentialsExpired <code>true</code> if this Account's credentials are expired and need to be changed,
-     *                           <code>false</code> otherwise.
+     * @return Value for dateCreated.
      */
-    public void setCredentialsExpired(boolean credentialsExpired) {
-        this.credentialsExpired = credentialsExpired;
+    public java.sql.Timestamp getDateCreated() {
+        return dateCreated;
     }
-
 
     /**
-     * Returns the salt used to salt the account's credentials or {@code null} if no salt was used.
+     * Sets dateCreated.
      *
-     * @return the salt used to salt the account's credentials or {@code null} if no salt was used.
+     * @param dateCreated New value for dateCreated.
      */
-    @Override
-    public ByteSource getCredentialsSalt() {
-        return this.credentialsSalt;
+    public void setDateCreated(java.sql.Timestamp dateCreated) {
+        this.dateCreated = dateCreated;
     }
 
-
-    public void setCredentialsSalt(ByteSource credentialsSalt) {
-        this.credentialsSalt = credentialsSalt;
+    /**
+     * Gets dateModified.
+     *
+     * @return Value for dateModified.
+     */
+    public java.sql.Timestamp getDateModified() {
+        return dateModified;
     }
+
+    /**
+     * Sets dateModified.
+     *
+     * @param dateModified New value for dateModified.
+     */
+    public void setDateModified(java.sql.Timestamp dateModified) {
+        this.dateModified = dateModified;
+    }
+
+    /**
+     * Gets isActive.
+     *
+     * @return Value for isActive.
+     */
+    public boolean getIsActive() {
+        return isActive;
+    }
+
+    /**
+     * Sets isActive.
+     *
+     * @param isActive New value for isActive.
+     */
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
+    }
+
+    /**
+     * Gets username.
+     *
+     * @return Value for username.
+     */
+    public String getUsername() {
+        return username;
+    }
+
+    /**
+     * Sets username.
+     *
+     * @param username New value for username.
+     */
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    /**
+     * Gets credential.
+     *
+     * @return Value for credential.
+     */
+    public String getCredential() {
+        return credential;
+    }
+
+    /**
+     * Sets credential.
+     *
+     * @param credential New value for credential.
+     */
+    public void setCredential(String credential) {
+        this.credential = credential;
+    }
+
+    /**
+     * Gets credentialSalt.
+     *
+     * @return Value for credentialSalt.
+     */
+    public Object getCredentialSalt() {
+        return credentialSalt;
+    }
+
+    /**
+     * Sets credentialSalt.
+     *
+     * @param credentialSalt New value for credentialSalt.
+     */
+    public void setCredentialSalt(Object credentialSalt) {
+        this.credentialSalt = credentialSalt;
+    }
+
+    /**
+     * Gets rolelist.
+     *
+     * @return Value for rolelist.
+     */
+    public String getRolelist() {
+        return rolelist;
+    }
+
+    /**
+     * Sets rolelist.
+     *
+     * @param rolelist New value for rolelist.
+     */
+    public void setRolelist(String rolelist) {
+        this.rolelist = rolelist;
+    }
+
+    /**
+     * Gets isLocked.
+     *
+     * @return Value for isLocked.
+     */
+    public boolean getIsLocked() {
+        return isLocked;
+    }
+
+    /**
+     * Sets isLocked.
+     *
+     * @param isLocked New value for isLocked.
+     */
+    public void setIsLocked(boolean isLocked) {
+        this.isLocked = isLocked;
+    }
+
+    /**
+     * Gets isCredentialExpired.
+     *
+     * @return Value for isCredentialExpired.
+     */
+    public boolean getIsCredentialExpired() {
+        return isCredentialExpired;
+    }
+
+    /**
+     * Sets isCredentialExpired.
+     *
+     * @param isCredentialExpired New value for isCredentialExpired.
+     */
+    public void setIsCredentialExpired(boolean isCredentialExpired) {
+        this.isCredentialExpired = isCredentialExpired;
+    }
+
+    /**
+     * Gets partitionId.
+     *
+     * @return Value for partitionId.
+     */
+    public String getPartitionId() {
+        return partitionId;
+    }
+
+    /**
+     * Sets partitionId.
+     *
+     * @param partitionId New value for partitionId.
+     */
+    public void setPartitionId(String partitionId) {
+        this.partitionId = partitionId;
+    }
+
 
     /**
      * Returns all principals associated with the corresponding Subject.  Each principal is an identifying piece of
@@ -183,7 +325,15 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
      */
     @Override
     public PrincipalCollection getPrincipals() {
-        return this.principals;
+
+        if(Objects.isNull(idConstruct)){
+
+            idConstruct = new IdConstruct(getPartitionId(), getUsername(), null);
+
+        }
+
+
+        return new SimplePrincipalCollection(idConstruct, "");
     }
 
     /**
@@ -196,20 +346,8 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
      */
     @Override
     public Object getCredentials() {
-        return this.credentials;
+        return getCredential();
     }
-
-    /**
-     * Sets this Account's credentials that verify one or more of the Account's
-     * {@link #getPrincipals() principals}, such as a password or private key.
-     *
-     * @param credentials the credentials associated with this Account that verify one or more of the Account principals.
-     * @see org.apache.shiro.authc.Account#getCredentials()
-     */
-    public void setCredentials(Object credentials) {
-        this.credentials = credentials;
-    }
-
 
     /**
      * Returns the names of all roles assigned to a corresponding Subject.
@@ -218,7 +356,14 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
      */
     @Override
     public Collection<String> getRoles() {
-        return roles;
+
+        if(Objects.isNull(getRolelist())){
+            return Collections.emptyList();
+        }else{
+            
+            return Arrays.asList(getRolelist().split(","));
+
+        }
     }
 
     /**
@@ -243,7 +388,7 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
         HashSet<String> stringPermissions = new HashSet<>();
          getRoles().forEach(role->{
            IOTRole iotRole = getIotAccountDatastore().getIOTRole(idConstruct.getPartition(), role);
-             iotRole.getPermissions().forEach(permission -> {stringPermissions.add(permission.toString());});
+             iotRole.getPermissions().forEach(permission -> stringPermissions.add(permission.toString()));
 
          });
         return stringPermissions;
@@ -270,41 +415,35 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
 
 
     /**
-     * Sets the Account's assigned roles.  Simply calls <code>this.authzInfo.setRoles(roles)</code>.
-     *
-     * @param roles the Account's assigned roles.
-     * @see Account#getRoles()
-     */
-    public void setRoles(Set<String> roles) {
-        this.roles = roles;
-    }
-
-    /**
      * Adds a role to this Account's set of assigned roles.  Simply delegates to
      * <code>this.authzInfo.addRole(role)</code>.
      *
      * @param role a role to assign to this Account.
      */
     public void addRole(String role) {
-        if (this.roles == null) {
-            this.roles = new HashSet<>();
-        }
-        this.roles.add(role);
-    }
 
-    /**
-     * Adds one or more roles to this Account's set of assigned roles. Simply delegates to
-     * <code>this.authzInfo.addRoles(roles)</code>.
-     *
-     * @param roles one or more roles to assign to this Account.
-     */
-    public void addRole(Collection<String> roles) {
-        if (this.roles == null) {
-            this.roles = new HashSet<>();
-        }
-        this.roles.addAll(roles);
-    }
+        String roles = getRolelist();
 
+        if(Objects.isNull(roles) || roles.isEmpty()){
+
+            setRolelist(role);
+
+        }else{
+
+            String[] roleArray = roles.split(",");
+            HashSet<String> roleHashSet = new HashSet<>();
+            Collections.addAll(roleHashSet, roleArray);
+
+            roleHashSet.add(role);
+
+            roles = String.join(",", roleHashSet);
+            setRolelist(roles);
+
+
+        }
+
+
+    }
 
 
 
@@ -349,43 +488,13 @@ public class IOTAccount implements Account,  SaltedAuthenticationInfo, IdKeyComp
         return getPrincipals() != null ? getPrincipals().toString() : "empty";
     }
 
+    /**
+     * Returns the salt used to salt the account's credentials or {@code null} if no salt was used.
+     *
+     * @return the salt used to salt the account's credentials or {@code null} if no salt was used.
+     */
     @Override
-    public Serializable generateIdKey() throws UnRetriableException {
-
-        IdConstruct idConstruct = (IdConstruct) getPrincipals().getPrimaryPrincipal();
-
-        if(null == idConstruct ){
-            throw new UnRetriableException(" Can't save an account without an id construct");
-        }
-
-        return createCacheKey(idConstruct.getPartition(), idConstruct.getUsername());
-
-    }
-
-
-    public static String createCacheKey(String partition, String username){
-        return "p["+partition+ "]-"+ username;
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-
-            objectOutput.writeObject(getPrincipals());
-            objectOutput.writeObject(getCredentials());
-            objectOutput.writeObject(getCredentialsSalt());
-            objectOutput.writeBoolean(isLocked());
-            objectOutput.writeBoolean(isCredentialsExpired());
-            objectOutput.writeObject(getRoles());
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-
-        principals = (PrincipalCollection) objectInput.readObject();
-        setCredentials(objectInput.readObject());
-        setCredentialsSalt((ByteSource) objectInput.readObject());
-        setLocked(objectInput.readBoolean());
-        setCredentialsExpired(objectInput.readBoolean());
-        setRoles((Set<String>) objectInput.readObject());
+    public ByteSource getCredentialsSalt() {
+        return null;
     }
 }

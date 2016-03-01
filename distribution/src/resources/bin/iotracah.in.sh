@@ -10,7 +10,7 @@ EOF
     exit 1
 fi
 
-IOT_CLASSPATH="$IOT_HOME/lib/@project.build.finalName@.jar:$IOT_HOME/lib/*"
+IOT_CLASSPATH=".;$IOT_HOME/lib/@project.build.finalName@.jar:$IOT_HOME/lib/*"
 
 if [ "x$IOT_MIN_MEM" = "x" ]; then
     IOT_MIN_MEM=@packaging.iotracah.heap.min@
@@ -30,9 +30,6 @@ fi
 #JAVA_OPTS="$JAVA_OPTS -agentpath:/data/Software/JAVA/yjp-2015-build-15084/bin/linux-x86-64/libyjpagent.so"
 JAVA_OPTS="$JAVA_OPTS -Xms${IOT_MIN_MEM}"
 JAVA_OPTS="$JAVA_OPTS -Xmx${IOT_MAX_MEM}"
-
-
-$
 
 # new generation
 if [ "x$IOT_HEAP_NEWSIZE" != "x" ]; then
@@ -96,6 +93,9 @@ JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"
 
 # Use our provided JNA always versus the system one
 JAVA_OPTS="$JAVA_OPTS -Djna.nosys=true"
+
+# Also force external libs.
+JAVA_OPTS="$JAVA_OPTS -Djava.ext.dirs=$IOT_HOME/lib/"
 
 #Enable JMX monitoring
 JAVA_OPTS="$JAVA_OPTS -Dcom.sun.management.jmxremote.port=3333"

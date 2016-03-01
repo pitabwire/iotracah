@@ -25,6 +25,7 @@ import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
 import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import com.caricah.iotracah.server.ServerInterface;
+import com.caricah.iotracah.server.netty.channelgroup.IotChannelGroup;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
@@ -55,8 +56,8 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
     private final Server<T> internalServer;
 
-    public static final AttributeKey<Serializable> REQUEST_SESSION_ID = AttributeKey.valueOf("requestSessionIdKey");
-    public static final AttributeKey<Serializable> REQUEST_CONNECTION_ID = AttributeKey.valueOf("requestConnectionIdKey");
+    public static final AttributeKey<String> REQUEST_SESSION_ID = AttributeKey.valueOf("requestSessionIdKey");
+    public static final AttributeKey<String> REQUEST_CONNECTION_ID = AttributeKey.valueOf("requestConnectionIdKey");
 
 
     private int tcpPort;
@@ -72,9 +73,9 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     private Channel tcpChannel = null;
     private Channel sslChannel = null;
 
-    private final ChannelGroup channelGroup = new DefaultChannelGroup(GlobalEventExecutor.INSTANCE);
+    private final IotChannelGroup channelGroup = new IotChannelGroup(GlobalEventExecutor.INSTANCE);
 
-    public ChannelGroup getChannelGroup() {
+    public IotChannelGroup getChannelGroup() {
         return channelGroup;
     }
 
@@ -247,12 +248,12 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     }
 
 
-    public void pushToClient(Serializable connectionId, T message) {
+    public void pushToClient(String connectionId, T message) {
 
 
         log.debug(" pushToClient : Server pushToClient : we got to now sending out {}", message);
 
-        Channel channel = getChannel((ChannelId) connectionId);
+        Channel channel = getChannel(connectionId);
 
         if (null != channel) {
 
@@ -265,7 +266,9 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     }
 
 
-    public void closeClient(ChannelId channelId) {
+    public void closeClient(String channelId) {
+
+
         Channel channel = getChannel(channelId);
         if (null != channel) {
 
@@ -281,12 +284,12 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
     public void postProcess(IOTMessage ioTMessage) {
 
         if (DisconnectMessage.MESSAGE_TYPE.equals(ioTMessage.getMessageType())) {
-            closeClient((ChannelId) ioTMessage.getConnectionId());
+            closeClient(ioTMessage.getConnectionId());
         }
 
     }
 
-    protected Channel getChannel(ChannelId channelId) {
+    protected Channel getChannel(String channelId) {
         return getChannelGroup().find(channelId);
     }
 

@@ -170,6 +170,10 @@ public class IOTPermission implements Permission, Externalizable {
         this.clientId = clientId;
     }
 
+    public String getWildcard() {
+        return wildcard;
+    }
+
     private IOTPermission(){}
 
     public IOTPermission(String wildcardString) {

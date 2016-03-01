@@ -52,7 +52,7 @@ public class PushHandler {
         String payload = UTF8.decode(payloadBuffer).toString();
 
 
-        MultipartBody httpMessage = Unirest.post(publishMessage.getProtocalData())
+        MultipartBody httpMessage = Unirest.post(publishMessage.getProtocolData())
                 .header("accept", "application/json")
                 .field("topic", publishMessage.getTopic())
                 .field("message", payload);
@@ -73,7 +73,7 @@ public class PushHandler {
                     if (200 == code) {
 
                         AcknowledgeMessage ackMessage = AcknowledgeMessage.from(publishMessage.getMessageId());
-                        ackMessage.copyBase(publishMessage);
+                        ackMessage.copyTransmissionData(publishMessage);
 
                         onPushSuccessListener.success(ackMessage);
 

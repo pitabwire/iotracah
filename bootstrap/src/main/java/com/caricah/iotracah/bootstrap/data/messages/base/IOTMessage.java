@@ -20,41 +20,30 @@
 
 package com.caricah.iotracah.bootstrap.data.messages.base;
 
-import org.apache.ignite.cache.query.annotations.QuerySqlField;
-
-import java.io.*;
+import java.io.Serializable;
 import java.util.UUID;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 6/1/15
  */
-public class IOTMessage implements Externalizable {
+public class IOTMessage implements Serializable {
 
     private UUID nodeId;
     private String cluster;
     private String authKey;
-    private Serializable connectionId;
-
-    @QuerySqlField(orderedGroups={
-            @QuerySqlField.Group(name = "sessionid_msgid_inbound_idx", order = 3)
-    })
-    private long messageId;
+    private String connectionId;
+    private String sessionId;
 
     private String messageType;
 
     private Protocol protocol;
 
-    @QuerySqlField(orderedGroups={
-            @QuerySqlField.Group(name = "sessionid_msgid_inbound_idx", order = 1)
-    })
-    private String sessionId;
-
-   public Serializable getConnectionId() {
+   public String getConnectionId() {
         return connectionId;
     }
 
-    public void setConnectionId(Serializable connectionId) {
+    public void setConnectionId(String connectionId) {
         this.connectionId = connectionId;
     }
 
@@ -90,14 +79,6 @@ public class IOTMessage implements Externalizable {
         this.cluster = cluster;
     }
 
-    public Long getMessageId() {
-        return messageId;
-    }
-
-    public void setMessageId(long messageId) {
-        this.messageId = messageId;
-    }
-
     public String getMessageType() {
         return messageType;
     }
@@ -114,48 +95,20 @@ public class IOTMessage implements Externalizable {
         this.protocol = protocol;
     }
 
-    public void copyBase(IOTMessage iotMessage) {
+    public  <T extends IOTMessage>  void copyTransmissionData( T bossMessage ) {
 
-        setProtocol(iotMessage.getProtocol());
-        setSessionId(iotMessage.getSessionId());
-        setAuthKey(iotMessage.getAuthKey());
-        setConnectionId(iotMessage.getConnectionId());
-        setNodeId(iotMessage.getNodeId());
-        setCluster(iotMessage.getCluster());
-
+        setSessionId(bossMessage.getSessionId());
+        setProtocol(bossMessage.getProtocol());
+        setConnectionId(bossMessage.getConnectionId());
+        setNodeId(bossMessage.getNodeId());
+        setCluster(bossMessage.getCluster());
     }
-
 
     @Override
     public String toString() {
-        return getClass().getName() + '[' + "messageId=" + getMessageId() + ']';
-    }
-
-    @Override
-    public void writeExternal(ObjectOutput objectOutput) throws IOException {
-        objectOutput.writeObject(getAuthKey());
-        objectOutput.writeObject(getCluster());
-        objectOutput.writeObject(getConnectionId());
-        objectOutput.writeLong(getMessageId());
-        objectOutput.writeObject(getMessageType());
-        objectOutput.writeObject(getNodeId());
-        objectOutput.writeObject(getProtocol());
-        objectOutput.writeObject(getSessionId());
-    }
-
-    @Override
-    public void readExternal(ObjectInput objectInput) throws IOException, ClassNotFoundException {
-
-        setAuthKey((String) objectInput.readObject());
-        setCluster((String) objectInput.readObject());
-        setConnectionId((Serializable) objectInput.readObject());
-        setMessageId(objectInput.readLong());
-        setMessageType((String) objectInput.readObject());
-        setNodeId((UUID) objectInput.readObject());
-        setProtocol((Protocol) objectInput.readObject());
-        setSessionId((String) objectInput.readObject());
-
-
-
+        return getClass().getSimpleName() + '['
+                + "connectionId=" + getConnectionId() +","
+                + "sessionId=" + getSessionId() +","
+                +  ']';
     }
 }

@@ -38,7 +38,7 @@ public interface ServerInterface<T> {
 
     void terminate();
 
-    void pushToClient(Serializable connectionId, T message);
+    void pushToClient(String connectionId, T message);
 
     void postProcess(IOTMessage ioTMessage);
 }

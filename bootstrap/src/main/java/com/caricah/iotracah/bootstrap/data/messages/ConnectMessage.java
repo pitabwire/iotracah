@@ -191,7 +191,6 @@ public final class ConnectMessage extends IOTMessage {
     @Override
     public String toString() {
         return getClass().getName() + '['
-                + "messageId=" + getMessageId() +","
                 + "username=" + getUserName() +","
                 + "clientId=" + getClientId() +","
                 + "isCleanSession=" + isCleanSession() +","

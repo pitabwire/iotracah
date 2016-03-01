@@ -38,6 +38,7 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
     private final MqttConnectReturnCode returnCode;
 
 
+
     public static ConnectAcknowledgeMessage from(boolean dup, int qos, boolean retain, int keepAliveTime, MqttConnectReturnCode returnCode) {
         return new ConnectAcknowledgeMessage(dup, qos, retain, keepAliveTime, returnCode);
     }
@@ -79,7 +80,6 @@ public final class ConnectAcknowledgeMessage extends IOTMessage {
     public String toString() {
 
         return getClass().getName() + '['
-                + "messageId=" + getMessageId() +","
                 + "sessionId=" + getSessionId() +","
                 + "keepAlive=" + getKeepAliveTime() +","
                 + "returnCode=" + getReturnCode() +","

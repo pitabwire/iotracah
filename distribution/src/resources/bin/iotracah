@@ -113,6 +113,8 @@ if [ -z "$IOT_CLASSPATH" ]; then
     exit 1
 fi
 
+export CLASSPATH="$IOT_CLASSPATH:$CLASSPATH"
+
 # don't let JAVA_TOOL_OPTIONS slip in (e.g. crazy agents in ubuntu)
 # works around https://bugs.launchpad.net/ubuntu/+source/jayatana/+bug/1441487
 if [ "x$JAVA_TOOL_OPTIONS" != "x" ]; then

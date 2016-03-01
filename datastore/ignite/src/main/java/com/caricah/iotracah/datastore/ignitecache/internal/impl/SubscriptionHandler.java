@@ -20,15 +20,21 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.CacheConfig;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscription;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscriptionKey;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
+import org.apache.ignite.configuration.CacheConfiguration;
+
+import javax.sql.DataSource;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class SubscriptionHandler extends AbstractHandler<Subscription> {
+public class SubscriptionHandler extends AbstractHandler<IotSubscriptionKey, IotSubscription> {
 
     public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME = "config.ignitecache.subscription.cache.name";
     public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_CACHE_NAME_VALUE_DEFAULT = "iotracah_client_subscription_cache";
@@ -43,5 +49,32 @@ public class SubscriptionHandler extends AbstractHandler<Subscription> {
 
     }
 
+    @Override
+    protected CacheConfiguration<IotSubscriptionKey, IotSubscription> getCacheConfiguration(boolean persistanceEnabled, DataSource ds) {
+        CacheJdbcPojoStoreFactory<IotSubscriptionKey, IotSubscription> factory = null;
 
+        if (persistanceEnabled){
+            factory = new CacheJdbcPojoStoreFactory<>();
+            factory.setDataSource(ds);
+        }
+
+        return CacheConfig.cache(getCacheName(), factory);
+    }
+
+    @Override
+    public IotSubscriptionKey keyFromModel(IotSubscription model) {
+
+        IotSubscriptionKey subscriptionKey = new IotSubscriptionKey();
+        subscriptionKey.setPartitionId(model.getPartitionId());
+        subscriptionKey.setClientId(model.getClientId());
+        subscriptionKey.setSubscriptionFilterId(model.getSubscriptionFilterId());
+
+        return subscriptionKey;
+    }
+
+
+    @Override
+    public void save(IotSubscription item) {
+        super.save(item);
+    }
 }

@@ -20,17 +20,21 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
+import com.caricah.iotracah.bootstrap.data.models.roles.CacheConfig;
+import com.caricah.iotracah.bootstrap.data.models.roles.IotRoleKey;
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
+import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
 import org.apache.ignite.configuration.CacheConfiguration;
+
+import javax.sql.DataSource;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class RoleHandler extends AbstractHandler<IOTRole> {
+public class RoleHandler extends AbstractHandler<IotRoleKey, IOTRole> {
 
 
     public static final String CONFIG_IGNITECACHE_ROLE_CACHE_NAME = "config.ignitecache.role.cache.name";
@@ -46,12 +50,36 @@ public class RoleHandler extends AbstractHandler<IOTRole> {
 
     }
 
+    @Override
+    protected CacheConfiguration<IotRoleKey, IOTRole> getCacheConfiguration(boolean persistanceEnabled,  DataSource ds) {
+        CacheJdbcPojoStoreFactory<IotRoleKey, IOTRole> factory = null;
+
+        if (persistanceEnabled){
+            factory = new CacheJdbcPojoStoreFactory<>();
+            factory.setDataSource(ds);
+        }
+
+        return CacheConfig.cache(getCacheName(), factory);
+    }
+
 
     @Override
-    protected CacheConfiguration moreConfig(Class<IOTRole> t, CacheConfiguration clCfg) {
+    public IotRoleKey keyFromModel(IOTRole role) {
+        IotRoleKey roleKey = new IotRoleKey();
+        roleKey.setPartitionId(role.getPartitionId());
+        roleKey.setName(role.getName());
+        return roleKey;
+    }
 
-        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
 
-        return super.moreConfig(t, clCfg);
+    @Override
+    public void save(IOTRole item) {
+
+        if(item.getId() == 0){
+
+            item.setId(getIdSequence().incrementAndGet());
+        }
+
+        super.save(item);
     }
 }

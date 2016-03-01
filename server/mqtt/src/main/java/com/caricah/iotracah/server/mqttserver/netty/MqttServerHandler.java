@@ -63,8 +63,8 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
 
         log.debug(" messageReceived : received the message {}", msg);
 
-        Serializable connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
-        Serializable sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
+        String connectionId = ctx.channel().attr(ServerImpl.REQUEST_CONNECTION_ID).get();
+        String sessionId = ctx.channel().attr(ServerImpl.REQUEST_SESSION_ID).get();
 
         getInternalServer().pushToWorker(connectionId, sessionId, msg);
     }
@@ -76,7 +76,7 @@ public class MqttServerHandler extends ServerHandler<MqttMessage> {
         try {
             log.info(" exceptionCaught : Unhandled exception: " , cause);
 
-            getServerImpl().closeClient(ctx.channel().id());
+            getServerImpl().closeClient(ctx.channel().id().asLongText());
 
         } catch (Exception ex) {
             log.debug(" exceptionCaught : trying to close socket because we got an unhandled exception", ex);

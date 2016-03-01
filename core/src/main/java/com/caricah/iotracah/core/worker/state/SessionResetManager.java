@@ -20,7 +20,7 @@
 
 package com.caricah.iotracah.core.worker.state;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.handlers.PublishOutHandler;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.core.modules.Worker;
@@ -62,26 +62,26 @@ public class SessionResetManager {
         this.datastore = datastore;
     }
 
-    public void process(IOTSession iotSession) {
+    public void process(IOTClient iotClient) {
 
-        log.debug(" process : Resetting a session for client {} ", iotSession);
+        log.debug(" process : Resetting a session for client {} ", iotClient);
 
 
-        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotSession);
+        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotClient);
 
         publishMessageObservable.subscribe(publishMessage -> {
 
-            publishMessage = iotSession.copyTransmissionData(publishMessage);
+            publishMessage = iotClient.copyTransmissionData(publishMessage);
             //Update current session id for message.
 
-                    if (publishMessage.isInBound()) {
+                    if (publishMessage.getIsInbound()) {
 
                         //We need to generate a PUBREC message to acknowledge message received.
                         if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value()) {
 
 
                             PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(publishMessage.getMessageId());
-                            publishReceivedMessage = iotSession.copyTransmissionData(publishReceivedMessage);
+                            publishReceivedMessage = iotClient.copyTransmissionData(publishReceivedMessage);
                             getWorker().pushToServer(publishReceivedMessage);
 
 
@@ -89,11 +89,11 @@ public class SessionResetManager {
 
                     } else {
 
-                        if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.isReleased()) {
+                        if (publishMessage.getQos() == MqttQoS.EXACTLY_ONCE.value() && publishMessage.getIsRelease()) {
 
                             //We need to generate a PUBREL message to allow transmission of qos 2 message.
                             ReleaseMessage releaseMessage = ReleaseMessage.from(publishMessage.getMessageId(), true);
-                            releaseMessage = iotSession.copyTransmissionData(releaseMessage);
+                            releaseMessage = iotClient.copyTransmissionData(releaseMessage);
                             getWorker().pushToServer(releaseMessage);
 
 

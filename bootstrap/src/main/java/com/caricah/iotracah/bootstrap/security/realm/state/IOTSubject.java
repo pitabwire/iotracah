@@ -74,9 +74,6 @@ public class IOTSubject implements Subject {
 
     private static final Logger log = LoggerFactory.getLogger(IOTSubject.class);
 
-    private static final String RUN_AS_PRINCIPALS_SESSION_KEY =
-            IOTSubject.class.getName() + ".RUN_AS_PRINCIPALS_SESSION_KEY";
-
     protected PrincipalCollection principals;
     protected boolean authenticated;
     protected String host;
@@ -122,8 +119,7 @@ public class IOTSubject implements Subject {
     }
 
     public PrincipalCollection getPrincipals() {
-        List<PrincipalCollection> runAsPrincipals = getRunAsPrincipalsStack();
-        return CollectionUtils.isEmpty(runAsPrincipals) ? this.principals : runAsPrincipals.get(0);
+        return this.principals;
     }
 
     public boolean isPermitted(String permission) {
@@ -224,7 +220,6 @@ public class IOTSubject implements Subject {
     }
 
     public void login(AuthenticationToken token) throws AuthenticationException {
-        clearRunAsIdentitiesInternal();
         Subject subject = securityManager.login(this, token);
 
         PrincipalCollection principals;
@@ -302,19 +297,9 @@ public class IOTSubject implements Subject {
 
 
 
-    private void clearRunAsIdentitiesInternal() {
-        //try/catch added for SHIRO-298
-        try {
-            clearRunAsIdentities();
-        } catch (SessionException se) {
-            log.debug("Encountered session exception trying to clear 'runAs' identities during logout.  This " +
-                    "can generally safely be ignored.", se);
-        }
-    }
 
     public void logout() {
         try {
-            clearRunAsIdentitiesInternal();
             this.securityManager.logout(this);
         } finally {
             this.session = null;
@@ -328,126 +313,44 @@ public class IOTSubject implements Subject {
         }
     }
 
-
+    @Override
     public <V> V execute(Callable<V> callable) throws ExecutionException {
-        Callable<V> associated = associateWith(callable);
-        try {
-            return associated.call();
-        } catch (Throwable t) {
-            throw new ExecutionException(t);
-        }
-    }
-
-    public void execute(Runnable runnable) {
-        Runnable associated = associateWith(runnable);
-        associated.run();
-    }
-
-    public <V> Callable<V> associateWith(Callable<V> callable) {
-        return new SubjectCallable<V>(this, callable);
-    }
-
-    public Runnable associateWith(Runnable runnable) {
-        if (runnable instanceof Thread) {
-            String msg = "This implementation does not support Thread arguments because of JDK ThreadLocal " +
-                    "inheritance mechanisms required by Shiro.  Instead, the method argument should be a non-Thread " +
-                    "Runnable and the return value from this method can then be given to an ExecutorService or " +
-                    "another Thread.";
-            throw new UnsupportedOperationException(msg);
-        }
-        return new SubjectRunnable(this, runnable);
-    }
-
-
-
-    // ======================================
-    // 'Run As' support implementations
-    // ======================================
-
-    public void runAs(PrincipalCollection principals) {
-        if (!hasPrincipals()) {
-            String msg = "This subject does not yet have an identity.  Assuming the identity of another " +
-                    "Subject is only allowed for Subjects with an existing identity.  Try logging this subject in " +
-                    "first, or using the " + Subject.Builder.class.getName() + " to build ad hoc Subject instances " +
-                    "with identities as necessary.";
-            throw new IllegalStateException(msg);
-        }
-        pushIdentity(principals);
-    }
-
-    public boolean isRunAs() {
-        List<PrincipalCollection> stack = getRunAsPrincipalsStack();
-        return !CollectionUtils.isEmpty(stack);
-    }
-
-    public PrincipalCollection getPreviousPrincipals() {
-        PrincipalCollection previousPrincipals = null;
-        List<PrincipalCollection> stack = getRunAsPrincipalsStack();
-        int stackSize = stack != null ? stack.size() : 0;
-        if (stackSize > 0) {
-            if (stackSize == 1) {
-                previousPrincipals = this.principals;
-            } else {
-                //always get the one behind the current:
-                assert stack != null;
-                previousPrincipals = stack.get(1);
-            }
-        }
-        return previousPrincipals;
-    }
-
-    public PrincipalCollection releaseRunAs() {
-        return popIdentity();
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<PrincipalCollection> getRunAsPrincipalsStack() {
-        Session session = getSession(false);
-        if (session != null) {
-            return (List<PrincipalCollection>) session.getAttribute(RUN_AS_PRINCIPALS_SESSION_KEY);
-        }
         return null;
     }
 
-    private void clearRunAsIdentities() {
-        Session session = getSession(false);
-        if (session != null) {
-            session.removeAttribute(RUN_AS_PRINCIPALS_SESSION_KEY);
-        }
+    @Override
+    public void execute(Runnable runnable) {
+
     }
 
-    private void pushIdentity(PrincipalCollection principals) throws NullPointerException {
-        if (CollectionUtils.isEmpty(principals)) {
-            String msg = "Specified Subject principals cannot be null or empty for 'run as' functionality.";
-            throw new NullPointerException(msg);
-        }
-        List<PrincipalCollection> stack = getRunAsPrincipalsStack();
-        if (stack == null) {
-            stack = new CopyOnWriteArrayList<>();
-        }
-        stack.add(0, principals);
-        Session session = getSession();
-        session.setAttribute(RUN_AS_PRINCIPALS_SESSION_KEY, stack);
+    @Override
+    public <V> Callable<V> associateWith(Callable<V> callable) {
+        return callable;
     }
 
-    private PrincipalCollection popIdentity() {
-        PrincipalCollection popped = null;
+    @Override
+    public Runnable associateWith(Runnable runnable) {
+        return runnable;
+    }
 
-        List<PrincipalCollection> stack = getRunAsPrincipalsStack();
-        if (!CollectionUtils.isEmpty(stack)) {
-            popped = stack.remove(0);
-            Session session;
-            if (!CollectionUtils.isEmpty(stack)) {
-                //persist the changed stack to the session
-                session = getSession();
-                session.setAttribute(RUN_AS_PRINCIPALS_SESSION_KEY, stack);
-            } else {
-                //stack is empty, remove it from the session:
-                clearRunAsIdentities();
-            }
-        }
+    @Override
+    public void runAs(PrincipalCollection principals) throws NullPointerException, IllegalStateException {
 
-        return popped;
+    }
+
+    @Override
+    public boolean isRunAs() {
+        return false;
+    }
+
+    @Override
+    public PrincipalCollection getPreviousPrincipals() {
+        return null;
+    }
+
+    @Override
+    public PrincipalCollection releaseRunAs() {
+        return null;
     }
 
 

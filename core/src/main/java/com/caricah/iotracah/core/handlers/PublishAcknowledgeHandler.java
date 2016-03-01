@@ -21,7 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.AcknowledgeMessage;
 import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
@@ -38,7 +38,7 @@ public class PublishAcknowledgeHandler extends RequestHandler<AcknowledgeMessage
     public void handle(AcknowledgeMessage acknowledgeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<IOTSession> permissionObservable = checkPermission(acknowledgeMessage.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(acknowledgeMessage.getSessionId(),
                 acknowledgeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(

@@ -43,4 +43,21 @@ public enum Protocol implements Serializable{
     public boolean isNotPersistent(){
         return !persistent;
     }
+
+
+    @Override
+    public String toString() {
+        return this.name();
+    }
+
+    public static Protocol fromString(String name){
+        switch (name){
+
+            case "MQTT":
+                return MQTT;
+            case "HTTP":
+                return HTTP;
+        }
+        throw new IllegalArgumentException("The protocal specified is not implemented. Can you work on it?");
+    }
 }

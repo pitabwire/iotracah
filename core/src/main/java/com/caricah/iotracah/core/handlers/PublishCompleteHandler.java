@@ -21,7 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.CompleteMessage;
 import com.caricah.iotracah.bootstrap.data.messages.PublishMessage;
@@ -39,7 +39,7 @@ public class PublishCompleteHandler extends RequestHandler<CompleteMessage> {
     public void handle(CompleteMessage completeMessage) throws RetriableException, UnRetriableException {
 
         //Check for connect permissions
-        Observable<IOTSession> permissionObservable = checkPermission(completeMessage.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(completeMessage.getSessionId(),
                 completeMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(

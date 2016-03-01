@@ -30,15 +30,13 @@ import org.apache.shiro.authz.SimpleAuthorizationInfo;
 import org.apache.shiro.realm.AuthorizingRealm;
 import org.apache.shiro.subject.PrincipalCollection;
 
-import java.util.Objects;
-
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
 public abstract class IOTAbstractRealm extends AuthorizingRealm{
 
-    private IOTAccountDatastore iotAccountDatastore;
+    private IOTSecurityDatastore iotAccountDatastore;
 
 
     public IOTAbstractRealm(){
@@ -51,11 +49,11 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
     }
 
 
-    public IOTAccountDatastore getIotAccountDatastore() {
+    public IOTSecurityDatastore getIotAccountDatastore() {
         return iotAccountDatastore;
     }
 
-    public void setIotAccountDatastore(IOTAccountDatastore iotAccountDatastore) {
+    public void setIotAccountDatastore(IOTSecurityDatastore iotAccountDatastore) {
         this.iotAccountDatastore = iotAccountDatastore;
     }
 
@@ -102,10 +100,10 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
 
         if (account != null) {
 
-            if (account.isLocked()) {
+            if (account.getIsLocked()) {
                 throw new LockedAccountException("Account [" + account + "] is locked.");
             }
-            if (account.isCredentialsExpired()) {
+            if (account.getIsCredentialExpired()) {
                 String msg = "The credentials for account [" + account + "] are expired";
                 throw new ExpiredCredentialsException(msg);
             }
@@ -129,7 +127,7 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
     public IOTAccount addIOTAccount(String partition, String username, String password) {
 
         IdConstruct idConstruct = new IdConstruct(partition, username, null);
-        IOTAccount account = new IOTAccount(idConstruct, password, getName());
+        IOTAccount account = new IOTAccount(idConstruct, password);
         saveIOTAccount(account);
         return account;
     }
@@ -142,10 +140,6 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
         return getIotAccountDatastore().getIOTRole(partition, rolename);
     }
 
-    public boolean roleExists(String partition, String name) {
-        return Objects.nonNull(getIotAccountDatastore().getIOTRole(partition, name));
-    }
-
     public IOTRole addIOTRole(String partition, String rolename ) {
 
         IOTRole iotRole = new IOTRole(partition, rolename);
@@ -156,7 +150,6 @@ public abstract class IOTAbstractRealm extends AuthorizingRealm{
 
     public void saveIOTRole(IOTRole iotRole) {
         getIotAccountDatastore().saveIOTRole(iotRole);
-
     }
 
 

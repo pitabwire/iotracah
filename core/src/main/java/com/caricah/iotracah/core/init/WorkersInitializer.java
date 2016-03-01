@@ -50,6 +50,7 @@ public abstract class WorkersInitializer extends ServersInitializer {
 
     private String annonymousLoginPassword;
 
+
     private List<Worker> workerList = new ArrayList<>();
 
     public boolean isWorkerEngineEnabled() {
@@ -83,6 +84,8 @@ public abstract class WorkersInitializer extends ServersInitializer {
     public void setAnnonymousLoginPassword(String annonymousLoginPassword) {
         this.annonymousLoginPassword = annonymousLoginPassword;
     }
+
+
 
     public List<Worker> getWorkerList() {
         return workerList;

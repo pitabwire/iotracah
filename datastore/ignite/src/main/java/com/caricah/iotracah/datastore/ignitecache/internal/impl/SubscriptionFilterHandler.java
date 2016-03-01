@@ -20,24 +20,25 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
+import com.caricah.iotracah.bootstrap.data.models.subscriptionfilters.CacheConfig;
+import com.caricah.iotracah.bootstrap.data.models.subscriptionfilters.IotSubscriptionFilter;
+import com.caricah.iotracah.bootstrap.data.models.subscriptionfilters.IotSubscriptionFilterKey;
 import com.caricah.iotracah.core.worker.state.Constant;
-import com.caricah.iotracah.bootstrap.data.models.SubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
-import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import org.apache.commons.configuration.Configuration;
-import org.apache.ignite.cache.CacheAtomicityMode;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
 import org.apache.ignite.configuration.CacheConfiguration;
 import rx.Observable;
 import rx.Subscriber;
 
-import java.io.Serializable;
+import javax.sql.DataSource;
 import java.util.*;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilter> {
+public class SubscriptionFilterHandler extends AbstractHandler<IotSubscriptionFilterKey, IotSubscriptionFilter> {
 
     public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_FILTER_CACHE_NAME = "config.ignitecache.subscription.filter.cache.name";
     public static final String CONFIG_IGNITECACHE_SUBSCRIPTION_FILTER_CACHE_NAME_VALUE_DEFAULT = "iotracah_subscription_filter_cache";
@@ -53,19 +54,46 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
     }
 
     @Override
-    protected CacheConfiguration moreConfig(Class<SubscriptionFilter> t, CacheConfiguration clCfg) {
+    protected CacheConfiguration<IotSubscriptionFilterKey, IotSubscriptionFilter> getCacheConfiguration(boolean persistanceEnabled,  DataSource ds) {
+        CacheJdbcPojoStoreFactory<IotSubscriptionFilterKey, IotSubscriptionFilter> factory = null;
 
-        clCfg = clCfg.setAtomicityMode(CacheAtomicityMode.ATOMIC);
+        if (persistanceEnabled){
+            factory = new CacheJdbcPojoStoreFactory<>();
+            factory.setDataSource(ds);
+        }
 
-        return super.moreConfig(t, clCfg);
+
+        return CacheConfig.cache(getCacheName(), factory);
     }
 
 
-    public Observable<SubscriptionFilter> matchTopicFilterTree(String partition, List<String> topicNavigationRoute) {
+    @Override
+    public IotSubscriptionFilterKey keyFromModel(IotSubscriptionFilter model) {
+
+        return keyFromTopic(model.getPartitionId(), model.getName());
+    }
+
+    public IotSubscriptionFilterKey keyFromList(String partitionId, List<String> topicList) {
+
+        IotSubscriptionFilterKey filterKey = new IotSubscriptionFilterKey();
+        filterKey.setName(String.join(Constant.PATH_SEPARATOR, topicList));
+        filterKey.setPartitionId(partitionId);
+        return filterKey;
+    }
+
+    public IotSubscriptionFilterKey keyFromTopic(String partitionId, String topicName) {
+
+        IotSubscriptionFilterKey filterKey = new IotSubscriptionFilterKey();
+        filterKey.setName(topicName);
+        filterKey.setPartitionId(partitionId);
+        return filterKey;
+    }
+
+    public Observable<IotSubscriptionFilter> matchTopicFilterTree(String partitionId, List<String> topicNavigationRoute) {
 
         return Observable.create(observer -> {
 
-            Set<Serializable> topicFilterKeys = new HashSet<>();
+            Set<IotSubscriptionFilterKey> topicFilterKeys = new HashSet<>();
 
             ListIterator<String> pathIterator = topicNavigationRoute.listIterator();
 
@@ -80,19 +108,19 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                 if (pathIterator.hasNext()) {
                     //We deal with wildcard.
                     slWildCardList.add(Constant.MULTI_LEVEL_WILDCARD);
-                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                    topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
                 } else {
 
 
                     slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
-                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                    topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
                     slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
-                    topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
+                    topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
-                    slWildCardList.remove(slWildCardList.size()-1);
-                    slWildCardList.remove(slWildCardList.size()-1);
+                    slWildCardList.remove(slWildCardList.size() - 1);
+                    slWildCardList.remove(slWildCardList.size() - 1);
 
                     //we deal with full topic
                     slWildCardList.add(name);
@@ -102,69 +130,59 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
                 growingTitles.add(name);
 
-                int sizeOfTopic = slWildCardList.size()-1;
+                int sizeOfTopic = slWildCardList.size() - 1;
 
 
-                    for (int i = 0; i <= sizeOfTopic; i++) {
+                for (int i = 0; i <= sizeOfTopic; i++) {
 
-                        if (i < sizeOfTopic) {
-                           int reverseIndex = sizeOfTopic - i;
+                    if (i < sizeOfTopic) {
+                        int reverseIndex = sizeOfTopic - i;
+
+                        slWildCardList.set(i, Constant.SINGLE_LEVEL_WILDCARD);
+                        reverseSlWildCardList.set(reverseIndex, Constant.SINGLE_LEVEL_WILDCARD);
+
+                        topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
+                        topicFilterKeys.add(keyFromList(partitionId, reverseSlWildCardList));
+
+                    } else {
+
+                        if (!pathIterator.hasNext()) {
 
                             slWildCardList.set(i, Constant.SINGLE_LEVEL_WILDCARD);
-                            reverseSlWildCardList.set(reverseIndex, Constant.SINGLE_LEVEL_WILDCARD);
+                            topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
-                            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-                            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, reverseSlWildCardList));
+                            slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
+                            topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
-                        } else {
-
-                            if(!pathIterator.hasNext()){
-
-                                slWildCardList.set(i, Constant.SINGLE_LEVEL_WILDCARD);
-                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-
-                                slWildCardList.add(Constant.SINGLE_LEVEL_WILDCARD);
-                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-
-                                slWildCardList.set(slWildCardList.size()-1, Constant.MULTI_LEVEL_WILDCARD);
-                                topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, slWildCardList));
-
-                            }
+                            slWildCardList.set(slWildCardList.size() - 1, Constant.MULTI_LEVEL_WILDCARD);
+                            topicFilterKeys.add(keyFromList(partitionId, slWildCardList));
 
                         }
+
                     }
-
-
-
-
-
+                }
 
             }
 
-            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+            topicFilterKeys.add(keyFromList(partitionId, growingTitles));
 
             growingTitles.add(Constant.SINGLE_LEVEL_WILDCARD);
-            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+            topicFilterKeys.add(keyFromList(partitionId, growingTitles));
 
-            growingTitles.set(growingTitles.size()-1, Constant.MULTI_LEVEL_WILDCARD);
-            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+            growingTitles.set(growingTitles.size() - 1, Constant.MULTI_LEVEL_WILDCARD);
+            topicFilterKeys.add(keyFromList(partitionId, growingTitles));
 
-            growingTitles.remove(growingTitles.size()-1);
+            growingTitles.remove(growingTitles.size() - 1);
 
-            growingTitles.set(growingTitles.size()-1, Constant.SINGLE_LEVEL_WILDCARD);
-            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+            growingTitles.set(growingTitles.size() - 1, Constant.SINGLE_LEVEL_WILDCARD);
+            topicFilterKeys.add(keyFromList(partitionId, growingTitles));
 
-            growingTitles.set(growingTitles.size()-1, Constant.MULTI_LEVEL_WILDCARD);
-            topicFilterKeys.add(SubscriptionFilter.quickCheckIdKey(partition, growingTitles));
+            growingTitles.set(growingTitles.size() - 1, Constant.MULTI_LEVEL_WILDCARD);
+            topicFilterKeys.add(keyFromList(partitionId, growingTitles));
 
 
             //Add lost wildcard
-
-
             getBySet(topicFilterKeys).subscribe(observer::onNext, observer::onError, observer::onCompleted);
-
-            //Single match without wildcards.
-            //getByKey(SubscriptionFilter.quickCheckIdKey(partition, growingTitles)).subscribe(observer::onNext, observer::onError, observer::onCompleted);
 
         });
 
@@ -172,12 +190,15 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
     }
 
 
-    public Observable<SubscriptionFilter> getTopicFilterTree(String partition, List<String> topicFilterTreeRoute) {
+    public Observable<IotSubscriptionFilter> getTopicFilterTree(String partition, List<String> topicFilterTreeRoute) {
 
         return Observable.create(observer -> {
 
-            List<String> collectingParentIdList = new ArrayList<>();
-            collectingParentIdList.add(SubscriptionFilter.getPartitionAsInitialParentId(partition));
+            List<Long> collectingParentIdList = new ArrayList<>();
+
+            collectingParentIdList.add(0l);
+
+            List<String> growingTitles = new ArrayList<>();
 
             ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
 
@@ -185,30 +206,36 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
                 while (pathIterator.hasNext()) {
 
-                    String name = pathIterator.next();
 
-                    List<String> parentIdList = new ArrayList<>(collectingParentIdList);
+                    String topicPart = pathIterator.next();
+
+                    log.debug(" getTopicFilterTree : current path in tree is : {}", topicPart);
+
+                    growingTitles.add(topicPart);
+
+                    List<Long> parentIdList = new ArrayList<>(collectingParentIdList);
                     collectingParentIdList.clear();
 
-                    for (String parentId : parentIdList) {
+                    for (Long parentId : parentIdList) {
 
-                        if (Constant.MULTI_LEVEL_WILDCARD.equals(name)) {
+                        log.debug(" getTopicFilterTree : Dealing with parent id : {} and titles is {}", parentId, growingTitles);
+
+                        if (Constant.MULTI_LEVEL_WILDCARD.equals(topicPart)) {
 
                             getMultiLevelWildCard(observer, partition, parentId);
-                        } else if (Constant.SINGLE_LEVEL_WILDCARD.equals(name)) {
+                        } else if (Constant.SINGLE_LEVEL_WILDCARD.equals(topicPart)) {
 
-                            String query = "partition = ? AND parentId = ? ";
+                            String query = "partitionId = ? AND parentId = ? ";
                             Object[] params = {partition, parentId};
 
-                            getByQuery(SubscriptionFilter.class, query, params)
+                            getByQuery(IotSubscriptionFilter.class, query, params)
                                     .toBlocking().forEach(subscriptionFilter -> {
 
+                                log.debug(" getTopicFilterTree : Found matching single level filter : {}", subscriptionFilter);
+
                                 if (pathIterator.hasNext()) {
-                                    try {
-                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
-                                    } catch (UnRetriableException e) {
-                                        log.error(" getTopicFilterTree : error getting subscription filter id", e);
-                                    }
+                                    collectingParentIdList.add(subscriptionFilter.getId());
+
                                 } else {
                                     observer.onNext(subscriptionFilter);
                                 }
@@ -218,18 +245,21 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                         } else {
 
 
-                            String query = "partition = ? AND parentId = ? AND name = ? ";
-                            Object[] params = new Object[]{partition, parentId, name};
+                            String query = "partitionId = ? AND parentId = ? AND name = ? ";
 
-                            getByQuery(SubscriptionFilter.class, query, params)
+
+                            String joinedTopicName = String.join(Constant.PATH_SEPARATOR, growingTitles);
+
+                            Object[] params = new Object[]{partition, parentId, joinedTopicName};
+
+                            getByQuery(IotSubscriptionFilter.class, query, params)
                                     .toBlocking().forEach(subscriptionFilter -> {
 
+                                log.debug(" getTopicFilterTree : Found matching point filter : {}", subscriptionFilter);
+
+
                                 if (pathIterator.hasNext()) {
-                                    try {
-                                        collectingParentIdList.add((String) subscriptionFilter.generateIdKey());
-                                    } catch (UnRetriableException e) {
-                                        log.error(" getTopicFilterTree : error getting subscription filter id", e);
-                                    }
+                                    collectingParentIdList.add(subscriptionFilter.getId());
                                 } else {
                                     observer.onNext(subscriptionFilter);
                                 }
@@ -252,71 +282,83 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
 
     }
 
-    private void getMultiLevelWildCard(Subscriber<? super SubscriptionFilter> observer, String partition, String parentId) {
 
-        String query = "partition = ? AND parentId = ? ";
+    private void getMultiLevelWildCard(Subscriber<? super IotSubscriptionFilter> observer, String partition, Long parentId) {
+
+        String query = "partitionId = ? AND parentId = ? ";
         Object[] params = {partition, parentId};
 
-        getByQuery(SubscriptionFilter.class, query, params)
+        getByQuery(IotSubscriptionFilter.class, query, params)
                 .toBlocking().forEach(subscriptionFilter -> {
 
+            log.debug(" getMultiLevelWildCard : found a matching filter for multilevel : {}", subscriptionFilter);
             observer.onNext(subscriptionFilter);
 
-            try {
-                getMultiLevelWildCard(observer, partition, (String) subscriptionFilter.generateIdKey());
-            } catch (UnRetriableException e) {
-                log.error(" getMultiLevelWildCard : problem generating id", e);
-            }
+            getMultiLevelWildCard(observer, partition, subscriptionFilter.getId());
+
 
         });
 
 
     }
 
-    public Observable<SubscriptionFilter> createTree(String partition, List<String> topicFilterTreeRoute) {
+
+    public Observable<IotSubscriptionFilter> createTree(String partitionId, List<String> topicFilterTreeRoute) {
 
         return Observable.create(observer -> {
 
                     try {
-                        String currentTreeName = "";
-                        SubscriptionFilter activeSubscriptionFilter = null;
+
+                        List<String> growingTitles = new ArrayList<>();
+                        LinkedList<Long> growingParentIds = new LinkedList<>();
 
                         ListIterator<String> pathIterator = topicFilterTreeRoute.listIterator();
-                        String parentId = SubscriptionFilter.getPartitionAsInitialParentId(partition);
+
 
                         while (pathIterator.hasNext()) {
 
-                            String name;
-                            if (!pathIterator.hasPrevious()) {
-                                name = pathIterator.next();
-                                currentTreeName = name;
-                            } else {
-                                name = pathIterator.next();
-                                currentTreeName += Constant.PATH_SEPARATOR + name;
-                            }
 
-                            SubscriptionFilter internalSubscriptionFilter = getByKeyWithDefault(SubscriptionFilter.createIdKey(parentId, name), null).toBlocking().single();
+                            growingTitles.add(pathIterator.next());
 
-                            if (null == internalSubscriptionFilter) {
-                                internalSubscriptionFilter = new SubscriptionFilter();
-                                internalSubscriptionFilter.setPartition(partition);
-                                internalSubscriptionFilter.setParentId(parentId);
-                                internalSubscriptionFilter.setName(name);
-                                save(internalSubscriptionFilter);
-                            }
+                            IotSubscriptionFilterKey iotSubscriptionFilterKey = keyFromList(partitionId, growingTitles);
+                            Observable<IotSubscriptionFilter> filterObservable = getByKeyWithDefault(iotSubscriptionFilterKey, null);
+
+                            filterObservable.subscribe(
+                                    internalSubscriptionFilter -> {
+
+                                        if (null == internalSubscriptionFilter) {
+                                            internalSubscriptionFilter = new IotSubscriptionFilter();
+                                            internalSubscriptionFilter.setPartitionId(partitionId);
+                                            internalSubscriptionFilter.setName(iotSubscriptionFilterKey.getName());
+                                            internalSubscriptionFilter.setId(getIdSequence().incrementAndGet());
+
+                                            if (growingParentIds.isEmpty()) {
+                                                internalSubscriptionFilter.setParentId(0l);
+                                            } else {
+                                                internalSubscriptionFilter.setParentId(growingParentIds.getLast());
+                                            }
+                                            save(iotSubscriptionFilterKey, internalSubscriptionFilter);
+                                        }
+
+                                        growingParentIds.add(internalSubscriptionFilter.getId());
+
+                                        if (growingTitles.size() == topicFilterTreeRoute.size())
+                                            observer.onNext(internalSubscriptionFilter);
+
+                                    }, throwable -> {
+                                    }, () -> {
 
 
-                            if (!pathIterator.hasNext()) {
-                                activeSubscriptionFilter = internalSubscriptionFilter;
-                            } else {
-                                parentId = (String) internalSubscriptionFilter.generateIdKey();
-                            }
+                                        if (!pathIterator.hasNext()) {
+
+                                            observer.onCompleted();
+
+                                        }
+
+                                    });
                         }
 
-                        if (Objects.nonNull(activeSubscriptionFilter)) {
-                            observer.onNext(activeSubscriptionFilter);
-                        }
-                        observer.onCompleted();
+
                     } catch (Exception e) {
                         observer.onError(e);
                     }
@@ -324,6 +366,5 @@ public class SubscriptionFilterHandler extends AbstractHandler<SubscriptionFilte
                 }
         );
     }
-
 
 }

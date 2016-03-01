@@ -30,26 +30,28 @@ public final class CompleteMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "PUBCOMP";
 
-    private final int qos =0;
+    private final int messageId;
 
 
-    public static CompleteMessage from(long messageId) {
+    public static CompleteMessage from(int messageId) {
         if (messageId < 1) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
         return new CompleteMessage(messageId);
     }
 
-    private CompleteMessage(long messageId) {
+    private CompleteMessage(int messageId) {
         setMessageType(MESSAGE_TYPE);
-        setMessageId(messageId);
+        this.messageId = messageId;
     }
 
 
-
+    public int getMessageId() {
+        return messageId;
+    }
 
     public int getQos() {
-        return qos;
+        return 0;
     }
 
     @Override

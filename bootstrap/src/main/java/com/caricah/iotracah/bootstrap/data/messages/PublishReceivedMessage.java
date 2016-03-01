@@ -28,34 +28,33 @@ import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
 public final class PublishReceivedMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "PUBREC";
+    private final int messageId;
 
-    private final int qos = 0;
-
-    public static PublishReceivedMessage from(long messageId) {
+    public static PublishReceivedMessage from(int messageId) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
         return new PublishReceivedMessage(messageId);
     }
 
-    private PublishReceivedMessage(long messageId) {
+    private PublishReceivedMessage(int messageId) {
 
         setMessageType(MESSAGE_TYPE);
-        setMessageId(messageId);
+        this.messageId = messageId;
+    }
+
+    public int getMessageId() {
+        return messageId;
     }
 
     public int getQos() {
-        return qos;
+        return 0;
     }
 
 
 
     @Override
     public String toString() {
-        return new StringBuilder(getClass().getName())
-                .append('[')
-                .append("messageId=").append(getMessageId())
-                .append(']')
-                .toString();
+        return getClass().getName() + '[' + "messageId=" + getMessageId() + ']';
     }
 }

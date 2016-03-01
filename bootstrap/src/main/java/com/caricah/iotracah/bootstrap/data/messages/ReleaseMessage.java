@@ -30,19 +30,19 @@ public final class ReleaseMessage extends IOTMessage {
     public static final String MESSAGE_TYPE = "PUBREL";
 
     private final boolean dup;
-    private final int qos = 1;
+    private final int messageId;
 
-    public static ReleaseMessage from(long messageId, boolean dup) {
+    public static ReleaseMessage from(int messageId, boolean dup) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
         return new ReleaseMessage(messageId, dup);
     }
 
-    private ReleaseMessage(long messageId, boolean dup) {
+    private ReleaseMessage(int messageId, boolean dup) {
 
         setMessageType(MESSAGE_TYPE);
-        setMessageId(messageId);
+        this.messageId = messageId;
         this.dup = dup;
 
     }
@@ -51,16 +51,16 @@ public final class ReleaseMessage extends IOTMessage {
         return dup;
     }
 
+    public int getMessageId() {
+        return messageId;
+    }
+
     public int getQos() {
-        return qos;
+        return 1;
     }
 
     @Override
     public String toString() {
-        return new StringBuilder(getClass().getName())
-                .append('[')
-                .append("messageId=").append(getMessageId())
-                .append(']')
-                .toString();
+        return getClass().getName() + '[' + "messageId=" + getMessageId() + ']';
     }
 }

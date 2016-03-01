@@ -21,7 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.Ping;
 import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
@@ -36,7 +36,7 @@ public class PingRequestHandler extends RequestHandler<Ping> {
     @Override
     public void handle(Ping ping) throws RetriableException, UnRetriableException {
 
-        Observable<IOTSession> permissionObservable = checkPermission(ping.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(ping.getSessionId(),
                 ping.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(

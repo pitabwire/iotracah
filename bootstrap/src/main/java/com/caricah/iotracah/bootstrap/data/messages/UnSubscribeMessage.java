@@ -33,6 +33,7 @@ public final class UnSubscribeMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "UNSUBSCRIBE";
 
+    private final int messageId;
     private final boolean dup;
     private final int qos;
     private final boolean retain;
@@ -40,22 +41,26 @@ public final class UnSubscribeMessage extends IOTMessage {
     private final List<String> topicFilterList;
 
 
-    public static UnSubscribeMessage from(long messageId, boolean dup, int qos, boolean retain, List<String> topicFilterList) {
+    public static UnSubscribeMessage from(int messageId, boolean dup, int qos, boolean retain, List<String> topicFilterList) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
         return new UnSubscribeMessage(messageId, dup, qos, retain, topicFilterList);
     }
 
-    private UnSubscribeMessage(long messageId, boolean dup, int qos, boolean retain, List<String> topicFilterList) {
+    private UnSubscribeMessage(int messageId, boolean dup, int qos, boolean retain, List<String> topicFilterList) {
 
         setMessageType(MESSAGE_TYPE);
-        setMessageId(messageId);
+        this.messageId = messageId;
         this.dup = dup;
         this.qos = qos;
         this.retain = retain;
         this.topicFilterList = topicFilterList;
 
+    }
+
+    public int getMessageId() {
+        return messageId;
     }
 
     public boolean isDup() {

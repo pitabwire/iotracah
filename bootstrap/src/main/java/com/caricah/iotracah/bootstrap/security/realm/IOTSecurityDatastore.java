@@ -22,17 +22,20 @@ package com.caricah.iotracah.bootstrap.security.realm;
 
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTAccount;
 import com.caricah.iotracah.bootstrap.security.realm.state.IOTRole;
+import org.apache.shiro.session.mgt.eis.SessionDAO;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 10/6/15
  */
-public interface IOTAccountDatastore {
+public interface IOTSecurityDatastore extends SessionDAO {
 
 
     IOTAccount getIOTAccount(String partition, String username);
 
     void saveIOTAccount(IOTAccount account);
+
+
 
     IOTRole getIOTRole(String partition, String rolename);
 

@@ -29,11 +29,11 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
 
     public static final String MESSAGE_TYPE = "UNSUBACK";
 
+    private final int messageId;
     private final boolean dup;
-    private final int qos = 0;
     private final boolean retain;
 
-    public static UnSubscribeAcknowledgeMessage from(long messageId) {
+    public static UnSubscribeAcknowledgeMessage from(int messageId) {
         if (messageId < 1 ) {
             throw new IllegalArgumentException("messageId: " + messageId + " (expected: > 1)");
         }
@@ -41,14 +41,18 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
         return new UnSubscribeAcknowledgeMessage(messageId, false,false);
     }
 
-    private UnSubscribeAcknowledgeMessage(long messageId, boolean dup, boolean retain) {
+    private UnSubscribeAcknowledgeMessage(int messageId, boolean dup, boolean retain) {
 
         setMessageType(MESSAGE_TYPE);
-        setMessageId(messageId);
+        this.messageId = messageId;
 
         this.dup = dup;
         this.retain = retain;
 
+    }
+
+    public int getMessageId() {
+        return messageId;
     }
 
     public boolean isDup() {
@@ -56,7 +60,7 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
     }
 
     public int getQos() {
-        return qos;
+        return 0;
     }
 
     public boolean isRetain() {
@@ -65,10 +69,6 @@ public final class UnSubscribeAcknowledgeMessage extends IOTMessage {
 
     @Override
     public String toString() {
-        return new StringBuilder(getClass().getName())
-                .append('[')
-                .append("qos=").append(getQos())
-                .append(']')
-                .toString();
+        return getClass().getName() + '[' + "qos=" + getQos() + ']';
     }
 }

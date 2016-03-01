@@ -20,15 +20,23 @@
 
 package com.caricah.iotracah.datastore.ignitecache.internal.impl;
 
-import com.caricah.iotracah.bootstrap.data.messages.RetainedMessage;
+import com.caricah.iotracah.bootstrap.data.models.retained.CacheConfig;
+import com.caricah.iotracah.bootstrap.data.models.retained.IotMessageRetained;
+import com.caricah.iotracah.bootstrap.data.models.retained.IotMessageRetainedKey;
+import com.caricah.iotracah.bootstrap.data.models.subscriptionfilters.IotSubscriptionFilter;
 import com.caricah.iotracah.datastore.ignitecache.internal.AbstractHandler;
 import org.apache.commons.configuration.Configuration;
+import org.apache.ignite.cache.store.jdbc.CacheJdbcPojoStoreFactory;
+import org.apache.ignite.configuration.CacheConfiguration;
+import rx.Observable;
+
+import javax.sql.DataSource;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 9/20/15
  */
-public class RetainedMessageHandler extends AbstractHandler<RetainedMessage> {
+public class RetainedMessageHandler extends AbstractHandler<IotMessageRetainedKey, IotMessageRetained> {
 
     public static final String CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME = "config.ignitecache.retained.message.cache.name";
     public static final String CONFIG_IGNITECACHE_RETAINED_MESSAGE_CACHE_NAME_VALUE_DEFAULT = "iotracah_retained_message_cache";
@@ -42,4 +50,34 @@ public class RetainedMessageHandler extends AbstractHandler<RetainedMessage> {
 
     }
 
+    @Override
+    protected CacheConfiguration<IotMessageRetainedKey, IotMessageRetained> getCacheConfiguration(boolean persistanceEnabled, DataSource ds) {
+        CacheJdbcPojoStoreFactory<IotMessageRetainedKey, IotMessageRetained> factory = null;
+
+        if (persistanceEnabled){
+            factory = new CacheJdbcPojoStoreFactory<>();
+            factory.setDataSource(ds);
+        }
+
+
+        return CacheConfig.cache(getCacheName(), factory);
+    }
+
+    @Override
+    public IotMessageRetainedKey keyFromModel(IotMessageRetained model) {
+
+        IotMessageRetainedKey retainedKey = new IotMessageRetainedKey();
+        retainedKey.setPartitionId(model.getPartitionId());
+        retainedKey.setSubscriptionFilterId(model.getSubscriptionFilterId());
+        return retainedKey;
+    }
+
+    public Observable<IotMessageRetained> getRetainedMessagesByFilter(IotSubscriptionFilter subscriptionFilter) {
+
+        IotMessageRetainedKey retainedKey = new IotMessageRetainedKey();
+        retainedKey.setPartitionId(subscriptionFilter.getPartitionId());
+        retainedKey.setSubscriptionFilterId(subscriptionFilter.getId());
+
+        return getByKey(retainedKey);
+    }
 }

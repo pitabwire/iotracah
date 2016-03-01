@@ -39,6 +39,7 @@ jar {
         attributes 'Main-Class': 'com.caricah.iotracah.main.runner.IOTracah',
                 'Implementation-Title': 'Internet Of tracah',
                 'Implementation-Version': version
+
     }
 }
 
@@ -58,6 +59,7 @@ dependencies {
     testRuntime project(':server:iotracah-server-http')
     runtime project(':server:iotracah-server-mqtt')
     testRuntime project(':server:iotracah-server-mqtt')
+
 }
 
 allprojects {

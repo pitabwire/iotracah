@@ -21,7 +21,7 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
 import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
@@ -46,7 +46,7 @@ public class DisconnectHandler extends RequestHandler<DisconnectMessage> {
          * then close the network connection.
          */
 
-        Observable<IOTSession> permissionObservable = checkPermission(disconnectMessage.getSessionId(),
+        Observable<IOTClient> permissionObservable = checkPermission(disconnectMessage.getSessionId(),
                 disconnectMessage.getAuthKey(), AuthorityRole.CONNECT);
 
         permissionObservable.subscribe(

@@ -20,6 +20,7 @@
 
 package com.caricah.iotracah.bootstrap.security;
 
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.*;
 import org.apache.shiro.mgt.DefaultSubjectFactory;
@@ -45,7 +46,6 @@ import java.io.Serializable;
  */
 public class IOTSecurityManager extends SessionsSecurityManager {
 
-    public static final String SESSION_PRINCIPLES_KEY = "principles_key";
     private static final Logger log = LoggerFactory.getLogger(IOTSecurityManager.class);
 
     protected SubjectFactory subjectFactory;
@@ -255,7 +255,7 @@ public class IOTSecurityManager extends SessionsSecurityManager {
             //Context couldn't resolve it directly,
             // let's see if we can since we have direct access to
             // the session manager:
-            Session session = resolveContextSession(context);
+            IOTClient session = resolveContextSession(context);
 
             if (session != null) {
 
@@ -263,26 +263,26 @@ public class IOTSecurityManager extends SessionsSecurityManager {
 
                 context.setSession(session);
 
-                PrincipalCollection principles = (PrincipalCollection) session.getAttribute(SESSION_PRINCIPLES_KEY);
+                PrincipalCollection principles = session.getPrincipleCollection();
                 if(null != principles){
                     context.setPrincipals(principles);
                 }
 
             }
         } catch (InvalidSessionException e) {
-            log.debug("Resolved SubjectContext context session is invalid.  Ignoring and creating an anonymous " +
+            log.trace("Resolved SubjectContext context session is invalid.  Ignoring and creating an anonymous " +
                     "(session-less) Subject instance.", e);
         }
         return context;
     }
 
-    protected Session resolveContextSession( SubjectContext context) throws InvalidSessionException {
+    protected IOTClient resolveContextSession( SubjectContext context) throws InvalidSessionException {
 
         Serializable sessionId = context.getSessionId();
 
         if (sessionId != null) {
             SessionKey key = new DefaultSessionKey(sessionId);
-            return getSession(key);
+            return (IOTClient) getSession(key);
         }
 
         return null;

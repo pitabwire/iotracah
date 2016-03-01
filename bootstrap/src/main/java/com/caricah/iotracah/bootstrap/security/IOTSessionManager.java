@@ -20,11 +20,10 @@
 
 package com.caricah.iotracah.bootstrap.security;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import org.apache.shiro.session.InvalidSessionException;
 import org.apache.shiro.session.Session;
 import org.apache.shiro.session.SessionException;
-import org.apache.shiro.session.UnknownSessionException;
 import org.apache.shiro.session.mgt.DefaultSessionManager;
 import org.apache.shiro.session.mgt.SessionContext;
 import org.apache.shiro.session.mgt.SessionKey;
@@ -36,7 +35,8 @@ import org.apache.shiro.session.mgt.SessionKey;
 public class IOTSessionManager extends DefaultSessionManager {
 
     public Session start(SessionContext context) {
-        IOTSession session = (IOTSession) createSession(context);
+
+        IOTClient session = (IOTClient) createSession(context);
 
         session.setSessionManager(this);
         applyGlobalSessionTimeout(session);
@@ -48,7 +48,7 @@ public class IOTSessionManager extends DefaultSessionManager {
 
     public void stop(SessionKey key) throws InvalidSessionException {
 
-        IOTSession session = (IOTSession) getSession(key);
+        IOTClient session = (IOTClient) getSession(key);
         session.setSessionManager(this);
 
         try {
@@ -63,7 +63,7 @@ public class IOTSessionManager extends DefaultSessionManager {
         if (key == null) {
             throw new NullPointerException("SessionKey argument cannot be null.");
         }
-        IOTSession session = (IOTSession) doGetSession(key);
+        IOTClient session = (IOTClient) doGetSession(key);
         session.setSessionManager(this);
         return session;
     }
@@ -71,7 +71,7 @@ public class IOTSessionManager extends DefaultSessionManager {
 
     @Override
     protected void validate(Session session, SessionKey key) throws InvalidSessionException {
-        ((IOTSession) session).setSessionManager(this);
+        ((IOTClient) session).setSessionManager(this);
         super.validate(session, key);
     }
 
@@ -83,7 +83,7 @@ public class IOTSessionManager extends DefaultSessionManager {
     @Override
     protected void afterStopped(Session session) {
 
-        if (((IOTSession) session).isCleanSession()) {
+        if (((IOTClient) session).getIsCleanSession()) {
             delete(session);
         }
     }

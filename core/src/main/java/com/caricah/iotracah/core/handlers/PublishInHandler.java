@@ -20,7 +20,8 @@
 
 package com.caricah.iotracah.core.handlers;
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.models.messages.IotMessageKey;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.security.AuthorityRole;
 import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.core.worker.state.Constant;
@@ -31,6 +32,8 @@ import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import rx.Observable;
+
+import java.util.Map;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -79,7 +82,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
         /**
          * Before publishing we should get the current session and validate it.
          */
-        Observable<IOTSession> permissionObservable = checkPermission(
+        Observable<IOTClient> permissionObservable = checkPermission(
                 publishMessage.getSessionId(), publishMessage.getAuthKey(),
                 AuthorityRole.PUBLISH, topic);
 
@@ -88,8 +91,8 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
 
                     try {
 
-                        publishMessage.setPartition(iotSession.getPartition());
-                        publishMessage.setSessionId((String) iotSession.getId());
+                        publishMessage.setPartitionId(iotSession.getPartitionId());
+                        publishMessage.setClientId(iotSession.getSessionId());
                         publishMessage.setId(-1);
 
                         /**
@@ -102,7 +105,7 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          */
                         if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
 
-                            getMessenger().publish(iotSession.getPartition(), publishMessage);
+                            getMessenger().publish(iotSession.getPartitionId(), publishMessage);
                         }
 
 
@@ -114,13 +117,13 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
                          */
                         if (MqttQoS.AT_LEAST_ONCE.value() == publishMessage.getQos()) {
 
-                            getMessenger().publish(iotSession.getPartition(), publishMessage);
+                            getMessenger().publish(iotSession.getPartitionId(), publishMessage);
 
                             //We need to generate a puback message to close this conversation.
 
                             AcknowledgeMessage acknowledgeMessage = AcknowledgeMessage.from(
                                     publishMessage.getMessageId());
-                            acknowledgeMessage.copyBase(publishMessage);
+                            acknowledgeMessage.copyTransmissionData(publishMessage);
 
                             pushToServer(acknowledgeMessage);
 
@@ -159,15 +162,15 @@ public class PublishInHandler extends RequestHandler<PublishMessage> {
             //This message needs to be retained
             // while handshake is completed before being released.
 
-            message.setReleased(false);
-            Observable<Long> messageIdObservable = getDatastore().saveMessage(message);
+            message.setIsRelease(false);
+            Observable<Map.Entry<Long, IotMessageKey>> messageIdObservable = getDatastore().saveMessage(message);
 
-            messageIdObservable.subscribe(messageId -> {
+            messageIdObservable.subscribe(messageIdentity -> {
 
                 //We need to push out a PUBREC
 
-                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageId);
-                publishReceivedMessage.copyBase(message);
+                PublishReceivedMessage publishReceivedMessage = PublishReceivedMessage.from(messageIdentity.getValue().getMessageId());
+                publishReceivedMessage.copyTransmissionData(message);
                 pushToServer(publishReceivedMessage);
 
             });

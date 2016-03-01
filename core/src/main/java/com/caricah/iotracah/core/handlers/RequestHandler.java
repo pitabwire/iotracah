@@ -21,7 +21,9 @@
 package com.caricah.iotracah.core.handlers;
 
 
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
+import com.caricah.iotracah.bootstrap.data.messages.base.Protocol;
+import com.caricah.iotracah.bootstrap.data.models.client.IotClientKey;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
 import com.caricah.iotracah.core.modules.Datastore;
 import com.caricah.iotracah.bootstrap.data.messages.DisconnectMessage;
 import com.caricah.iotracah.bootstrap.security.realm.auth.permission.IOTPermission;
@@ -80,18 +82,21 @@ public abstract class RequestHandler<T extends IOTMessage> {
         return new IOTPermission(partition, username, clientId, permissionString);
     }
 
-    public Observable<IOTSession> checkPermission(Serializable sessionId, String authKey, AuthorityRole role, String... topicList) {
+    public Observable<IOTClient> checkPermission(String sessionId, String authKey, AuthorityRole role, String... topicList) {
         return checkPermission(sessionId, authKey, role, Arrays.asList(topicList));
 
     }
 
-    public Observable<IOTSession> checkPermission(Serializable sessionId, String authKey, AuthorityRole role, List<String> topicList) {
+    public Observable<IOTClient> checkPermission(String sessionId, String authKey, AuthorityRole role, List<String> topicList) {
 
         return Observable.create(observable -> {
 
-            Subject subject = new Subject.Builder().sessionId(sessionId).buildSubject();
+            IotClientKey clientKey = new IotClientKey();
+            clientKey.setSessionId(sessionId);
 
-            final IOTSession session = (IOTSession) subject.getSession(false);
+            Subject subject = new Subject.Builder().sessionId(clientKey).buildSubject();
+
+            final IOTClient session = (IOTClient) subject.getSession(false);
 
             if (session != null && subject.isAuthenticated()) {
 
@@ -101,9 +106,9 @@ public abstract class RequestHandler<T extends IOTMessage> {
                     if (!AuthorityRole.CONNECT.equals(role)) {
 
 
-                        if(session.getProtocol().isNotPersistent()) {
+                        if(Protocol.fromString(session.getProtocol()).isNotPersistent()) {
 
-                            String session_auth_key = (String) session.getAttribute(SESSION_AUTH_KEY);
+                            String session_auth_key = session.getAuthKey();
 
                             /**
                              * Make sure for non persistent connections the authKey matches
@@ -119,8 +124,8 @@ public abstract class RequestHandler<T extends IOTMessage> {
                         List<Permission> permissions = topicList
                                 .stream()
                                 .map(topic ->
-                                        getPermission( session.getPartition(), session.getUsername(),
-                                                session.getClientId(), role, topic))
+                                        getPermission( session.getPartitionId(), session.getUsername(),
+                                                session.getClientIdentification(), role, topic))
                                 .collect(Collectors.toList());
 
                         subject.checkPermissions(permissions);
@@ -151,7 +156,7 @@ public abstract class RequestHandler<T extends IOTMessage> {
 
         //Notify the server to remove this client from further sending in requests.
         DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-        disconnectMessage.copyBase(message);
+        disconnectMessage.copyTransmissionData(message);
 
         try {
             getWorker().getHandler(DisconnectHandler.class).handle(disconnectMessage);

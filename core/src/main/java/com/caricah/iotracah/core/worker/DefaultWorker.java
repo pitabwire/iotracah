@@ -21,15 +21,16 @@
 package com.caricah.iotracah.core.worker;
 
 import com.caricah.iotracah.bootstrap.data.messages.*;
-import com.caricah.iotracah.bootstrap.security.realm.state.IOTSession;
-import com.caricah.iotracah.core.handlers.*;
-import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
 import com.caricah.iotracah.bootstrap.data.messages.base.IOTMessage;
-import com.caricah.iotracah.core.modules.Worker;
-import com.caricah.iotracah.core.worker.state.SessionResetManager;
-import com.caricah.iotracah.bootstrap.data.models.Subscription;
+import com.caricah.iotracah.bootstrap.data.models.subscriptions.IotSubscription;
 import com.caricah.iotracah.bootstrap.exceptions.RetriableException;
 import com.caricah.iotracah.bootstrap.exceptions.UnRetriableException;
+import com.caricah.iotracah.bootstrap.security.realm.state.IOTClient;
+import com.caricah.iotracah.core.handlers.*;
+import com.caricah.iotracah.core.modules.Worker;
+import com.caricah.iotracah.core.security.DefaultSecurityHandler;
+import com.caricah.iotracah.core.worker.exceptions.ShutdownException;
+import com.caricah.iotracah.core.worker.state.SessionResetManager;
 import com.mashape.unirest.http.Unirest;
 import org.apache.commons.configuration.Configuration;
 import org.apache.shiro.session.Session;
@@ -75,6 +76,10 @@ public class DefaultWorker extends Worker {
         int keepaliveInSeconds = configuration.getInt(CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS, CORE_CONFIG_WORKER_CLIENT_KEEP_ALIVE_IN_SECONDS_DEFAULT_VALUE);
         log.debug(" configure : Keep alive maximum is configured to be [{}]", keepaliveInSeconds);
         setKeepAliveInSeconds(keepaliveInSeconds);
+
+
+        String defaultPartitionName = configuration.getString(DefaultSecurityHandler.CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME, DefaultSecurityHandler.CONFIG_SYSTEM_SECURITY_DEFAULT_PARTITION_NAME_VALUE_DEFAULT);
+        setDefaultPartitionName(defaultPartitionName);
 
     }
 
@@ -140,11 +145,12 @@ public class DefaultWorker extends Worker {
     @Override
     public void onNext(IOTMessage iotMessage) {
 
+
             log.debug(" onNext : received {}", iotMessage);
 
             try {
 
-                  handleReceivedMessage(iotMessage);
+                handleReceivedMessage(iotMessage);
 
             } catch (ShutdownException e) {
 
@@ -155,7 +161,7 @@ public class DefaultWorker extends Worker {
 
                 try {
                     DisconnectMessage disconnectMessage = DisconnectMessage.from(true);
-                    disconnectMessage.copyBase(iotMessage);
+                    disconnectMessage.copyTransmissionData(iotMessage);
 
                     getHandler(DisconnectHandler.class).handle(disconnectMessage);
 
@@ -234,42 +240,7 @@ public class DefaultWorker extends Worker {
     @Override
     public void onStop(Session session) {
 
-        IOTSession iotSession = (IOTSession) session;
-
-        //Notify the server to remove this client from further sending in requests.
-        DisconnectMessage disconnectMessage = DisconnectMessage.from(false);
-        disconnectMessage = iotSession.copyTransmissionData(disconnectMessage);
-        pushToServer(disconnectMessage);
-
-
-        // Unsubscribe all
-        if (iotSession.isCleanSession()) {
-
-
-            Observable<Subscription> subscriptionObservable = getDatastore().getSubscriptions(iotSession);
-
-            subscriptionObservable.subscribe(
-                    subscription ->
-                            getMessenger().unSubscribe(subscription)
-
-                    , throwable -> log.error(" onStop : problems while unsubscribing", throwable)
-
-                    , () -> {
-
-                        Observable<PublishMessage> publishMessageObservable = getDatastore().getMessages(iotSession);
-                        publishMessageObservable.subscribe(
-                                getDatastore()::removeMessage,
-                                throwable -> {
-                                    log.error(" onStop : problems while unsubscribing", throwable);
-                                    // any way still delete it from our db
-                                },
-                                () -> {
-                                    // and delete it from our db
-                                });
-
-                    }
-            );
-        }
+        publishWill((IOTClient) session);
 
     }
 
@@ -280,8 +251,6 @@ public class DefaultWorker extends Worker {
         log.debug(" onExpiration : -------  We have an expired session {} -------", session);
         log.debug(" onExpiration : -----------------------------------------------------");
 
-        log.debug(" onExpiration : ---------------- We are to publish a will man for {}", session);
-        publishWill((IOTSession) session);
 
     }
 
