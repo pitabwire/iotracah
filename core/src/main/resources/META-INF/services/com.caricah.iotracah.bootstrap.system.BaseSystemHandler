@@ -19,7 +19,7 @@
 #
 
 
-#com.caricah.iotracah.core.worker.DumbWorker
+com.caricah.iotracah.core.worker.DumbWorker
 
-com.caricah.iotracah.core.worker.DefaultWorker
+#com.caricah.iotracah.core.worker.DefaultWorker
 

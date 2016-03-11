@@ -45,6 +45,7 @@ import rx.Observable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
@@ -53,8 +54,8 @@ import java.util.*;
 public class DumbWorker extends Worker {
 
 
-    private HashMap<String, Set<Serializable>> subscriptions = new HashMap<>();
-    private IgniteCache<String, Set<String>> igniteSubscriptions = null;
+   private ConcurrentHashMap<String, Set<String>> subscriptions = new ConcurrentHashMap<>();
+   // private IgniteCache<String, Set<String>> subscriptions = null;
 
 
     /**
@@ -120,7 +121,10 @@ public class DumbWorker extends Worker {
         clCfg.setEvictionPolicy(lruEvictionPolicy);
 
         clCfg.setSwapEnabled(true);
-        igniteSubscriptions = getIgnite().createCache(clCfg);
+
+        //if(subscriptions instanceof  IgniteCache) {
+            //subscriptions = getIgnite().createCache(clCfg);
+        //}
 
         //Initiate unirest properties.
         Unirest.setTimeouts(5000, 5000);
@@ -182,14 +186,14 @@ public class DumbWorker extends Worker {
 
                         String topicKey = quickCheckIdKey("", Arrays.asList(topic.getKey().split(Constant.PATH_SEPARATOR)));
 
-                        Set<String> channelIds = igniteSubscriptions.get(topicKey);
+                        Set<String> channelIds = subscriptions.get(topicKey);
 
                         if (Objects.isNull(channelIds)) {
                             channelIds = new HashSet<>();
                         }
 
                         channelIds.add(subscribeMessage.getConnectionId());
-                        igniteSubscriptions.put(topicKey, channelIds);
+                        subscriptions.put(topicKey, channelIds);
 
                         grantedQos.add(topic.getValue());
 
@@ -215,9 +219,10 @@ public class DumbWorker extends Worker {
 
                     Set<String> matchingTopics = getMatchingSubscriptions("", publishMessage.getTopic());
 
-                        Map<String, Set<String>> channelIdMap = igniteSubscriptions.getAll(matchingTopics);
 
-                        channelIdMap.values().forEach(channelIds -> {
+                    for (String match: matchingTopics) {
+                        Set<String> channelIds = subscriptions.get(match);
+
                             if (Objects.nonNull(channelIds)) {
 
                                 channelIds.forEach(id -> {
@@ -229,8 +234,8 @@ public class DumbWorker extends Worker {
                                 });
 
                             }
-                        });
 
+                    }
 
                     if (MqttQoS.AT_MOST_ONCE.value() == publishMessage.getQos()) {
 

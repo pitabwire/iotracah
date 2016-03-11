@@ -80,8 +80,10 @@ public class HttpIOTTransformerImpl implements MqttIOTTransformer<FullHttpMessag
                     ByteBuffer byteBuffer = ByteBuffer.wrap(json.getString("payload").getBytes());
 
                             PublishMessage publishMessage = PublishMessage.from(
-                                    json.getInt("messageId"), json.getBoolean("dup"),
-                                    1, json.getBoolean("retain"), json.getString("topic"), byteBuffer, true);
+                                    json.getInt("messageId"),
+                                    json.has("dup") && json.getBoolean("dup"),
+                                    1, json.has("retain") && json.getBoolean("retain"),
+                                    json.getString("topic"), byteBuffer, true);
 
                     publishMessage.setSessionId(json.getString("sessionId"));
                     publishMessage.setAuthKey(json.getString("authKey"));

@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.DefaultEventExecutorGroup;
 import io.netty.util.concurrent.EventExecutorGroup;
@@ -36,13 +37,13 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
 
     private final int connectionTimeout;
-    private final SSLHandler sslHandler;
+    private final SslContext sslContext;
     private final ServerImpl serverImpl;
     private EventExecutorGroup iotEventExecutorGroup;
 
     public ServerInitializer(ServerImpl serverImpl,  int connectionTimeout, SSLHandler sslHandler) {
         this.serverImpl = serverImpl;
-        this.sslHandler = sslHandler;
+        this.sslContext = sslHandler.getSslContext();
         this.connectionTimeout = connectionTimeout;
 
         int countOfAvailableProcessors = Runtime.getRuntime().availableProcessors()+1;
@@ -53,7 +54,7 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
     public ServerInitializer(ServerImpl serverImpl, int connectionTimeout) {
         this.serverImpl = serverImpl;
-        this.sslHandler = null;
+        this.sslContext = null;
         this.connectionTimeout = connectionTimeout;
     }
 
@@ -65,9 +66,8 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
         return iotEventExecutorGroup;
     }
 
-
-    public SSLHandler getSslHandler() {
-        return sslHandler;
+    public SslContext getSslContext() {
+        return sslContext;
     }
 
     public int getConnectionTimeout() {
@@ -86,15 +86,13 @@ public abstract class ServerInitializer<T> extends ChannelInitializer<SocketChan
 
         ChannelPipeline pipeline = ch.pipeline();
 
-        if(null != getSslHandler()) {
+        if(null != getSslContext()) {
             // Add SSL handler first to encrypt and decrypt everything.
             // In this application ssl is only used for transport encryption
             // Identification is not yet part of the deal.
 
-            pipeline.addLast("ssl", new SslHandler(getSslHandler().getSSLEngine()));
+            pipeline.addLast("ssl", getSslContext().newHandler(ch.alloc()));
         }
-
-
 
         customizePipeline(getIotEventExecutorGroup(), pipeline);
 

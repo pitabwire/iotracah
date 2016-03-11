@@ -25,14 +25,14 @@ dependencies {
     compile group: 'io.netty', name: 'netty-transport', version: '5.0.0.Alpha2'
     compile group: 'io.netty', name: 'netty-transport-sctp', version: '5.0.0.Alpha2'
     compile group: 'io.netty', name: 'netty-transport-native-epoll', version: '5.0.0.Alpha2', classifier: 'linux-x86_64'
+    compile group: 'io.netty', name: 'netty-tcnative', version: '1.1.33.Fork1', classifier: 'linux-x86_64'
     compile group: 'io.netty', name: 'netty-codec', version: '5.0.0.Alpha2'
     compile group: 'io.netty', name: 'netty-handler', version: '5.0.0.Alpha2'
 
     compile  project(':iotracah-core')
 
-//    runtime group: 'com.caricah.iotracah', name: 'iotracah-server-mqtt', version: version,  changing: true
-//    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-server-mqtt', version: version,  changing: true
-//    runtime group: 'com.caricah.iotracah', name: 'iotracah-server-http', version: version,  changing: true
-//    testRuntime group: 'com.caricah.iotracah', name: 'iotracah-server-http', version: version,  changing: true
-
+        //windows-x86_64 	Windows distribution
+        //osx-x86_64 	Mac distribution
+        //linux-x86_64 	Used for non-Fedora derivatives of Linux
+        //linux-x86_64-fedora 	Used for Fedora derivatives
 }

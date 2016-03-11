@@ -112,7 +112,7 @@ public abstract class Server<T> extends IOTBaseHandler {
 
         if (Objects.isNull(message)) {
             dirtyDisconnect(connectionId, sessionId);
-            return;
+            
         }else {
 
             internalPushToWorker(connectionId, sessionId, ioTMessage);

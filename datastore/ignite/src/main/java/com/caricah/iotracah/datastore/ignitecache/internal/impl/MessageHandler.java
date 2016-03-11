@@ -119,9 +119,6 @@ public class MessageHandler extends AbstractHandler<IotMessageKey, PublishMessag
                     publishMessage.setMessageId(messageId);
                 }
 
-
-
-
                 IotMessageKey messageKey = PublishMessage.createMessageKey(publishMessage);
 
                 getDatastoreCache().put(messageKey, publishMessage);
