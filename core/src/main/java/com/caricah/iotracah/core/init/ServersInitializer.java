@@ -393,7 +393,6 @@ public abstract class ServersInitializer implements SystemInitializer {
         Scheduler scheduler = Schedulers.from(getSystemExcecutor(observableOnSubscriber));
 
         return observable
-                    .onBackpressureBuffer()
                     .subscribeOn(scheduler)
                     .subscribe(subscriber);
 

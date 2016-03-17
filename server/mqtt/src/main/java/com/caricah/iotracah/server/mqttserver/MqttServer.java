@@ -33,6 +33,8 @@ import com.caricah.iotracah.server.transform.MqttIOTTransformer;
 import io.netty.handler.codec.mqtt.MqttMessage;
 import org.apache.commons.configuration.Configuration;
 
+import java.util.Objects;
+
 /**
  * @author <a href="mailto:bwire@caricah.com"> Peter Bwire </a>
  * @version 1.0 8/16/15
@@ -84,7 +86,9 @@ public class MqttServer extends Server<MqttMessage> {
     public void terminate() {
 
         log.info(" terminate : stopping any processing. ");
-        serverImpl.terminate();
+        if(Objects.nonNull(serverImpl)) {
+            serverImpl.terminate();
+        }
     }
 
     /**

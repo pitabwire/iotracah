@@ -257,13 +257,11 @@ public abstract class ServerImpl<T> implements ServerInterface<T> {
 
         if (null != channel) {
 
-            //, channel.voidPromise()
-            channel.eventLoop().execute(() -> channel.write(message));
+            channel.eventLoop().execute(() -> channel.writeAndFlush(message, channel.voidPromise() ));
 
         } else {
             log.info(" pushToClient : channel to push message {} is not available ", message);
         }
-
     }
 
 

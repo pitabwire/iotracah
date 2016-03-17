@@ -46,11 +46,10 @@ import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.subject.Subject;
 import rx.Observable;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
+import java.security.SecureRandom;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -444,11 +443,11 @@ public class ConnectionHandler extends RequestHandler<ConnectMessage> {
 
     private String generateMAC() throws NoSuchAlgorithmException {
 
-        KeyGenerator hmacSHA2 = KeyGenerator.getInstance("HmacSHA256");
-        SecretKey secretKey = hmacSHA2.generateKey();
-        byte[] bytes = secretKey.getEncoded();
+        SecureRandom random = new SecureRandom();
+        byte _bytes[] = new byte[20];
+        random.nextBytes(_bytes);
 
-        return Base64.getEncoder().encodeToString(bytes);
+        return new String(_bytes, StandardCharsets.UTF_8);
     }
 
     private String processUsernameForPartition(String username) {

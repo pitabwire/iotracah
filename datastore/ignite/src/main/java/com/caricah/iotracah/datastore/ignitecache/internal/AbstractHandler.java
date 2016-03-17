@@ -233,12 +233,19 @@ else
 
                 try {
 
-                    Map<K, T> itemMap = getDatastoreCache().getAllOutTx(keys);
+                    keys.forEach(
 
-                    itemMap.values().forEach(item -> {
-                        if (Objects.nonNull(item))
-                            observer.onNext(item);
-                    });
+                            key -> {
+
+                                T item = getDatastoreCache().get(key);
+
+                                    if (Objects.nonNull(item))
+                                        observer.onNext(item);
+
+
+                            }
+                    );
+
 
                     observer.onCompleted();
 
